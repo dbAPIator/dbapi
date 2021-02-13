@@ -5,8 +5,6 @@ apiator.raml10.yaml
 apiator_data
 test.php
 test.php.txt
-application/config/config.php
-application/config/apiator.1.php
 application/logs
 application/controllers/Demooauth.php
 application/controllers/Errors.php
