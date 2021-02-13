@@ -37,21 +37,26 @@ $apisConfigDir = defined("CFG_DIR_BASEPATH")?CFG_DIR_BASEPATH:getcwd();
 //echo CFG_DIR_BASEPATH;
 array_shift($argv);
 $cmd = array_shift($argv);
-switch($cmd) {
-    case "install":
-        install($apisConfigDir,$argv);
-        break;
-    case "newproject":
-        newproject($apisConfigDir,$argv);
-        break;
-    case "regen":
-        regen($apisConfigDir,array_shift($argv));
-        break;
-    case "list":
-        listProjects($apisConfigDir);
-        break;
-    default:
-        die("invalid command\n\n");
+try {
+    switch ($cmd) {
+        case "install":
+            install($apisConfigDir, $argv);
+            break;
+        case "newproject":
+            newproject($apisConfigDir, $argv);
+            break;
+        case "regen":
+            regen($apisConfigDir, array_shift($argv));
+            break;
+        case "list":
+            listProjects($apisConfigDir);
+            break;
+        default:
+            die("invalid command\n\n");
+    }
+}
+catch (Exception $exception) {
+    die($exception->getMessage()."\n");
 }
 
 /**
@@ -59,6 +64,9 @@ switch($cmd) {
  */
 function listProjects($dir)
 {
+    if(!is_dir($dir)) {
+        throw new Exception("Invalid config dir '$dir'");
+    }
     $dp = opendir($dir);
     $p = [];
     while ($entry=readdir($dp)) {
