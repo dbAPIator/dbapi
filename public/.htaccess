@@ -1,0 +1,9 @@
+<IfModule mod_env.c>
+    SetEnv CI_ENV development
+    SetEnv CI_AUTODETECT_BASEURL true
+</IfModule>
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]
