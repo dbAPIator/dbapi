@@ -267,7 +267,6 @@ function exec_gen($cli_args,$cmd,$projPath)
 //    }
 
     $cmd = "php ".__DIR__."/public/index.php $cmd";
-    echo  $cmd;
     exec( $cmd,$output,$ret);
     return $ret;
 }
