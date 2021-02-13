@@ -23,3 +23,4 @@ application/config/apiator/structure.php
 connections/*
 apis/*
 ezerp/*
+dbs
