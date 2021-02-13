@@ -111,7 +111,7 @@ function handle_main_config_file_creation($configDir)
     if($apiatorCfg===false)
         die("DB Apiator config template not found");
 
-    $apiatorCfg = str_replace("%%conn_dir_path%%",$configDir,$apiatorCfg);
+    $apiatorCfg = str_replace("%%conn_dir_path%%",escapeshellcmd($configDir),$apiatorCfg);
     if(file_put_contents($apiatorCfgDst,$apiatorCfg)===false)
         die("Could not save $apiatorCfgDst config file");
 }
