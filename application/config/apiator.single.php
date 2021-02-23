@@ -20,12 +20,11 @@ $config["default_field_access_sort"] = true;
 $config["default_field_access_search"] = true;
 
 
-
 // default record set page size
 $config["default_relationships_page_size"] = 10;
 $config["default_page_size"] = 100;
 $config["max_page_size"] = 200;
 
 $config["api_config_dir"] = function ($config) {
-    return CFG_DIR_BASEPATH."/".$config;
+    return CFG_DIR_BASEPATH . "/" . $config;
 };

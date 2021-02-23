@@ -2,9 +2,9 @@
 <?php
 define("BASEPATH",getcwd());
 
-$apiatorCfgTpl = __DIR__ . "/application/config/apiator.single.php.tpl";
+$apiatorCfgTpl = __DIR__ . "/application/config/apiator.single.php";
 $apiatorCfgDst = __DIR__ . "/application/config/apiator.php";
-$ciConfigTpl = __DIR__ . "/application/config/config.php.tpl";
+$ciConfigTpl = __DIR__ . "/application/config/config.tpl.php";
 $ciConfigDst = __DIR__."/application/config/config.php";
 $db_engines = ["mysqli"];
 
@@ -87,9 +87,14 @@ function handle_apis_config_dir_creation($configDir)
         $conf = $confirmCreateProjeDir===""?"yes":$confirmCreateProjeDir;
         if(in_array(strtolower($conf),["yes","y"]))
             if(!mkdir($configDir))
-                die("Could not create $configDir");
+                throw new Exception("Could not create $configDir");
     }
+    return realpath($configDir);
 }
+
+/**
+ * @param $configDir
+ */
 
 function handle_main_config_file_creation($configDir)
 {
@@ -98,11 +103,14 @@ function handle_main_config_file_creation($configDir)
     if($apiatorCfg===false)
         die("DB Apiator config template not found");
 
-    $apiatorCfg = str_replace("%%conn_dir_path%%",$configDir,$apiatorCfg);
+    $apiatorCfg = str_replace("%%conn_dir_path%%",addslashes($configDir),$apiatorCfg);
     if(file_put_contents($apiatorCfgDst,$apiatorCfg)===false)
         die("Could not save $apiatorCfgDst config file");
 }
 
+/**
+ *
+ */
 function handle_ci_config_file()
 {
     global $ciConfigTpl,$ciConfigDst;
@@ -110,11 +118,17 @@ function handle_ci_config_file()
     if($ciConfig===false)
         die("CI config template not found");
 
-    $cfg = include $ciConfigDst;
+    if(is_file($ciConfigDst)) {
+        $cfg = include $ciConfigDst;
+    }
+
     $prompt = "Base URL for DBAPI (optional)";
     if(isset($cfg["base_url"])) {
         $baseUrl = $cfg["base_url"];
         $prompt = "Base URL for DBAPI [".$cfg["base_url"]."]";
+    }
+    else {
+        $baseUrl = null;
     }
 
     $readBaseUrl = readline($prompt);
@@ -138,13 +152,13 @@ function install($configDir,$argv) {
     echo "DbAPI install wizard. Please fill requested info.\n\n";
 
     // Step 1: check if exists and if not create projects base directory
-    handle_apis_config_dir_creation($configDir);
+    $configDir = handle_apis_config_dir_creation($configDir);
 
     // Step 2: generate pnpbase configuration file
     handle_main_config_file_creation($configDir);
 
     // Step 3: generate CodeIgniter configuration file
-    handle_ci_config_file();
+//    handle_ci_config_file();
 
     echo "\n";
 
@@ -223,10 +237,10 @@ function handle_project_directory($configDir,$projName,$existingProject)
             die("Could not create project directory '$projPath'");
     }
 
-    if(!$existingProject) {
+    if($existingProject) {
         $read = readline("Project $projName already exists. Do you want to overwrite? ([Y]/N):");
         if (!in_array(strtolower($read), ["y", ""])) {
-            die("Setup canceled\n");
+            throw new Exception("Setup canceled\n");
         }
     }
 
@@ -245,7 +259,6 @@ function exec_gen($cli_args,$cmd,$projPath)
 //    }
 
     $cmd = "php ".__DIR__."/public/index.php $cmd";
-//    echo  $cmd;
     exec( $cmd,$output,$ret);
     return $ret;
 }
@@ -267,7 +280,8 @@ function newproject($configDir, $cli_args, $existing=false) {
     // print_r($output);
     if($ret===0) {
         $cfg = include __DIR__."/application/config/config.php";
-        echo "\nAPI successfully created and available at:\n\t {$cfg["base_url"]}/v2/$projName\n\n";
+        if(isset($cfg["base_url"]))
+            echo "\nAPI successfully created and available at:\n\t {$cfg["base_url"]}/v2/$projName\n\n";
         echo "Project files available at: \n\t$projPath\n\n";
         return;
     }
