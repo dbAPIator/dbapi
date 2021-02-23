@@ -15,7 +15,7 @@ if(count($argv)===1) {
     echo "Commands:\n";
     echo "    list: lists existing projects\n";
     echo "    install [/project_name/db_engine/db_host/db_user/db_pass/db_name]: Installs DbAPI on server by creating config files and\n";
-    echo "    newproject /project_name/db_engine/db_host/db_user/db_pass/db_name: Creates a REST API for a given database\n";
+    echo "    new /project_name/db_engine/db_host/db_user/db_pass/db_name: Creates a REST API for a given database\n";
     echo "    regen: Regenerates an existing API\n\n";
     echo "newproject Options:\n";
     echo "-c /project_name/db_engine/db_host/db_user/db_pass/db_name\n";
@@ -37,24 +37,33 @@ $apisConfigDir = defined("CFG_DIR_BASEPATH")?CFG_DIR_BASEPATH:getcwd();
 //echo CFG_DIR_BASEPATH;
 array_shift($argv);
 $cmd = array_shift($argv);
-switch($cmd) {
-    case "install":
-        install($apisConfigDir,$argv);
-        break;
-    case "newproject":
-        newproject($apisConfigDir,$argv);
-        break;
-    case "regen":
-        regen($apisConfigDir,array_shift($argv));
-        break;
-    case "list":
-        listProjects($apisConfigDir);
-        break;
-    default:
-        die("invalid command\n\n");
+try {
+    switch ($cmd) {
+        case "install":
+            install($apisConfigDir, $argv);
+            break;
+        case "new":
+            newproject($apisConfigDir, $argv);
+            break;
+        case "regen":
+            regen($apisConfigDir, array_shift($argv));
+            break;
+        case "list":
+            listProjects($apisConfigDir);
+            break;
+        default:
+            die("invalid command\n\n");
+    }
 }
+catch (Exception $exception) {
+    echo $exception->getMessage()."\n";
+}
+
+
 function listProjects($dir)
 {
+    if(!is_dir($dir))
+        throw new Exception("Invalid config directory");
     $dp = opendir($dir);
     $p = [];
     while ($entry=readdir($dp)) {
@@ -65,6 +74,7 @@ function listProjects($dir)
     }
     print_r($p);
 }
+
 function handle_apis_config_dir_creation($configDir)
 {
     // Projects base dir
