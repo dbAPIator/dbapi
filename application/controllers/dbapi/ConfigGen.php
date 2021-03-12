@@ -103,7 +103,9 @@ class ConfigGen extends CI_Controller
  */
 function to_php_code($data)
 {
-    return preg_replace(["/\{/","/\}/","/\:/","\""],["[","]","=>","'"],json_encode($data,JSON_PRETTY_PRINT)).";";
+    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],json_encode($data,JSON_PRETTY_PRINT)).";";
+    $str = str_replace('"',"'",$str);
+    return $str;
 }
 
 /**

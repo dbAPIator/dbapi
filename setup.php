@@ -300,7 +300,7 @@ function cli_gen_config( $execPath)
 //    echo $cmd;
 
     exec( $cmd,$output,$ret);
-    print_r($output);
+
     return $ret;
 }
 /**
