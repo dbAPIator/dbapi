@@ -274,9 +274,9 @@ function generate_project_files($cli_args,$cmd,$projPath)
 
 function http_gen_config($execPath)
 {
-    global $errorOutput;
+    global $errorOutput,$ciConfigDst;
     $errorOutput = 0;
-    $cfg = include "application/config/config.php";
+    $cfg = include $ciConfigDst;
     $path = $cfg["base_url"]."/index.php/".$execPath;
 
     set_error_handler(function($eee,$bbb) {
@@ -305,8 +305,9 @@ function cli_gen_config( $execPath)
  * @param $configDir
  * @param $cli_args
  */
-function createproject($configDir, $cli_args, $existing=false) {
-
+function createproject($configDir, $cli_args, $existing=false)
+{
+    global $ciConfigDst;
     // step 1: get project parameters
 //    list($projName,$cliPath,$httpPath) = get_parameters($cli_args);
     $paras = get_parameters($cli_args);
@@ -327,7 +328,7 @@ function createproject($configDir, $cli_args, $existing=false) {
 
     // print_r($output);
     if($ret===0) {
-        $cfg = include __DIR__."/application/config/config.php";
+        $cfg = include $ciConfigDst;
         if(isset($cfg["base_url"]))
             echo "\nAPI successfully created and available at:\n\t {$cfg["base_url"]}/v2/".$paras["project"]."\n\n";
         echo "Project files available at: \n\t$projPath\n\n";
