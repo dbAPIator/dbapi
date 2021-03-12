@@ -1,5 +1,8 @@
 #!/usr/bin/php
 <?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 define("BASEPATH",getcwd());
 
 $apiatorCfgTpl = __DIR__ . "/application/config/apiator.single.php";
@@ -43,7 +46,7 @@ try {
             install($apisConfigDir, $argv);
             break;
         case "new":
-            newproject($apisConfigDir, $argv);
+            createproject($apisConfigDir, $argv);
             break;
         case "regen":
             regen($apisConfigDir, array_shift($argv));
@@ -88,6 +91,7 @@ function handle_apis_config_dir_creation($configDir)
         if(in_array(strtolower($conf),["yes","y"]))
             if(!mkdir($configDir))
                 throw new Exception("Could not create $configDir");
+            chmod($configDir,0777);
     }
     return realpath($configDir);
 }
@@ -164,7 +168,7 @@ function install($configDir,$argv) {
 
     $setupConfirm = readline("Do you want to configure a project ([Y]/N)?");
     if(in_array(strtoupper($setupConfirm),["","Y"]))
-        newproject($configDir,$argv);
+        createproject($configDir,$argv);
 }
 
 function regen($configDir,$projName)
@@ -183,7 +187,7 @@ function regen($configDir,$projName)
     if(is_file($projPath."/parse_helper.php"))
         $args[] = $projPath."/parse_helper.php";
 
-    newproject($configDir,$args);
+    createproject($configDir,$args);
 }
 
 /**
@@ -194,13 +198,25 @@ function get_parameters($params)
 {
     global $db_engines;
     if(isset($params[0])) {
-        $pattern = "/\/([a-z0-9]+)\/(mysqli)\/([0-9a-z\.\-\_]+(\:[0-9]{2,5})?)\/([a-z][a-z0-9\.\_\-]+)\/(.*)\/([a-z][a-z0-9\.\_\-]+)/";
-        if(!preg_match($pattern,$params[0],$matches))
+//        $pattern = "/\/([a-z0-9]+)\/(mysqli)\/([0-9a-z\.\-\_]+(\:[0-9]{2,5})?)\/([a-z][a-z0-9\.\_\-]+)\/(.*)\/([a-z][a-z0-9\.\_\-]+)/";
+        $re = '/\/(.+)\/(.+)\/(.+)\/(.+)\/(.+)\/(.+)/m';
+        if(!preg_match($re, $params[0], $matches))
             die("Invalid configuration parameters. See help.\n\n");
 
-        $cmd = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s",$matches[2],$matches[3],$matches[5],$matches[6],$matches[7]);
+//        $cliCallPath = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s",$matches[2],$matches[3],$matches[5],$matches[6],$matches[7]);
+//        $httpCallPath = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s",urlencode($matches[2]),urlencode($matches[3]),
+//            urlencode($matches[5]),urlencode($matches[6]),urlencode($matches[7]));
+        $paras = [
+                "project"=>$matches[1],
+                "engine"=>$matches[2],
+                "host"=>$matches[3],
+                "user"=>$matches[4],
+                "pass"=>$matches[5],
+                "dbname"=>$matches[6]
+        ];
+        return $paras;
 
-        return [$matches[1],$cmd];
+//        return [$matches[1],$cliCallPath,$httpCallPath];
     }
 
     // interactive mode
@@ -222,9 +238,9 @@ function get_parameters($params)
     $pass = readline("Database password: ");
     $dbname = readline("Database name: ");
 
-    $cmd = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s",$engine,$host,$user,$pass,$dbname);
+    $setupCallPath = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s",$engine,$host,$user,$pass,$dbname);
 
-    return [$projName,$cmd];
+    return [$projName,$setupCallPath];
 }
 
 function handle_project_directory($configDir,$projName,$existingProject)
@@ -235,6 +251,8 @@ function handle_project_directory($configDir,$projName,$existingProject)
     if(!$dirExists) {
         if(!mkdir($projPath))
             die("Could not create project directory '$projPath'");
+        chmod($projPath,0777);
+
     }
 
     if($existingProject) {
@@ -248,40 +266,70 @@ function handle_project_directory($configDir,$projName,$existingProject)
     return $projPath;
 }
 
-function exec_gen($cli_args,$cmd,$projPath)
+function generate_project_files($cli_args,$cmd,$projPath)
 {
-    $cmd .= "/".urlencode(realpath($projPath));
-    if(isset($cli_args[1]) && is_file($cli_args[1])) {
-        $cmd .= "/".urlencode(realpath($cli_args[1]));
-    }
-//    elseif (is_file(getcwd()."/helper.php")) {
-//        $cmd .= "/".urlencode(realpath(getcwd()."/helper.php"));
-//    }
 
-    $cmd = "php ".__DIR__."/public/index.php $cmd";
+}
+
+
+function http_gen_config($execPath)
+{
+    global $errorOutput;
+    $errorOutput = 0;
+    $cfg = include "application/config/config.php";
+    $path = $cfg["base_url"]."/index.php/".$execPath;
+
+    set_error_handler(function($eee,$bbb) {
+        global $errorOutput;
+        if($eee) {
+            $errorOutput = $eee;
+        }
+    });
+    file_get_contents($path);
+    restore_error_handler();
+
+    return $errorOutput;
+//    print_r("--",$output);
+}
+
+function cli_gen_config( $execPath)
+{
+    $cmd = "php ".__DIR__."/public/index.php $execPath";
+//    echo $cmd;
+
     exec( $cmd,$output,$ret);
+    print_r($output);
     return $ret;
 }
 /**
  * @param $configDir
  * @param $cli_args
  */
-function newproject($configDir, $cli_args, $existing=false) {
+function createproject($configDir, $cli_args, $existing=false) {
 
     // step 1: get project parameters
-    list($projName,$cmd) = get_parameters($cli_args);
+//    list($projName,$cliPath,$httpPath) = get_parameters($cli_args);
+    $paras = get_parameters($cli_args);
 
     // step 2: handle project directory
-    $projPath = handle_project_directory($configDir,$projName,$existing);
+    $projPath = handle_project_directory($configDir,$paras["project"],$existing);
 
+    $execPath = sprintf("dbapi/ConfigGen/cli/%s/%s/%s/%s/%s/%s",$paras["engine"],$paras["host"],
+        base64_encode($paras["user"]),base64_encode($paras["pass"]),base64_encode($paras["dbname"]),base64_encode($projPath));
+
+    if(exec_enabled()) {
+        $ret = cli_gen_config($execPath);
+    }
+    else {
+        $ret = http_gen_config($execPath);
+    }
     // step 3: generated project files
-    $ret = exec_gen($cli_args,$cmd,$projPath);
 
     // print_r($output);
     if($ret===0) {
         $cfg = include __DIR__."/application/config/config.php";
         if(isset($cfg["base_url"]))
-            echo "\nAPI successfully created and available at:\n\t {$cfg["base_url"]}/v2/$projName\n\n";
+            echo "\nAPI successfully created and available at:\n\t {$cfg["base_url"]}/v2/".$paras["project"]."\n\n";
         echo "Project files available at: \n\t$projPath\n\n";
         return;
     }
@@ -289,6 +337,10 @@ function newproject($configDir, $cli_args, $existing=false) {
     // recursive_delete(realpath($projPath));
 }
 
+function exec_enabled() {
+    $disabled = explode(',', ini_get('disable_functions'));
+    return !in_array('exec', $disabled);
+}
 
 function recursive_delete($path) {
     if(is_dir($path)) {

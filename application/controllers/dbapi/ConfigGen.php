@@ -41,8 +41,13 @@ class ConfigGen extends CI_Controller
      * @param null $helper
      */
     function cli($driver,$hostname,$username,$password,$database,$path=null,$helper=null){
-        if($path)
-            $path = urldecode($path);
+        if($path) {
+            $path = base64_decode($path);
+        }
+        $username = base64_decode($username);
+        $password = base64_decode($password);
+        $database = base64_decode($database);
+//        $username = base64_decode($username);
         $conn = self::$conn;
         $conn["dbdriver"] = $driver;
         $conn["hostname"] = $hostname;
@@ -61,11 +66,14 @@ class ConfigGen extends CI_Controller
             if(is_array($data)) {
                 $structure = smart_array_merge_recursive($structure, $data);
                 file_put_contents("$path/parse_helper.php","<?php\nreturn ".to_php_code($data));
+                chmod("$path/parse_helper.php",0666);
             }
         }
 
         file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
         file_put_contents("$path/connection.php","<?php\nreturn ".to_php_code($conn));
+        chmod("$path/structure.php",0666);
+        chmod("$path/connection.php",0666);
     }
 
 
