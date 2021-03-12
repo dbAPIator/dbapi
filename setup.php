@@ -279,11 +279,12 @@ function http_gen_config($execPath)
     $cfg = include $ciConfigDst;
     $path = $cfg["base_url"]."/index.php/".$execPath;
 
-    set_error_handler(function($eee,$bbb) {
+    set_error_handler(function($eee,$error_message) {
         global $errorOutput;
         if($eee) {
             $errorOutput = $eee;
         }
+        echo $error_message;
     });
     file_get_contents($path);
     restore_error_handler();
