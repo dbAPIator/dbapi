@@ -280,6 +280,7 @@ function http_gen_config($execPath)
     $configGenPath = $cfg["base_url"]."/index.php/".$execPath;
 
     set_error_handler(function($eee,$error_message) {
+        global  $configGenPath;
         global $errorOutput;
         if($eee) {
             $errorOutput = $eee;
