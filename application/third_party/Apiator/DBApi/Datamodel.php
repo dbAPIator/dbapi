@@ -457,6 +457,12 @@ class Datamodel {
                 if(is_numeric($value) && ($value*1)<9999)
                     return $value;
                 break;
+            case "json":
+                $val = json_decode($value);
+                if(is_object($val)) {
+                    return $value;
+                }
+                break;
             // TEXT
             case "char":
                 return $value;
