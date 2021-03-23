@@ -82,7 +82,7 @@ class Setup extends CI_Controller
      */
     function cli($op=null,$project_name=null,$db_engine=null,$db_host=null,$db_user=null,$db_pass=null,$db_name=null)
     {
-//        print_r(func_get_args());
+        print_r(func_get_args());
 //        die();
         try {
             switch ($op) {
@@ -93,7 +93,7 @@ class Setup extends CI_Controller
                     $this->saveproject($project_name, $db_engine, $db_host, $db_user, $db_pass, $db_name);
                     break;
                 case "regen":
-                    $this->saveproject($project_name, $db_engine, $db_host, $db_user, $db_pass, $db_name, true);
+                    $this->regen($project_name);
                     break;
                 case "list":
                     $this->listprojects();
@@ -104,6 +104,15 @@ class Setup extends CI_Controller
             echo "Some error occured:\n\t";
             echo $exception->getMessage()."\n";
         }
+    }
+    private function regen($project_name)
+    {
+        $projPath = $this->handle_project_directory($project_name,true);
+        $conn = require ($projPath."/connection.php");
+//        print_r($conn);
+//        die();
+//        echo $projPath;
+        $this->saveproject($project_name, $conn["dbdriver"], $conn["hostname"], $conn["username"], $conn["password"], $conn["database"], $projPath);
     }
 
     /**
@@ -157,16 +166,15 @@ class Setup extends CI_Controller
 
     /**
      * @param null $project_name
-     * @param null $db_engine
-     * @param null $db_host
-     * @param null $db_user
-     * @param null $db_pass
-     * @param null $db_name
-     * @param bool $existing
+     * @param $dbdriver
+     * @param $hostname
+     * @param $username
+     * @param $password
+     * @param $database
      * @return array
      * @throws Exception
      */
-    private function get_parameters($project_name,$dbdriver, $hostname, $username, $password, $database,$existing)
+    private function get_parameters($project_name,$dbdriver, $hostname, $username, $password, $database)
     {
         if(!is_null($dbdriver)) {
             return [ $project_name, $this->parse_cli4config($dbdriver, $hostname, $username, $password, $database)];
@@ -184,14 +192,16 @@ class Setup extends CI_Controller
             if (!in_array(strtolower($read), ["y", ""])) {
                 die("Setup canceled\n");
             }
+            return $projPath;
         }
+
         if($existingProject && !$dirExists) {
             die("Project '$projectName' does not exits.' \n");
         }
 
+
         if($dirExists) {
             die("Project '$projectName' already exists. Use option 'regen' to overwrite project. \n");
-
         }
 
         echo $projPath;
@@ -213,16 +223,18 @@ class Setup extends CI_Controller
      * @param bool $existing
      * @throws Exception
      */
-    private function saveproject($project_name,$db_engine=null,$db_host=null,$db_user=null,$db_pass=null,$db_name=null,$existing=false)
+    private function saveproject($project_name,$db_engine=null,$db_host=null,$db_user=null,$db_pass=null,$db_name=null,$projPath=null)
     {
         global $ciConfigDst;
 
         // step 1: get project parameters
-        list($project_name,$connection) = $this->get_parameters($project_name,$db_engine,$db_host,$db_user,$db_pass,$db_name,$existing);
+        list($project_name,$connection) = $this->get_parameters($project_name,$db_engine,$db_host,$db_user,$db_pass,$db_name);
 
 
         // step 2: handle project directory
-        $projPath = $this->handle_project_directory($project_name,$existing);
+        if(is_null($projPath)) {
+            $projPath = $this->handle_project_directory($project_name,false);
+        }
 
         try {
             $this->generate_config($connection, $projPath);
