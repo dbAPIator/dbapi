@@ -643,22 +643,24 @@ class Records {
      * @throws \Exception
      */
     function insert($table, $data, $watchDog, $onDuplicate, $fieldsToUpdate, $path, &$includes) {
-        if($watchDog==0)
+        if($watchDog==0) {
             throw new \Exception("Maximum recursion level has been reached. Aborting. Please review your nested data.",400);
+        }
 
         //$table = $data->type;
-        if($data->type!=$table)
+        if($data->type!=$table) {
             throw new \Exception("Invalid data type '$data->type' for '$table'",400);
+        }
 
         // check if resource exists
-        if(!$this->dm->resource_exists($table))
+        if(!$this->dm->resource_exists($table)) {
             throw new \Exception("Resource '$table'' not found",404);
+        }
 
         // check if client is authorized to insert into resource
-        if(!$this->dm->resource_allow_insert($table))
+        if(!$this->dm->resource_allow_insert($table)) {
             throw new \Exception("Not authorized to insert into resource '$table'",401);
-
-
+        }
 
         // validate attributes
         $attributes = $data->attributes;
@@ -672,8 +674,9 @@ class Records {
 
         // collect attributes
         foreach($attributes as $fldName=>$value) {
-            if(!$this->dm->field_is_insertable($table,$fldName))
+            if(!$this->dm->field_is_insertable($table,$fldName)) {
                 throw new \Exception("Not allowed to insert data in field '$fldName' of table '$table'",400);
+            }
             $insertData[$fldName] = $value;
         }
 
@@ -688,21 +691,26 @@ class Records {
             }
 
             // todo: implement full validation in input_validator and remove the code bellow
-            if(!is_object($relData))
+            if(!is_object($relData)) {
                 throw new \Exception("Invalid relationship '$relName' data: invalid format ",400);
+            }
 
-            if(!isset($relData->data))
+            if(!isset($relData->data)) {
                 throw new \Exception("Invalid relationship '$relName' data: invalid format",400);
+            }
 
-            if(is_null($relData->data))
+            if(is_null($relData->data)) {
                 continue;
+            }
 
             // relation type vs data type: object for outbound relations; array for inbound relations
-            if ($relSpec["type"]=="inbound" && !is_array($relData->data))
+            if ($relSpec["type"]=="inbound" && !is_array($relData->data)) {
                 throw new \Exception("Invalid 1:n relation '$relName' for '$table'",400);
+            }
 
-            if ($relSpec["type"]=="outbound" && !is_object($relData->data) )
+            if ($relSpec["type"]=="outbound" && !is_object($relData->data) ) {
                 throw new \Exception("Invalid 1:1 relation '$relName' for '$table'",400);
+            }
 
 
             // inbound relation (1:n) add to stack for later insert

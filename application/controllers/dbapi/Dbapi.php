@@ -995,6 +995,7 @@ class Dbapi extends CI_Controller
                 $recId = $this->recs->insert($tableName, $entry, $this->insertMaxRecursionLevel,
                                                     $onDuplicate, $updateFields,null,$includes);
 
+
                 $recIdFld = $this->apiDm->getPrimaryKey($entry->type);
                 $filterStr = "$recIdFld=$recId";
                 $filter = get_filter($filterStr,$tableName);
@@ -1009,6 +1010,8 @@ class Dbapi extends CI_Controller
             }
             catch (Exception $exception)
             {
+//                var_dump($exception);
+
                 $this->apiDb->trans_rollback();
                 HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
             }
@@ -1019,10 +1022,13 @@ class Dbapi extends CI_Controller
 
         if($totalRecords) {
             $options = [];
-            if (is_object($input->data))
+            if (is_object($input->data)) {
                 $doc = \JSONApi\Document::create($this->JsonApiDocOptions,$insertedRecords[0])->json_data();
-            else
+            }
+            else {
                 $doc = \JSONApi\Document::create($this->JsonApiDocOptions,$insertedRecords)->json_data();
+            }
+
             HttpResp::json_out(200, $doc);
         }
 

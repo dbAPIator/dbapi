@@ -459,7 +459,8 @@ class Datamodel {
                 break;
             case "json":
                 $val = json_decode($value);
-                if(is_object($val)) {
+//                print_r($val);
+                if(!is_null($val)) {
                     return $value;
                 }
                 break;
