@@ -930,11 +930,18 @@ class Records {
      * @param $attributes
      * @param $where
      * @return mixed
+     * @throws \Exception
      */
     function updateAttributes($table,$attributes,$where)
     {
 
 //        print_r([$table,$attributes,$where]);
+//        $config = $this->dm->get_config($table);
+        foreach ($attributes as $key=>$val) {
+            if(!$this->dm->is_required($table,$key) && !$val) {
+                $attributes[$key] = null;
+            }
+        }
 
         // before insert hook
         $beforeUpdate = @include($this->configDir."/hooks/".$table."/before.update.php");
@@ -942,14 +949,28 @@ class Records {
             $attributes = $beforeUpdate($this,$where,$attributes);
 
         // configure query
-        $sql = $this->dbdrv
+        $updateSql = $this->dbdrv
             ->where($where)
             ->set($attributes)
             ->get_compiled_update($table);
 
 
+        $this->dbdrv->db_debug = false;
+
+        $this->dbdrv->query($updateSql);
+
+        $sqlErr = $this->dbdrv->error();
+//            print_r($sqlErr);
+//
+        if($sqlErr["code"]!==0) {
+//            var_dump($sqlErr);
+            log_message("error",$sqlErr["message"]." > $updateSql");
+            throw new \Exception($sqlErr["message"]."\n".$this->dbdrv->last_query(), $sqlErr["code"]);
+        }
+
+
         // perform update
-        $this->dbdrv->query($sql);
+
 //        echo $sql." - ".$this->dbdrv->affected_rows()."\n\n";
 
         // after insert hook

@@ -334,6 +334,12 @@ class Datamodel {
         return $this->dataModel[$table]["relations"][$relName];
     }
 
+    function is_required($resName,$field) {
+        $field = $this->dataModel[$resName]["fields"][$field];
+//        print_r($field);
+        return $field["required"];
+    }
+
     /**
      * type validation & type casting of proposed value against field type
      *

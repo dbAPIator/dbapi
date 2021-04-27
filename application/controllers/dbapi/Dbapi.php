@@ -558,14 +558,23 @@ class Dbapi extends CI_Controller
 
         // get paging fieldset fields
         $paging = $input->get("page");
+
         if(is_array($paging))
             $queryParas["paging"] = $paging;
-        if(!isset($queryParas["paging"][$resName]))
+
+        if(!isset($queryParas["paging"][$resName])) {
             $queryParas["paging"][$resName] = [];
-        if(isset($queryParas["paging"]["limit"]))
-            $queryParas["paging"][$resName]["limit"] = $queryParas["paging"]["limit"];
-        if(isset($queryParas["paging"]["offset"]))
-            $queryParas["paging"][$resName]["offset"] = $queryParas["paging"]["offset"];
+        }
+
+        foreach ($queryParas["paging"] as $key=>$val) {
+            if(isset($val["limit"]) && !preg_match("/^\d+$/",$val["limit"])) {
+                unset($queryParas["paging"][$key]["limit"]);
+            }
+
+            if(isset($val["offset"]) && !preg_match("/^\d+$/",$val["offset"])) {
+                unset($queryParas["paging"][$key]["offset"]);
+            }
+        }
 
 
 
