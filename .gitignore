@@ -18,9 +18,9 @@ application/config/apiconfig
 cli/structure.php
 
 
-application/config/apiator/connection.php
+application/config/apiator.php
+application/config/config.php
 
-application/config/apiator/structure.php
 connections/*
 apis/*
 ezerp/*
