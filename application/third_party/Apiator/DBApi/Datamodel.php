@@ -384,7 +384,7 @@ class Datamodel {
         // ToDO: implement length check
         // $length = property_exists($fields->$fieldName->type,"length") ? $fields->$fieldName->type->length : null;
 
-        if(!$fields[$fieldName]["required"] && is_null($value))
+        if(!$fields[$fieldName]["required"] && $value=="")
             return null;
 
         //print_r($value);
