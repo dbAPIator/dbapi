@@ -189,7 +189,8 @@ class Datamodel {
      */
     function getPrimaryKey($resName)
     {
-        return isset($this->dataModel[$resName]["keyFld"])?$this->dataModel[$resName]["keyFld"]:null;
+        $keyFld =  isset($this->dataModel[$resName]["keyFld"])?$this->dataModel[$resName]["keyFld"]:null;
+        return $keyFld;
     }
 
 
@@ -701,13 +702,13 @@ class Datamodel {
     }
 
     /**
-     * @param $resName
+     * @param $resourceName
      * @return bool
      */
-    public function resource_allow_update ($resName)
+    public function resource_allow_update ($resourceName)
     {
-        return isset($this->dataModel[$resName]["update"]) ?
-            $this->dataModel[$resName]["update"] :
+        return isset($this->dataModel[$resourceName]["update"]) ?
+            $this->dataModel[$resourceName]["update"] :
             $this->default_resource_access_update;
     }
 

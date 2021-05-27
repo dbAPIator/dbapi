@@ -79,7 +79,7 @@ class Dbapi extends CI_Controller
      * @var int set recursion level for creating new records
      * set to 0 to disable it
      */
-    protected $insertMaxRecursionLevel=3;
+    protected $insertMaxRecursionLevel=5;
     private $debug=false;
     /**
      * @var string
@@ -273,23 +273,25 @@ class Dbapi extends CI_Controller
      * @return mixed|null
      * @throws Exception
      */
-    private function get_input_data()
+    private function get_input_data($input=null)
     {
-        if(!isset($_SERVER["CONTENT_TYPE"]))
+        if(!is_null($input)) {
+            return  $input;
+        }
+        if(!isset($_SERVER["CONTENT_TYPE"])) {
             throw new Exception("Missing Content-Type",400);
+        }
 
-        $cType = explode(";",$_SERVER["CONTENT_TYPE"]);
+        $contentType = explode(";",$_SERVER["CONTENT_TYPE"]);
 
-        if(in_array("application/x-www-form-urlencoded",$cType)) {
+        if(in_array("application/x-www-form-urlencoded",$contentType)) {
             $inputData = json_decode(json_encode($this->input->post()));
-//            print_r($this->input->raw_input_stream);
             validate_body_data($inputData);
             return $inputData;
         }
 
-        if(in_array("application/vnd.api+json",$cType)) {
+        if(in_array("application/vnd.api+json",$contentType)) {
             $inputData = json_decode($this->input->raw_input_stream);
-
             validate_body_data($inputData);
             return $inputData;
         }
@@ -937,6 +939,36 @@ class Dbapi extends CI_Controller
         }
     }
 
+    private function normalize_object($obj)
+    {
+        if(isset($obj->relationships)) {
+            if(isset($obj->relationships->data)) {
+                $obj->relationships = $obj->relationships->data;
+            }
+
+            foreach ($obj->relationships as $relName=>$relData) {
+                $obj->relationships->$relName = $this->normalize_input_data($relData);
+            }
+        }
+        return $obj;
+    }
+
+    private function normalize_input_data($data) {
+        if(!$data)
+            return $data;
+
+        $resp = $data->data;
+        if(is_object($resp)) {
+            $resp = $this->normalize_object($resp);
+        }
+
+        if(is_array($resp)) {
+            for($i=0;$i<count($resp);$i++) {
+                $resp[$i] = $this->normalize_object($resp[$i]);
+            }
+        }
+        return $resp;
+    }
 
     /**
      * Insert records recursively
@@ -953,8 +985,7 @@ class Dbapi extends CI_Controller
 
         // get input data
         try {
-            if(is_null($input))
-                $input = $this->get_input_data();
+            $input = $this->get_input_data($input);
         }
         catch (Exception $e) {
             HttpResp::json_out(
@@ -962,20 +993,25 @@ class Dbapi extends CI_Controller
                 JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
             );
         }
+//        print_r($input);
+//        print_r($this->normalize_input_data($input));
+//        die();
 
-        if(is_null($input))
+        if(is_null($input)) {
             HttpResp::json_out(400,
-                \JSONApi\Document::error_doc($this->JsonApiDocOptions,[
-                    \JSONApi\Error::factory(["title"=>"Empty input data not allowed","code"=>400])
+                \JSONApi\Document::error_doc($this->JsonApiDocOptions, [
+                    \JSONApi\Error::factory(["title" => "Empty input data not allowed", "code" => 400])
                 ])->json_data()
             );
+        }
 
         $opts = $this->getQueryParameters($tableName);
 
         // configure onDuplicate behaviour
         $onDuplicate = $this->input->get("onduplicate");
-        if(!in_array($onDuplicate,["update","ignore","error"]))
+        if(!in_array($onDuplicate,["update","ignore","error"])) {
             $onDuplicate = "error";
+        }
 
         // configure fields to be updated when onduplicate is set to "update"
         $updateFields = [];
@@ -994,33 +1030,44 @@ class Dbapi extends CI_Controller
         // iterate through data and insert records one by one
         $insertedRecords = [];
         $totalRecords = 0;
+//
+//        try {
+//            $results = $this->recs->insert($tableName, $entries, $this->insertMaxRecursionLevel,
+//                $onDuplicate, $updateFields, null, $includes);
+//        }
+//        catch (Exception $exception)
+//        {
+////                var_dump($exception);
+//            $this->apiDb->trans_rollback();
+//            HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+//        }
+
+        $includes = get_include($this->input);
         foreach($entries as $entry) {
             try {
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
-                if(!isset($entry->type) || !isset($entry->attributes))
-                    continue;
-
-                $includes = get_include($this->input);
                 $recId = $this->recs->insert($tableName, $entry, $this->insertMaxRecursionLevel,
                                                     $onDuplicate, $updateFields,null,$includes);
 
-
-                $recIdFld = $this->apiDm->getPrimaryKey($entry->type);
+                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$tableName);
                 $filterStr = "$recIdFld=$recId";
                 $filter = get_filter($filterStr,$tableName);
+                if(!$filter) {
+                    continue;
+                }
+
 
                 list($records,$noRecs) = $this->recs->getRecords($tableName,[
                         "includeStr" => implode(",",$includes),
                         "filter"=>$filter
                     ]);
+//                print_r($records);
                 $totalRecords += $noRecs;
                 $insertedRecords = array_merge_recursive($insertedRecords,$records);
-
             }
             catch (Exception $exception)
             {
 //                var_dump($exception);
-
                 $this->apiDb->trans_rollback();
                 HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
             }
@@ -1041,8 +1088,9 @@ class Dbapi extends CI_Controller
             HttpResp::json_out(200, $doc);
         }
 
-        $err = \JSONApi\Error::factory(["code"=>400,"title"=>"No records inserted due to invalid input data"]);
-        HttpResp::jsonapi_out(400,\JSONApi\Document::error_doc($this->JsonApiDocOptions,$err));
+//        $err = \JSONApi\Error::factory(["code"=>400,"title"=>"No records inserted."]);
+//        HttpResp::jsonapi_out(400,\JSONApi\Document::error_doc($this->JsonApiDocOptions,$err));
+//        HttpResp::no_content();
     }
 
     /**

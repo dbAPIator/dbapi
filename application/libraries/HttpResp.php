@@ -352,7 +352,7 @@ class HttpResp{
     /**
      * @param $statusCode
      */
-    static function no_content($statusCode)
+    static function no_content($statusCode=204)
     {
         HttpResp::quick($statusCode);
     }

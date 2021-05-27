@@ -622,8 +622,9 @@ class Records {
              * TODO: instead of just checking if value is an object as exception when value type validation fails
              *       implement a proper mechanism inside the is_valid_value method
              */
-            if(!is_object($attrVal))
+            if(!is_object($attrVal)) {
                 $attributes[$attrName] = $attrVal;
+            }
         }
         return $attributes;
     }
@@ -648,9 +649,9 @@ class Records {
         }
 
         //$table = $data->type;
-        if($data->type!=$table) {
-            throw new \Exception("Invalid data type '$data->type' for '$table'",400);
-        }
+//        if($data->type!=$table) {
+//            throw new \Exception("Invalid data type '$data->type' for '$table'",400);
+//        }
 
         // check if resource exists
         if(!$this->dm->resource_exists($table)) {
@@ -681,6 +682,7 @@ class Records {
         }
 
         $one2nRelations = [];
+
         // iterate relations and insert recursive if it is the case
         foreach ($relations as $relName=>$relData) {
             // gets relationship config. Throws an error when relation is not valid
@@ -696,7 +698,7 @@ class Records {
             }
 
             if(!isset($relData->data)) {
-                throw new \Exception("Invalid relationship '$relName' data: invalid format",400);
+                throw new \Exception("Invalid relationship '$relName' data: 'data' property not set",400);
             }
 
             if(is_null($relData->data)) {
@@ -752,24 +754,26 @@ class Records {
             if(isset($relData->data->attributes)) {
 
                 $insertData[$relName] = $this->insert($fk->table,$relData->data,$watchDog-1,$onDuplicate,$fieldsToUpdate,$newPath,$includes);
-                if(!in_array($newPath,$includes))
+                if(!in_array($newPath,$includes)) {
                     $includes[] = $newPath;
+                }
             }
         }
 
         $insertData = $this->validateInsertData($table,$insertData);
 
-        // call oninsert hook
-        $tableConfig = $this->dm->get_config($table);
-        if(isset($tableConfig["oninsert"]) && is_callable($tableConfig["oninsert"])) {
-            $insertData = $tableConfig["oninsert"]($insertData,$tableConfig);
-        }
+//        // call oninsert hook
+//        $tableConfig = $this->dm->get_config($table);
+//        if(isset($tableConfig["oninsert"]) && is_callable($tableConfig["oninsert"])) {
+//            $insertData = $tableConfig["oninsert"]($insertData,$tableConfig);
+//        }
 
 
         // before insert hook
         $beforeInsert = @include($this->configDir."/hooks/".$table."/before.insert.php");
-        if(is_callable($beforeInsert))
-            $insertData = $beforeInsert($this,$insertData);
+        if(is_callable($beforeInsert)) {
+            $insertData = $beforeInsert($this, $insertData);
+        }
 
 
         // check insert data for non-scalar values and throw error in case found
@@ -793,7 +797,7 @@ class Records {
                     if (!$this->dm->field_is_updateable($table, $fld)) {
                         throw new \Exception("ON DUPLICATE UPDATE failure: not allowed to update field '$fld'", 400);
                     }
-                    $updStr[] = "$fld=VALUES($fld)";
+                    $updStr[] = "`$fld`=VALUES(`$fld`)";
                 }
 
                 if(count($updStr))
@@ -801,7 +805,7 @@ class Records {
                 break;
             case "ignore":
                 if($idFld)
-                    $insSql .= " ON DUPLICATE KEY UPDATE $idFld=$idFld";
+                    $insSql .= " ON DUPLICATE KEY UPDATE `$idFld`=`$idFld`";
                 break;
             case "error":
                 break;
@@ -813,18 +817,16 @@ class Records {
 
         $this->dbdrv->db_debug = false;
 
+//        echo $insSql."\n";
         $res = $this->dbdrv->query($insSql);
 
-//        /**
-//         * @var \Dbapi $ci
-//         *
-//         */
-//        $ci = get_instance();
+        $this->dbdrv->db_debug = true;
+
 
         if(!$res) {
             // todo: log message to the app log file
             $sqlErr = $this->dbdrv->error();
-            log_message("error",$sqlErr["message"]." > $insSql");
+//            log_message("error",$sqlErr["message"]." > $insSql");
             throw new \Exception($sqlErr["message"]."\n".$this->dbdrv->last_query(), 500);
         }
 
@@ -834,8 +836,14 @@ class Records {
 
         // todo: evaluate impact for other DB engines and implement
         $newRecId = $this->dbdrv->insert_id();
-        if(!$newRecId && $this->dbdrv->affected_rows() && is_scalar($insertData[$idFld]))
+
+        if($this->dbdrv->affected_rows()!==1) {
+
+        }
+
+        if(!$newRecId && $this->dbdrv->affected_rows()===1 && is_scalar($insertData[$idFld])) {
             $newRecId = $insertData[$idFld];
+        }
 
         if(!$newRecId) {
             $selSql = $this->dbdrv
@@ -844,7 +852,7 @@ class Records {
 //            print_r($selSql);
 
             $q = $this->dbdrv->query($selSql);
-            get_instance()->debug_log($selSql);
+//            get_instance()->debug_log($selSql);
             $cnt = $q->num_rows();
 
             if($cnt > 1) {
@@ -862,7 +870,8 @@ class Records {
         // create outbound relations
         if($newRecId && $one2nRelations) {
             foreach ($one2nRelations as $relName=>$relData) {
-                $relSpec = $relData["spec"];
+                $relationPeerTable = $relData["spec"]["table"];
+                $relationPeerField = $relData["spec"]["field"];
                 $rels = $relData["data"];
 
                 $newPath = $path==null ? $relName : "$path.$relName";
@@ -871,31 +880,37 @@ class Records {
                 foreach ($rels as $relItem){
                     // check relation data type
                     $objType = $this->get_object_type($relItem);
-                    $fkFld = $relSpec["field"];
+                    $fkFld = $relationPeerField;
+
+                    if(!$this->dm->resource_allow_update($relationPeerTable)) {
+                        throw new \Exception("Not allowed to update relationship $relName on $table",403);
+                    }
+
+                    if(!in_array($newPath,$includes)) {
+                        $includes[] = $newPath;
+                    }
+
                     switch ($objType) {
                         // data is a resource indicator object = related record exist already
                         // => perform an update with the id of the newly created object for the FK field
                         case "ResourceIndicatorObject":
                             // update related record
-                            if($this->dm->resource_allow_update($relSpec["table"]))
-                                throw new \Exception("Not allowed to update relationship of type $relName 1",403);
+
                             $relItem->attributes = (object) [
-                                $relSpec["field"]=>$newRecId
+                                $relationPeerField=>$newRecId
                             ];
-                            if(!in_array($newPath,$includes))
-                                $includes[] = $newPath;
-                            $this->updateById($relSpec["table"],$relItem->id,$relItem);
+
+                            $this->updateById($relationPeerTable,$relItem->id,$relItem);
                             break;
                             // data is of newResourceObject type => new related record must be created
                         case "newResourceObject":
                             // insert new related record
-                            if(!$this->dm->resource_allow_insert($relSpec["table"]))
-                                throw new \Exception("Not allowed to update relationship of type $relName 2",403);
-                            if(!in_array($newPath,$includes))
-                                $includes[] = $newPath;
+
                             $relItem->attributes->$fkFld = $newRecId;
 
-                            $this->insert($relSpec["table"],$relItem,$watchDog-1,$onDuplicate,$fieldsToUpdate,$newPath,$includes);
+                            $this->insert($relationPeerTable,$relItem,$watchDog-1,$onDuplicate,$fieldsToUpdate,$newPath,$includes);
+                            break;
+                        case "DocumentObject":
                             break;
                         default:
                             throw new \Exception("Invalid '$relName' relationship data type ($objType) : ".json_encode($relItem),403);
@@ -1168,8 +1183,8 @@ class Records {
         if(property_exists($obj,"data"))
             return "DocumentObject";
 
-        if(!property_exists($obj,"type"))
-            return "UnknownObject";
+//        if(property_exists($obj,"type"))
+//            return "UnknownObject";
 
         if(property_exists($obj,"id"))
             return property_exists($obj,"attributes")?"ResourceObject":"ResourceIndicatorObject";

@@ -341,8 +341,9 @@ function validate_body_data($inputData) {
             is_valid_resource_object($inputData->data);
             break;
         case "a":
-            foreach ($inputData->data as $item)
+            foreach ($inputData->data as $item) {
                 is_valid_resource_object($item);
+            }
             break;
         default:
             throw new Exception("Invalid input data: root object member 'data' should an array or an object",400);
