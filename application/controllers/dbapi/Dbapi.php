@@ -424,17 +424,17 @@ class Dbapi extends CI_Controller
 
     /**
      * @param $configName
-     * @param $resourceName
+     * @param $tableName
      * @todo to be implemented
      */
-    function deleteMultipleRecords($configName, $resourceName)
+    function deleteMultipleRecords($configName,$tableName)
     {
         $this->_init($configName);
 
         HttpResp::method_not_allowed();
 
         // check if table exists
-        if (!$this->apiDm->resource_exists($resourceName)) {
+        if (!$this->apiDm->resource_exists($tableName)) {
             HttpResp::not_found();
             exit();
         }
@@ -973,13 +973,13 @@ class Dbapi extends CI_Controller
     /**
      * Insert records recursively
      * @param $configName
-     * @param $resourceName
+     * @param $tableName
      * @param null $input
      * @return null
      * TODO: add some limitation for maximum records to insert at a time
      * @throws Exception
      */
-    public function createSingleRecord($configName, $resourceName, $input=null)
+    public function createSingleRecord($configName,$tableName, $input=null)
     {
         $this->_init($configName);
 
@@ -1005,7 +1005,7 @@ class Dbapi extends CI_Controller
             );
         }
 
-        $opts = $this->getQueryParameters($resourceName);
+        $opts = $this->getQueryParameters($tableName);
 
         // configure onDuplicate behaviour
         $onDuplicate = $this->input->get("onduplicate");
@@ -1016,7 +1016,7 @@ class Dbapi extends CI_Controller
         // configure fields to be updated when onduplicate is set to "update"
         $updateFields = [];
         if($onDuplicate=="update") {
-            $updateFields = getFieldsToUpdate($this->input,$resourceName);
+            $updateFields = getFieldsToUpdate($this->input,$tableName);
             if(!count($updateFields))
                 $onDuplicate = null;
         }
@@ -1046,18 +1046,18 @@ class Dbapi extends CI_Controller
         foreach($entries as $entry) {
             try {
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
-                $recId = $this->recs->insert($resourceName, $entry, $this->insertMaxRecursionLevel,
+                $recId = $this->recs->insert($tableName, $entry, $this->insertMaxRecursionLevel,
                                                     $onDuplicate, $updateFields,null,$includes);
 
-                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$resourceName);
+                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$tableName);
                 $filterStr = "$recIdFld=$recId";
-                $filter = get_filter($filterStr,$resourceName);
+                $filter = get_filter($filterStr,$tableName);
                 if(!$filter) {
                     continue;
                 }
 
 
-                list($records,$noRecs) = $this->recs->getRecords($resourceName,[
+                list($records,$noRecs) = $this->recs->getRecords($tableName,[
                         "includeStr" => implode(",",$includes),
                         "filter"=>$filter
                     ]);
@@ -1094,14 +1094,14 @@ class Dbapi extends CI_Controller
     }
 
     /**
-     * @param $resourceName
+     * @param $tableName
      * @param $recId
      */
-    function deleteSingleRecord($configName, $resourceName, $recId)
+    function deleteSingleRecord($configName,$tableName, $recId)
     {
         $this->_init($configName);
         try {
-            $this->recs->deleteById($resourceName, $recId);
+            $this->recs->deleteById($tableName, $recId);
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {
