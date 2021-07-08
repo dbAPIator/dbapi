@@ -16,7 +16,7 @@ application/config/ezerpapi
 application/config/ezerpapi/structure.php
 application/config/apiconfig
 cli/structure.php
-
+dbconfigs/*
 
 application/config/apiator.php
 application/config/config.php

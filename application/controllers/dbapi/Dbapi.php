@@ -424,17 +424,17 @@ class Dbapi extends CI_Controller
 
     /**
      * @param $configName
-     * @param $tableName
+     * @param $resourceName
      * @todo to be implemented
      */
-    function deleteMultipleRecords($configName,$tableName)
+    function deleteMultipleRecords($configName, $resourceName)
     {
         $this->_init($configName);
 
         HttpResp::method_not_allowed();
 
         // check if table exists
-        if (!$this->apiDm->resource_exists($tableName)) {
+        if (!$this->apiDm->resource_exists($resourceName)) {
             HttpResp::not_found();
             exit();
         }
@@ -973,13 +973,13 @@ class Dbapi extends CI_Controller
     /**
      * Insert records recursively
      * @param $configName
-     * @param $tableName
+     * @param $resourceName
      * @param null $input
      * @return null
      * TODO: add some limitation for maximum records to insert at a time
      * @throws Exception
      */
-    public function createSingleRecord($configName,$tableName, $input=null)
+    public function createSingleRecord($configName, $resourceName, $input=null)
     {
         $this->_init($configName);
 
@@ -1005,7 +1005,7 @@ class Dbapi extends CI_Controller
             );
         }
 
-        $opts = $this->getQueryParameters($tableName);
+        $opts = $this->getQueryParameters($resourceName);
 
         // configure onDuplicate behaviour
         $onDuplicate = $this->input->get("onduplicate");
@@ -1016,7 +1016,7 @@ class Dbapi extends CI_Controller
         // configure fields to be updated when onduplicate is set to "update"
         $updateFields = [];
         if($onDuplicate=="update") {
-            $updateFields = getFieldsToUpdate($this->input,$tableName);
+            $updateFields = getFieldsToUpdate($this->input,$resourceName);
             if(!count($updateFields))
                 $onDuplicate = null;
         }
@@ -1046,21 +1046,21 @@ class Dbapi extends CI_Controller
         foreach($entries as $entry) {
             try {
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
-                $recId = $this->recs->insert($tableName, $entry, $this->insertMaxRecursionLevel,
-                                                    $onDuplicate, $updateFields,null,$includes);
+                $recId = $this->recs->insert($resourceName, $entry, $this->insertMaxRecursionLevel,
+                    $onDuplicate, $updateFields,null,$includes);
 
-                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$tableName);
+                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$resourceName);
                 $filterStr = "$recIdFld=$recId";
-                $filter = get_filter($filterStr,$tableName);
+                $filter = get_filter($filterStr,$resourceName);
                 if(!$filter) {
                     continue;
                 }
 
 
-                list($records,$noRecs) = $this->recs->getRecords($tableName,[
-                        "includeStr" => implode(",",$includes),
-                        "filter"=>$filter
-                    ]);
+                list($records,$noRecs) = $this->recs->getRecords($resourceName,[
+                    "includeStr" => implode(",",$includes),
+                    "filter"=>$filter
+                ]);
 //                print_r($records);
                 $totalRecords += $noRecs;
                 $insertedRecords = array_merge_recursive($insertedRecords,$records);
@@ -1094,14 +1094,14 @@ class Dbapi extends CI_Controller
     }
 
     /**
-     * @param $tableName
+     * @param $resourceName
      * @param $recId
      */
-    function deleteSingleRecord($configName,$tableName, $recId)
+    function deleteSingleRecord($configName, $resourceName, $recId)
     {
         $this->_init($configName);
         try {
-            $this->recs->deleteById($tableName, $recId);
+            $this->recs->deleteById($resourceName, $recId);
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {
