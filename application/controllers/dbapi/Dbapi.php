@@ -273,31 +273,36 @@ class Dbapi extends CI_Controller
      * @return mixed|null
      * @throws Exception
      */
-    private function get_input_data($input=null)
+    private function get_input_data($input=null,$no_validation=false)
     {
         if(!is_null($input)) {
             return  $input;
         }
+
         if(!isset($_SERVER["CONTENT_TYPE"])) {
             throw new Exception("Missing Content-Type",400);
         }
 
         $contentType = explode(";",$_SERVER["CONTENT_TYPE"]);
+        $inputData = "";
 
         if(in_array("application/x-www-form-urlencoded",$contentType)) {
             $inputData = json_decode(json_encode($this->input->post()));
-            validate_body_data($inputData);
-            return $inputData;
         }
-
-        if(in_array("application/vnd.api+json",$contentType)) {
+        elseif(in_array("application/vnd.api+json",$contentType)) {
             $inputData = json_decode($this->input->raw_input_stream);
-            validate_body_data($inputData);
+        }
+        elseif(in_array("application/json",$contentType)) {
+            $inputData = json_decode($this->input->raw_input_stream);
+        }
+        else {
+            throw new Exception("Invalid Content-Type",400);
+        }
+        if($no_validation) {
             return $inputData;
         }
-
-        throw new Exception("Invalid Content-Type",400);
-
+        validate_body_data($inputData);
+        return $inputData;
     }
 
     /**
@@ -691,7 +696,14 @@ class Dbapi extends CI_Controller
          */
         $procedures = \Apiator\DBApi\Procedures::init($this->apiDb,$this->apiDm);
         // print_r($this->input->post("args"));
-        $procedures->call($procedureName,$this->input->post("args"));
+
+        try {
+            $data = $this->get_input_data(null,true);
+            $result = $procedures->call($procedureName, $data);
+            HttpResp::json_out(200,$result);
+        } catch (Exception $e) {
+            HttpResp::jsonapi_out(400,JSONApi\Document::from_exception($e->getCode(),$e));
+        }
 
 
     }

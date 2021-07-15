@@ -106,19 +106,20 @@ $route["^test\/(.*)"] ="$controller/test/$1";
 
 
 // stored procedures
-$route["^$basePath\/([\w\-\_\%]+)\/__call__\/([\w\-\_\%]+)"]["post"] = "$controller/callStoredProcedure/$1/$2";
+$route["^$basePath\/([\w\-\_\%]+)\/__call__\/([\w\-\_\%]+)$"] ["post"] = "$controller/callStoredProcedure/$1/$2";
 
 
 
 // first family: - bulk operations /
 // #1
-$route["^$basePath"]["post"] ="$controller/createMultipleRecords/$1";
+$route["^$basePath\/([\w\-\_\%]+)"]["post"] ="$controller/createMultipleRecords/$1";
 // #2
-$route["^$basePath"]["patch"] ="$controller/updateMultipleRecords/$1";
+$route["^$basePath\/([\w\-\_\%]+)"]["patch"] ="$controller/updateMultipleRecords/$1";
 // #3
-$route["^$basePath"]["delete"] ="$controller/deleteMultipleRecords/$1";
+$route["^$basePath\/([\w\-\_\%]+)"]["delete"] ="$controller/deleteMultipleRecords/$1";
 
 $route["^$basePath\/([\w\-\_\%]+)"] = "$controller/base/$1";
+
 // second family: /resourceŃame
 // #4 OK
 //$route["^$stdOpsPath\/([\w\-\_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";

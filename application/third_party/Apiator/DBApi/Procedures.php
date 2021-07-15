@@ -46,35 +46,42 @@ class Procedures
     /**
      * @param $procedureName
      * @param $parameters
+     * @throws \Exception
      */
     function call($procedureName, $parameters) {
-        $p = json_decode($parameters);
-        if(!is_array($p)) {
-            throw new \Exception("Invalid input");
+
+        if(!is_array($parameters)) {
+            throw new \Exception("Invalid input",400);
         }
         $execSql = [];
 
         $args =  [];
-        foreach ($p as $para) {
-            $args[] = "@".$para["name"];
+        foreach ($parameters as $para) {
+            $args[] = "@".$para->name;
             if($para->dir=="in") {
-                $execSql[] = "SET @".$para["name"]."='".mysqli_escape_string($para["value"])."';";
+                $execSql[] = "SET @$para->name='$para->value';";
             }
             else {
-                $result[] = "@".$para["name"]." ".$para["name"];
+                $result[] = "@$para->name $para->name";
             }
         }
-        $sql = implode($execSql)
-            ."CALL ".mysqli_escape_string($procedureName)."(".implode(",",$args).");"
-            ."SELECT ".implode(", ",$result).";";
+        $execSql[] = "CALL $procedureName(".implode(",",$args).");";
+        $execSql[] = "SELECT ".implode(", ",$result).";";
+        foreach ($execSql as $sql) {
+            $res = $this->db->query($sql);
+        }
+
+        return $res->row();
 
 
-        $res = $this->db->query($sql);
-        if($res) {
-            print_r($res);
-        }
-        else {
-            print_r($this->db->error());
-        }
+        echo($sql);
+
+//        $res = $this->db->query($sql);
+//        if($res) {
+//            print_r($res);
+//        }
+//        else {
+//            print_r($this->db->error());
+//        }
     }
 }
