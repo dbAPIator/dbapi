@@ -106,7 +106,7 @@ $route["^test\/(.*)"] ="$controller/test/$1";
 
 
 // stored procedures
-$route["^$basePath\/__call__/([\w\-\_\%]+)"] = "$controller/callStoredProcedure/$1";
+$route["^$basePath\/([\w\-\_\%]+)\/__call__\/([\w\-\_\%]+)"]["post"] = "$controller/callStoredProcedure/$1/$2";
 
 
 
