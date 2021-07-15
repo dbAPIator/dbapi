@@ -48,11 +48,28 @@ class Procedures
      * @param $parameters
      */
     function call($procedureName, $parameters) {
-        $args =  "";
-        if(!is_null($parameters))
-            $args = "'".implode("','",$parameters)."'";
-        $this->db->db_debug = false;
-        $res = $this->db->query("CALL $procedureName($args)");
+        $p = json_decode($parameters);
+        if(!is_array($p)) {
+            throw new \Exception("Invalid input");
+        }
+        $execSql = [];
+
+        $args =  [];
+        foreach ($p as $para) {
+            $args[] = "@".$para["name"];
+            if($para->dir=="in") {
+                $execSql[] = "SET @".$para["name"]."='".mysqli_escape_string($para["value"])."';";
+            }
+            else {
+                $result[] = "@".$para["name"]." ".$para["name"];
+            }
+        }
+        $sql = implode($execSql)
+            ."CALL ".mysqli_escape_string($procedureName)."(".implode(",",$args).");"
+            ."SELECT ".implode(", ",$result).";";
+
+
+        $res = $this->db->query($sql);
         if($res) {
             print_r($res);
         }
