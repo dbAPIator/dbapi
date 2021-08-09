@@ -806,13 +806,12 @@ class Dbapi extends CI_Controller
                 \JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
-        $where = [
-            $this->apiDm->get_idfld($rel["table"]) => $relRecId,
-            $rel["field"] => $recId
-        ];
+        $_GET["filter"] = $this->apiDm->get_idfld($rel["table"])."=".$relRecId.",".$rel["field"]."=".$recId;
+        $paras = $this->getQueryParameters($rel["table"]);
+
 
         try {
-            $this->recs->deleteByWhere($rel["table"],$where);
+            $this->recs->deleteByWhere($rel["table"],$paras["filter"]);
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {

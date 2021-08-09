@@ -1161,10 +1161,14 @@ class Records {
 
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
+//        print_r($filter);
 
         $where = $this->generateWhereSQL($filter,$tableName);
         $this->dbdrv->where($where);
 //        echo $this->dbdrv->get_compiled_delete($tableName);
+//        print_r($where);
+//        http_response_code(500);
+//        die();
         $this->dbdrv->delete($tableName);
         if($this->dbdrv->affected_rows())
             return true;
