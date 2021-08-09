@@ -116,7 +116,7 @@ $route["^$basePath\/([\w\-\_\%]+)"]["post"] ="$controller/createMultipleRecords/
 // #2
 $route["^$basePath\/([\w\-\_\%]+)"]["patch"] ="$controller/updateMultipleRecords/$1";
 // #3
-$route["^$basePath\/([\w\-\_\%]+)"]["delete"] ="$controller/deleteMultipleRecords/$1";
+//$route["^$basePath\/([\w\-\_\%]+)"]["delete"] ="$controller/deleteMultipleRecords/$1";
 
 $route["^$basePath\/([\w\-\_\%]+)"] = "$controller/base/$1";
 
@@ -128,7 +128,8 @@ $route["^$basePath\/([\w\-\_\%]+)\/([\w\-\_\%]+)"]["get"] = "$controller/getReco
 $route["^$basePath\/([\w\-\_\%]+)\/([\w\-\_\%]+)"]["post"] = "$controller/createSingleRecord/$1/$2";
 // #5.1
 $route["^$basePath\/([\w\-\_\%]+)\/([\w\-\_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
-
+// #5.2
+$route["^$basePath\/([\w\-\_\%]+)\/([\w\-\_\%]+)"]["delete"] = "$controller/deleteMultipleRecords/$1/$2";
 
 // third family: /resourceName/id
 // #6 OK

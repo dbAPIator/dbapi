@@ -1153,7 +1153,7 @@ class Records {
      * @return bool
      * @throws \Exception
      */
-    function deleteByWhere($tableName,$where)
+    function deleteByWhere($tableName,$filter)
     {
         // check if resource exists
         if(!$this->dm->resource_exists($tableName))
@@ -1162,7 +1162,9 @@ class Records {
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
 
+        $where = $this->generateWhereSQL($filter,$tableName);
         $this->dbdrv->where($where);
+//        echo $this->dbdrv->get_compiled_delete($tableName);
         $this->dbdrv->delete($tableName);
         if($this->dbdrv->affected_rows())
             return true;

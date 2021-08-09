@@ -436,12 +436,25 @@ class Dbapi extends CI_Controller
     {
         $this->_init($configName);
 
-        HttpResp::method_not_allowed();
+//        HttpResp::method_not_allowed();
 
         // check if table exists
         if (!$this->apiDm->resource_exists($resourceName)) {
             HttpResp::not_found();
             exit();
+        }
+
+        $paras = $this->getQueryParameters($resourceName);
+//        print_r($paras);
+        if(!$paras["filter"])
+            HttpResp::method_not_allowed();
+        try {
+            $noRecs = $this->recs->deleteByWhere($resourceName,$paras["filter"]);
+            HttpResp::no_content();
+        }
+        catch (Exception $exception) {
+            $doc = \JSONApi\Document::not_found($this->JsonApiDocOptions, "Not found", 404);
+            HttpResp::json_out(404, $doc->json_data());
         }
 
     }
