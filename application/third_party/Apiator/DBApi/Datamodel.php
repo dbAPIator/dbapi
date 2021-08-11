@@ -449,7 +449,7 @@ class Datamodel {
                     return $value;
                 break;
             case "timestamp":
-                if(preg_match("/^\d{4}\-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}:\d{1,2}){0,1}$/i",$value)) {
+                if(preg_match("/^\d{4}\-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}(:\d{1,})?){0,1}$/i",$value)) {
                     log_message("debug","valid timestamp ".$value);
                     return $value;
                 }

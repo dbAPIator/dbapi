@@ -52,7 +52,7 @@ function generate_where_str($where) {
     // if element is not an object or left property of OBJ is not a field -> ignore -> return TRUE
     if(!is_object($where) || !property_exists($where,"left")){
         log_message("debug","invalid filter entry");
-        return "TRUE";
+        return "FALSE";
     }
 
     //if($where->right=="") return "TRUE";
