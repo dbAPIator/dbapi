@@ -20,8 +20,9 @@ function parseStrAsWhere($str) {
 }
 
 function parseExpr($str) {
-    if(!preg_match("/([\w\d\.]+)([\=\<\>~\!]+)([\w\d\.]+)/i",$str,$m))
+    if(!preg_match("/([\w\d\.]+)([\=\<\>~\!]+)([\-\_\w\d\.]+)/i",$str,$m))
         return null;
+
     $left = $m[1];
     switch($m[2]){
         case "~=" :
