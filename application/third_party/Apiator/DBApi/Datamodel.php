@@ -441,7 +441,7 @@ class Datamodel {
                 break;
             // DATE & TIME
             case "datetime":
-                if(preg_match("/^\d{4}\-\d{2}\-\d{2} \d{2}\:\d{2}\:\d{2}$/",$value))
+                if(preg_match("/^\d{4}-\d{1,2}-\d{1,2}( (\d{1,2}(:\d{1,2}(:\d{1,})?)?)?){0,1}$/",$value))
                     return $value;
                 break;
             case "date":
@@ -449,12 +449,8 @@ class Datamodel {
                     return $value;
                 break;
             case "timestamp":
-                if(preg_match("/^\d{4}\-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}(:\d{1,})?){0,1}$/i",$value)) {
-                    log_message("debug","valid timestamp ".$value);
+                if(preg_match("/^\d{4}-\d{1,2}-\d{1,2}( (\d{1,2}(:\d{1,2}(:\d{1,})?)?)?){0,1}$/",$value))
                     return $value;
-                }
-                log_message("debug","invalid timestamp ".$value);
-
                 break;
             case "time":
                 if(preg_match("/^\-?\d{2,3}:\d{2}:\d{2}$/i",$value))
