@@ -6,7 +6,7 @@
  * Time: 11:51 AM
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
-define("CFG_DIR_BASEPATH","%%conn_dir_path%%");
+define("CFG_DIR_BASEPATH",__DIR__."/../../dbconfigs");
 
 $config["default_resource_access_read"] = true;
 $config["default_resource_access_update"] = true;
