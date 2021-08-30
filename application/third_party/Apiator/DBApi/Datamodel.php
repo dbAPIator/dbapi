@@ -401,12 +401,7 @@ class Datamodel {
         }
 
         switch($fields[$fieldName]["type"]["proto"]) {
-            case "float":
-                if(is_numeric($value))
-                    $value =floatval($value);
-                if(in_array(gettype($value), ["float","double","integer"]))
-                    return $value;
-                break;
+
             // numeric types
             case "smallint":
             case "mediumint":
@@ -414,23 +409,28 @@ class Datamodel {
             case "bigint":
             case "decimal":
             case "tinyint":
-                if(is_numeric($value)) {
+                if(preg_match("/^\d+$/",$value)) {
                     return $value*1;
                 }
                 break;
-            case "real":
             case "bit":
-            case "double":
-                if(is_numeric($value)) {
+                if(preg_match("/^[0,1]+$/")) {
                     return floatval($value);
                 }
                 break;
+            case "real":
+            case "double":
+            case "float":
+                if(preg_match("/^\d+(\.\d+)?$/")) {
+                    return $value*1;
+                }
+                break;
             case "boolean":
-//                var_dump($value);
                 if(is_bool($value)) {
                     return boolval($value);
                 }
-                $boolmap = ["true"=>true,"1"=>true,"0"=>false,"false"=>false];
+
+                $boolmap = ["true"=>true,"1"=>true,"0"=>false,"false"=>false,1=>true,0=>false];
                 if(isset($boolmap[$value]))
                     return $boolmap[$value];
                 break;

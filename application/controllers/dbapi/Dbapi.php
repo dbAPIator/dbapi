@@ -306,7 +306,7 @@ class Dbapi extends CI_Controller
     }
 
     /**
-     * Creates multiple records with a single call
+     * Update multiple records with a single call
      * @param $configName
      * @param $resourceName
      * @param null $paras
@@ -393,19 +393,20 @@ class Dbapi extends CI_Controller
         }
 
         $maxBulkUpdateRecords = $this->config->item("bulk_update_limit");
-        $newRecords = $inputData->data;
+        $maxBulkUpdateRecords = $maxBulkUpdateRecords?$maxBulkUpdateRecords:10;
+        $updateRecords = $inputData->data;
 
         $ids = [];
         $exceptions = [];
-        foreach ($newRecords as $idx=>$item) {
-            if(!isset($item->id))
+        foreach ($updateRecords as $idx=>$itemData) {
+            if(!isset($itemData->id))
                 continue;
 
             try {
-                $ids[] = $this->updateSingleRecord($configName,$item->type, $item->id, (object) ["data"=>$item]);
+                $ids[] = $this->updateSingleRecord($configName,($itemData->type ? $itemData->type  : $resourceName), $itemData->id,(object) ["data"=>$itemData]);
             }
             catch (Exception $e) {
-                $exceptions[] = new Exception("Failed to update record number $idx: ".$e->getMessage(),$e->getCode());
+                $exceptions[] = new Exception("Failed to update record ID: $itemData->id: ".$e->getMessage(),$e->getCode());
             }
 
             $maxBulkUpdateRecords--;
@@ -414,6 +415,18 @@ class Dbapi extends CI_Controller
                     .$this->config->item("bulk_update_limit"), 400);
             }
         }
+
+        $_GET["filter"] = "id><".implode(";",$ids);
+        $qp = $this->getQueryParameters($resourceName);
+        $qp["paging"] = [
+            $resourceName => [
+                "offset" => 0
+            ]
+        ];
+
+//        print_r($qp);
+        $this->getRecords($configName,$resourceName,null,$qp);
+
 
         $doc = \JSONApi\Document::create($this->JsonApiDocOptions,[]);
 
@@ -478,16 +491,18 @@ class Dbapi extends CI_Controller
 
         // validation section
         try {
-            if(!$internal)
-                $postData = $this->get_input_data();
+            if(!$internal) {
+                $updateData = $this->get_input_data();
+            }
+
+            $updateData = $updateData->data;
 
             if(!$this->apiDm->resource_exists($resourceName))
                 throw new Exception("Resource '$resourceName' not found",404);
 
-            $updateData = $postData->data;
-
-            if($resourceName!==$updateData->type)
-                throw new Exception("Object type mismatch; '$updateData->type' instead of '$resourceName' ",400);
+            if($updateData->type && $resourceName!==$updateData->type) {
+                throw new Exception("Object type mismatch; '$updateData->type' instead of '$resourceName' ", 400);
+            }
 
             if("".$recId!=="".@$updateData->id)
                 throw new Exception("Record ID mismatch $recId vs $updateData->id",400);
@@ -495,6 +510,7 @@ class Dbapi extends CI_Controller
             $resKeyFld = $this->apiDm->getPrimaryKey($resourceName);
             if(!$resKeyFld)
                 throw new Exception("Cannot update by id: resource $resourceName is not configured with a primary key",400);
+
 
         }
         catch (Exception $e) {
@@ -505,16 +521,19 @@ class Dbapi extends CI_Controller
             );
         }
 
+//        print_r($updateData);
+
         $this->apiDb->trans_begin();
 
         // perform update
         try {
             $this->recs->updateById($resourceName, $recId, $updateData);
 
+            $this->apiDb->trans_commit();
+
             if($internal)
                 return $recId;
 
-            $this->apiDb->trans_commit();
 
             $_GET["filter"] = "id=".$recId;
             $qp = $this->getQueryParameters($resourceName);
@@ -525,6 +544,7 @@ class Dbapi extends CI_Controller
             ];
 
             $this->getRecords($configName,$resourceName,$recId,$qp);
+
         }
         catch (Exception $exception) {
             $this->apiDb->trans_rollback();
@@ -633,7 +653,7 @@ class Dbapi extends CI_Controller
      * @param array|null $queryParameters
      * @throws Exception
      */
-    function getRecords($configName,$resourceName, $recId=null, $queryParameters=null)
+    function getRecords($configName,$resourceName, $recId=null, $queryParameters=null,$internal=true)
     {
         $this->_init($configName);
 

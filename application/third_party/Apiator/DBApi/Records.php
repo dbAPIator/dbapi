@@ -1060,6 +1060,7 @@ class Records {
 
         if(!$this->dm->getPrimaryKey($table))
             throw new \Exception("Update by ID not allowed: table '$table' does not have primary key/unique field.",500);
+
         // extract 1:1 relation data and insert
         if(isset($resourceData->relationships)) {
             foreach ($resourceData->relationships as $relName => $relData) {
