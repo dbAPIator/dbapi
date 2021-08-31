@@ -414,14 +414,14 @@ class Datamodel {
                 }
                 break;
             case "bit":
-                if(preg_match("/^[0,1]+$/")) {
+                if(preg_match("/^[0,1]+$/",$value)) {
                     return floatval($value);
                 }
                 break;
             case "real":
             case "double":
             case "float":
-                if(preg_match("/^\d+(\.\d+)?$/")) {
+                if(preg_match("/^\d+(\.\d+)?$/",$value)) {
                     return $value*1;
                 }
                 break;
@@ -461,9 +461,8 @@ class Datamodel {
                     return $value;
                 break;
             case "json":
-                $val = json_decode($value);
-//                print_r($val);
-                if(!is_null($val)) {
+                json_decode($value);
+                if(json_last_error()===JSON_ERROR_NONE) {
                     return $value;
                 }
                 break;
@@ -505,13 +504,13 @@ class Datamodel {
                 throw new \Exception("Invalid type in configuration file for $fieldName",500);
 
         }
-
+//        die("---------");
         // check if field is required but value is null and set error message accordingly
         if($fields[$fieldName]["required"] && is_null($value)) {
             $msg = "Field $tableName.$fieldName is required";
         }
         else {
-            $msg = "Invalid type of value '$value' for field $tableName.$fieldName";
+            $msg = "Invalid type ".$fields[$fieldName]["type"]["proto"]." of value '$value' for field $tableName.$fieldName";
         }
 
         throw new \Exception($msg,400);
