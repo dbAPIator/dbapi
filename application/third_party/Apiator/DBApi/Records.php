@@ -528,12 +528,13 @@ class Records {
         // debug
 //        if($_GET['dbg']) print_r($opts);
 
-        if(!array_key_exists("custom_where",$opts)) {
+        if(!$opts["custom_where"] || !$opts["custom_where"][$resourceName]) {
             $whereStr = $this->generateWhereSQL($opts['filter'],$tableName);
         }
         else {
-            $whereStr = $opts['custom_where'];
+            $whereStr = $opts['custom_where'][$resourceName];
         }
+//        print_r($opts["custom_where"]);
 //        if($_GET['dbg']) print_r($whereStr);
 
 
