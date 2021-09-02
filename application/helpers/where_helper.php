@@ -1,5 +1,14 @@
 <?php
 
+function customWhere($str)
+{
+    $str = str_replace("&&", " AND ",$str);
+    $str = str_replace("||", " OR ",$str);
+    $str = str_replace("^^", " XOR ",$str);
+    $str = str_replace("~~", " LIKE ",$str);
+    return $str;
+}
+
 function parseStrAsWhere($str) {
     $expr = [];
     $start = 0;
@@ -9,17 +18,20 @@ function parseStrAsWhere($str) {
         if(!in_array($op,["&&","||"]))
             continue;
 
-        $expr[] = parseExpr(substr($str,$start,$i-$start));
+        $expr[] = parseExpression(substr($str,$start,$i-$start));
         $expr[] = getLogicalOperator($op);
         $start = $i+2;
     }
-    $expr[] = parseExpr(substr($str,$start));
+    $expr[] = parseExpression(substr($str,$start));
 
 
     return implode("",$expr);
+
 }
 
-function parseExpr($str) {
+
+
+function parseExpression($str) {
     if(!preg_match("/([\w\d\.]+)([\=\<\>~\!]+)([\-\_\w\d\.]+)/i",$str,$m))
         return null;
 
@@ -72,6 +84,7 @@ function getComparisonOperator($opStr) {
         return $opMap[$opStr];
     return null;
 }
+
 function getLogicalOperator($str) {
 
     return [

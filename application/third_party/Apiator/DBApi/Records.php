@@ -358,10 +358,14 @@ class Records {
             return $rec;
 
         foreach($node["includes"] as $fk=>$incNode) {
-            if(!isset($rec->relationships->$fk))
+            if(!isset($rec->relationships->$fk)) {
                 continue;
-            if(is_null($rec->relationships->$fk))
+            }
+
+            if(is_null($rec->relationships->$fk)) {
                 continue;
+            }
+
             if($incNode["type"]=="1:1") {
                 $inboundRelation = $this->parseResultRow($incNode, $row, $allRecs);
                 $rec->relationships->$fk = (object) [
@@ -383,14 +387,20 @@ class Records {
                 $options = (array)$options;
                 $options["filter"] = $filter;
                 $options["limit"] = $this->maxNoRels;
-                if(!isset($options["paging"][$incNode["table"]]))
+                if(!isset($options["paging"][$incNode["table"]])) {
                     $options["paging"][$incNode["table"]] = [
-                        "offset"=>0
+                        "offset" => 0
                     ];
-                if(!isset($options["paging"][$incNode["table"]]["limit"]))
+                }
+
+                if(!isset($options["paging"][$incNode["table"]]["limit"])) {
                     $options["paging"][$incNode["table"]]["limit"] = get_instance()->config->item("default_relationships_page_size");
-                if($options["paging"][$incNode["table"]]["limit"]>get_instance()->config->item("max_page_size"))
+                }
+
+                if($options["paging"][$incNode["table"]]["limit"]>get_instance()->config->item("max_page_size")) {
                     $options["paging"][$incNode["table"]]["limit"] = get_instance()->config->item("max_page_size");
+                }
+
 //                print_r($options);
                 list($rec->relationships->$fk->data,$rec->relationships->$fk->total) = $this->getRecords($incNode["table"],$options);
             }

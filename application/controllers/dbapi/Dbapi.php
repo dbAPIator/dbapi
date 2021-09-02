@@ -582,9 +582,14 @@ class Dbapi extends CI_Controller
             $queryParas["includeStr"] = $input->get("include");
         }
 
-        if($input->get("where")) {
+        if($input->get("filter_advanced")) {
             $this->load->helper("where");
-            $queryParas["custom_where"] = parseStrAsWhere($input->get("where"));
+            $queryParas["custom_where"] = $input->get("filter_advanced");
+            if(!is_array($queryParas["custom_where"])) {
+                $queryParas["custom_where"] = [
+                    $resName => $queryParas["custom_where"]
+                ];
+            }
         }
 
 
