@@ -288,7 +288,7 @@ class Records {
      */
     private function parseResultRow($node, $row, &$allRecs,$options=[])
     {
-//        print_r($row);
+//        print_r($options);
         $rec = null;
         $recId = null;
         if(!empty($node["keyFld"])) {
@@ -367,7 +367,7 @@ class Records {
             }
 
             if($incNode["type"]=="1:1") {
-                $inboundRelation = $this->parseResultRow($incNode, $row, $allRecs);
+                $inboundRelation = $this->parseResultRow($incNode, $row, $allRecs,$options);
                 $rec->relationships->$fk = (object) [
                         "data"=>$inboundRelation,
                         "type"=>"object"
@@ -386,6 +386,7 @@ class Records {
                 ];
                 $options = (array)$options;
                 $options["filter"] = $filter;
+//                $options["custom_where"] = $filter;
                 $options["limit"] = $this->maxNoRels;
                 if(!isset($options["paging"][$incNode["table"]])) {
                     $options["paging"][$incNode["table"]] = [
@@ -403,8 +404,10 @@ class Records {
 
 //                print_r($options);
                 list($rec->relationships->$fk->data,$rec->relationships->$fk->total) = $this->getRecords($incNode["table"],$options);
+//                print_r($rec->relationships->$fk->data);
             }
         }
+//        print_r($rec);
         return $rec;
     }
 
@@ -526,16 +529,15 @@ class Records {
 
         $opts = array_merge($defaultOpts,$opts);
         // debug
-//        if($_GET['dbg']) print_r($opts);
 
-        if(!$opts["custom_where"] || !$opts["custom_where"][$resourceName]) {
-            $whereStr = $this->generateWhereSQL($opts['filter'],$tableName);
+        $whereStr = $this->generateWhereSQL($opts['filter'],$tableName);
+        if(empty($whereStr)) {
+            $whereStr = 1;
         }
-        else {
-            $whereStr = $opts['custom_where'][$resourceName];
+
+        if($opts["custom_where"] && $opts["custom_where"][$resourceName]) {
+            $whereStr .= " AND ".$opts['custom_where'][$resourceName];
         }
-//        print_r($opts["custom_where"]);
-//        if($_GET['dbg']) print_r($whereStr);
 
 
 
