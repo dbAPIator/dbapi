@@ -384,9 +384,11 @@ class Records {
                     "type"=>"array"
 
                 ];
+//                print_r($options);
+
                 $options = (array)$options;
-                $options["filter"] = $filter;
-//                $options["custom_where"] = $filter;
+                $options["filter"] = array_merge_recursive($options["filter"],$filter);
+//                print_r($options["filter"]);
                 $options["limit"] = $this->maxNoRels;
                 if(!isset($options["paging"][$incNode["table"]])) {
                     $options["paging"][$incNode["table"]] = [
@@ -413,16 +415,18 @@ class Records {
 
     function getRecordById($table,$idFld,$recId,$includes=null) {
         $opts = [
-            "filter"=>[
-                "$table.$idFld"=>
-                    (object)[
-                        "left"=>(object) [
-                            "alias"=>"$table",
-                            "field"=>"$idFld"
-                        ],
-                        "op"=>"=",
-                        "right"=>$recId
-                    ]
+            "filter"=> [
+                $table => [
+                    "$table.$idFld"=>
+                        (object)[
+                            "left"=>(object) [
+                                "alias"=>"$table",
+                                "field"=>"$idFld"
+                            ],
+                            "op"=>"=",
+                            "right"=>$recId
+                        ]
+                ]
             ]
         ];
         if($includes) {
@@ -530,7 +534,7 @@ class Records {
         $opts = array_merge($defaultOpts,$opts);
         // debug
 
-        $whereStr = $this->generateWhereSQL($opts['filter'],$tableName);
+        $whereStr = $this->generateWhereSQL($opts['filter'][$tableName],$tableName);
         if(empty($whereStr)) {
             $whereStr = 1;
         }
@@ -538,8 +542,6 @@ class Records {
         if($opts["custom_where"] && $opts["custom_where"][$resourceName]) {
             $whereStr .= " AND ".$opts['custom_where'][$resourceName];
         }
-
-
 
         // prepare field selection (validate and ....
         foreach ($opts['fields'] as $res=>$fldsStr) {
