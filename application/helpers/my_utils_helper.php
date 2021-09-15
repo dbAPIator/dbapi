@@ -86,6 +86,23 @@ function generate_where_str($where) {
         case "!~=~":
             $str = sprintf("%s.%s NOT LIKE ('%%%s%%')",$where->left->alias,$where->left->field,$where->right);
             break;
+        case "=":
+            if($where->right==="__NULL__") {
+                $str = sprintf("%s.%s IS NULL",$where->left->alias,$where->left->field);
+            }
+            else {
+                $str = sprintf("%s.%s %s %s",$where->left->alias,$where->left->field,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
+            }
+            break;
+        case "!=":
+            if($where->right==="__NULL__") {
+                $str = sprintf("%s.%s IS NOT NULL",$where->left->alias,$where->left->field);
+            }
+            else {
+                $str = sprintf("%s.%s %s %s",$where->left->alias,$where->left->field,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
+            }
+            break;
+
         default:
             if(in_array($where->op,$validOps))
                 $str = sprintf("%s.%s %s %s",$where->left->alias,$where->left->field,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
@@ -221,30 +238,43 @@ function get_include($input)
  * @param string $defaultTable
  * @return array
  */
-function get_filter($rawFilterStr, $defaultTable)
+function get_filter($filters, $defaultTable)
 {
-    // split string by comma and process each segment
-    foreach(explode(",",$rawFilterStr) as $idx=>$item) {
-        $where = null;
-        // regexp search to identify
-        preg_match("/([\w\-\$]+)(\.([\w\-\$]+))?(\!?[\=\<\>\~]+)(.*)/",$item,$m);
+    if(!is_array($filters)) {
+        $filters = [
+            $defaultTable => $filters
+        ];
+    }
+
+    $parsedFilters = [];
+    foreach ($filters as $table=>$filter) {
+        $parsedFilters[$table] = [];
+        // split string by comma and process each segment
+        foreach(explode(",",$filter) as $idx=>$item) {
+            $where = null;
+            // regexp search to identify
+            preg_match("/([\w\-\$]+)(\.([\w\-\$]+))?(\!?[\=\<\>\~]+)(.*)/",$item,$m);
 
 
-        if(!empty($m)) {
-            $alias = empty($m[3])?$defaultTable:$m[1];
-            $fieldName = empty($m[3])?$m[1]:$m[3];
-            $filters[$alias.".".$fieldName.rand(0,1000)] = (object) [
-                "left"=>(object) [
-                    "alias"=>$alias,
-                    "field"=>$fieldName
-                ],
-                "op"=>$m[4],
-                "right"=>$m[5]
-            ];
+            if(!empty($m)) {
+                $alias = empty($m[3]) ? $table : $m[1];
+                $fieldName = empty($m[3]) ? $m[1] : $m[3];
+                $parsedFilters[$table][$alias.".".$fieldName.rand(0,1000)] = (object) [
+                    "left"=>(object) [
+                        "alias"=>$alias,
+                        "field"=>$fieldName
+                    ],
+                    "op"=>$m[4],
+                    "right"=>$m[5]
+                ];
+            }
         }
     }
+
+
+//    print_r($filters);
 //    if($_GET['dbg']) print_r($filters);
-    return $filters;
+    return $parsedFilters;
 }
 
 
