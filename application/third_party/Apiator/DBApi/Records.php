@@ -449,14 +449,7 @@ class Records {
         // todo: correct filtering.... after allowing searching by fields beloning to joined tables...
         $whereArr = [];
         foreach ($filters as $filter) {
-//            if ($this->dm->field_is_searchable($resName, $filter->left->field)) {
-                $whereArr[] = generate_where_str($filter);
-//            }
-//            if ($filter->left->alias == $resName
-//                && $this->dm->field_is_searchable($resName, $filter->left->field)) {
-//                $whereArr[] = generate_where_str($filter);
-//            }
-//
+            $whereArr[] = generate_where_str((object) $filter);
         }
         return count($whereArr) ? implode(" AND ", $whereArr) : 1;
     }
@@ -1177,14 +1170,9 @@ class Records {
 
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
-//        print_r($filter);
 
         $where = $this->generateWhereSQL($filter,$tableName);
         $this->dbdrv->where($where);
-//        echo $this->dbdrv->get_compiled_delete($tableName);
-//        print_r($where);
-//        http_response_code(500);
-//        die();
         $this->dbdrv->delete($tableName);
         if($this->dbdrv->affected_rows())
             return true;

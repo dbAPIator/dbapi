@@ -48,14 +48,12 @@ require_once(__DIR__."/../libraries/Response.php");
 
 
 function generate_where_str($where) {
-    //print_r($where);
     // if element is not an object or left property of OBJ is not a field -> ignore -> return TRUE
     if(!is_object($where) || !property_exists($where,"left")){
         log_message("debug","invalid filter entry");
         return "FALSE";
     }
 
-    //if($where->right=="") return "TRUE";
 
     $validOps = ["!=","=","<","<=",">",">=","><","~=","!~=","=~","!=~","<>","!><"];
 

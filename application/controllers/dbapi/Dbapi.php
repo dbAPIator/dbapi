@@ -552,6 +552,8 @@ class Dbapi extends CI_Controller
                 throw $exception;
             HttpResp::jsonapi_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception));
         }
+
+        return $recId;
     }
 
 
@@ -660,6 +662,7 @@ class Dbapi extends CI_Controller
      */
     function getRecords($configName,$resourceName, $recId=null, $queryParameters=null,$internal=true)
     {
+//        print_r($_GET);
         $this->_init($configName);
 
         if(is_null($queryParameters))
@@ -833,10 +836,9 @@ class Dbapi extends CI_Controller
 
         $_GET["filter"] = $this->apiDm->get_idfld($rel["table"])."=".$relRecId.",".$rel["field"]."=".$recId;
         $paras = $this->getQueryParameters($rel["table"]);
-
-
+        
         try {
-            $this->recs->deleteByWhere($rel["table"],$paras["filter"]);
+            $this->recs->deleteByWhere($rel["table"],$paras["filter"][$rel["table"]]);
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {
