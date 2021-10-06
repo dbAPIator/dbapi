@@ -125,7 +125,7 @@ $route["^$basePath\/([\w\-\.\_\%]+)"] = "$controller/base/$1";
 //$route["^$stdOpsPath\/([\w\-\. \_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";
 $route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2";
 // #5
-$route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)"]["post"] = "$controller/createSingleRecord/$1/$2";
+$route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)"]["post"] = "$controller/createRecords/$1/$2";
 // #5.1
 $route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
 $route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateMultipleRecords/$1/$2";

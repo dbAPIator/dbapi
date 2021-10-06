@@ -103,7 +103,7 @@ class Dbapi extends CI_Controller
 //            $this->deleteMultipleRecords();
             $this->getMultipleRecords();
             $this->getSingleRecord();
-//            $this->createSingleRecord();
+            $this->createRecords();
 //            $this->updateSingleRecord();
 //            $this->deleteSingleRecord();
             $this->getRelationship();
@@ -836,7 +836,7 @@ class Dbapi extends CI_Controller
 
         $_GET["filter"] = $this->apiDm->get_idfld($rel["table"])."=".$relRecId.",".$rel["field"]."=".$recId;
         $paras = $this->getQueryParameters($rel["table"]);
-        
+
         try {
             $this->recs->deleteByWhere($rel["table"],$paras["filter"][$rel["table"]]);
             HttpResp::no_content(204);
@@ -909,25 +909,43 @@ class Dbapi extends CI_Controller
                 JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
             );
         }
-
-        if(!is_object($inputData->data)) {
-            $e = new Exception("Invalid input data.\n$.data expected to be an object.");
-            HttpResp::json_out(
-                400,
-                JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
-            );
-        }
-
-        if(!isset($inputData->data->attributes)) {
-            $inputData->data->attributes = new stdClass();
-        }
-
-
         $fldName = $rel["field"];
-        $inputData->data->attributes->$fldName = $recId;
 
-        $fld = $rel["field"];
-        $this->createSingleRecord($configName,$rel["table"],$inputData);
+        if(is_object($inputData->data)) {
+
+            if(!isset($inputData->data->attributes)) {
+                $inputData->data->attributes = new stdClass();
+            }
+
+            $inputData->data->attributes->$fldName = $recId;
+
+//            $fld = $rel["field"];
+            $this->createRecords($configName,$rel["table"],$inputData);
+            return;
+        }
+
+        if(is_array($inputData->data)) {
+            for($i=0;$i<count($inputData->data);$i++) {
+                if(!isset($inputData->data[$i]->attributes)) {
+                    $inputData->data[$i]->attributes = new stdClass();
+                }
+                $inputData->data[$i]->attributes->$fldName = $recId;
+            }
+
+            $this->createRecords($configName,$rel["table"],$inputData);
+        }
+
+
+        $e = new Exception("Invalid input data.\nExpected to be an object.");
+        HttpResp::json_out(
+            400,
+            JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
+        );
+
+
+
+
+
     }
 
     /**
@@ -1030,7 +1048,7 @@ class Dbapi extends CI_Controller
      * TODO: add some limitation for maximum records to insert at a time
      * @throws Exception
      */
-    public function createSingleRecord($configName, $resourceName, $input=null)
+    public function createRecords($configName, $resourceName, $input=null)
     {
         $this->_init($configName);
 
@@ -1186,6 +1204,12 @@ class Dbapi extends CI_Controller
             ->header("Access-Control-Allow-Methods: PUT, PATCH, POST, GET, OPTIONS, DELETE")
             ->header("Access-Control-Allow-Headers: *")
             ->output();
+    }
+
+    private function createMultipleRecords()
+    {
+
+
     }
 }
 
