@@ -5,6 +5,7 @@
  * Date: 6/19/18
  * Time: 11:51 AM
  */
+
 defined('BASEPATH') OR exit('No direct script access allowed');
 define("CFG_DIR_BASEPATH",__DIR__."/../../dbconfigs");
 
