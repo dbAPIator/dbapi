@@ -447,9 +447,9 @@ class Dbapi extends CI_Controller
      */
     function deleteMultipleRecords($configName, $resourceName)
     {
+
         $this->_init($configName);
 
-//        HttpResp::method_not_allowed();
 
         // check if table exists
         if (!$this->apiDm->resource_exists($resourceName)) {
@@ -462,7 +462,7 @@ class Dbapi extends CI_Controller
         if(!$paras["filter"])
             HttpResp::method_not_allowed();
         try {
-            $noRecs = $this->recs->deleteByWhere($resourceName,$paras["filter"]);
+            $this->recs->deleteByWhere($resourceName,$paras["filter"]);
             HttpResp::no_content();
         }
         catch (Exception $exception) {

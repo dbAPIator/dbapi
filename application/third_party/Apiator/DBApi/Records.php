@@ -444,7 +444,7 @@ class Records {
      * @return int|string
      * @throws \Exception
      */
-    private function generateWhereSQL($filters, $resName)
+    private function generateWhereSQL($filters)
     {
         // todo: correct filtering.... after allowing searching by fields beloning to joined tables...
         $whereArr = [];
@@ -527,7 +527,7 @@ class Records {
         $opts = array_merge($defaultOpts,$opts);
         // debug
 
-        $whereStr = $this->generateWhereSQL($opts['filter'][$tableName],$tableName);
+        $whereStr = $this->generateWhereSQL($opts['filter'][$tableName]);
         if(empty($whereStr)) {
             $whereStr = 1;
         }
@@ -943,7 +943,7 @@ class Records {
         if(array_key_exists("custom_where",$paras))
             $where = $paras["custom_where"];
         else
-            $where = $this->generateWhereSQL($paras["filter"],$table);
+            $where = $this->generateWhereSQL($paras["filter"]);
 
         return $this->updateAttributes($table,$attributes,$where);
     }
@@ -1171,7 +1171,8 @@ class Records {
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
 
-        $where = $this->generateWhereSQL($filter,$tableName);
+        $where = $this->generateWhereSQL($filter[$tableName]);
+
         $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);
         if($this->dbdrv->affected_rows())
