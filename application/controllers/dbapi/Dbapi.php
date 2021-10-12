@@ -838,7 +838,7 @@ class Dbapi extends CI_Controller
         $paras = $this->getQueryParameters($rel["table"]);
 
         try {
-            $this->recs->deleteByWhere($rel["table"],$paras["filter"][$rel["table"]]);
+            $this->recs->deleteByWhere($rel["table"],$paras["filter"]);
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {

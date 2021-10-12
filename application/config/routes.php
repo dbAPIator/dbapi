@@ -171,6 +171,5 @@ $route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)\/([\w\-\. \_\%]+)\/([\w\-\
 // OK
 $route["^$basePath\/([\w\-\.\_\%]+)\/([\w\-\. \_\%]+)\/([\w\-\. \_\%]+)\/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteRelated/$1/$2/$3/$4/$5";
 
-
 $route["^$basePath\/.*"]["options"] = "$controller/options";
 
