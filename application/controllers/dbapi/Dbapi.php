@@ -668,6 +668,14 @@ class Dbapi extends CI_Controller
         if(is_null($queryParameters))
             $queryParameters = $this->getQueryParameters($resourceName);
 
+        if(isset($queryParameters["custom_where"])) {
+            unset($queryParameters["custom_where"][$resourceName]);
+        }
+        if(isset($queryParameters["filter"])) {
+            unset($queryParameters["filter"][$resourceName]);
+        }
+
+
         // validation
         try {
             if(!$this->apiDm->resource_exists($resourceName))
