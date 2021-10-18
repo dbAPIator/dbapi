@@ -746,8 +746,8 @@ class Records {
             $fk = (object)$this->dm->get_outbound_relation($table,$relName);
 
             // todo: data obfuscation ...........
-            if($fk->table!==$relData->data->type)
-                throw new \Exception("Invalid relationship data: invalid type for relationship '$relName'",400);
+//            if($fk->table!==$relData->data->type)
+//                throw new \Exception("Invalid relationship data: invalid type for relationship '$relName'",400);
 
             $newPath = $path==null?$relName:$path.".$relName";
             if(isset($relData->data->id)) {
