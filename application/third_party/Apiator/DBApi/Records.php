@@ -740,8 +740,8 @@ class Records {
             if(!$this->dm->is_valid_field($table,$relName))
                 throw new \Exception("Invalid 1:1 relation '$relName' for '$table'",400);
 
-            if(!isset($relData->data->type))
-                throw new \Exception("Invalid relationship data: missing '$relName' type",400);
+//            if(!isset($relData->data->type))
+//                throw new \Exception("Invalid relationship data: missing '$relName' type",400);
 
             $fk = (object)$this->dm->get_outbound_relation($table,$relName);
 

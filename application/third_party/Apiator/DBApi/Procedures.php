@@ -66,15 +66,22 @@ class Procedures
             }
         }
         $execSql[] = "CALL $procedureName(".implode(",",$args).");";
-        $execSql[] = "SELECT ".implode(", ",$result).";";
+        if(count($result)) {
+            $execSql[] = "SELECT ".implode(", ",$result).";";
+        }
         foreach ($execSql as $sql) {
             $res = $this->db->query($sql);
         }
 
-        return $res->row();
+        if(count($result)) {
+            return $res->row();
+        }
+
+        return null;
 
 
-        echo($sql);
+
+//        echo($sql);
 
 //        $res = $this->db->query($sql);
 //        if($res) {
