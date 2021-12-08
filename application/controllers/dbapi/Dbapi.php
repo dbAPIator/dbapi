@@ -577,7 +577,7 @@ class Dbapi extends CI_Controller
     {
         if(is_null($input))
             $input = $this->input;
-        $queryParas = [];
+        $queryParas = $input->get();
 
         // get include
         if($input->get("include")) {
@@ -695,38 +695,185 @@ class Dbapi extends CI_Controller
             HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
-        $doc = \JSONApi\Document::create($this->JsonApiDocOptions);
 
         // fetch records
         try {
             list($records,$totalRecords) = $this->recs->getRecords($resourceName,$queryParameters);
-
-            // single record retrieval
-            if(!is_null($recId)) {
-                if (!$totalRecords) {
-                    $doc = \JSONApi\Document::not_found($this->JsonApiDocOptions, "Not found", 404);
-                    HttpResp::json_out(404, $doc->json_data());
-                }
-
-                $doc->setData($records[0]);
+            $format = $queryParameters["format"] ? $queryParameters["format"] :
+                ($queryParameters["outputFormat"] ? $queryParameters["outputFormat"] : "");
+            switch ($format) {
+                case "csv":
+                    $this->out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords);
+                    break;
+                case "xls":
+                    $this->out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords);
+                    break;
+                default:
+                    $this->out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords);
             }
-            // multiple records retrieval
-            else {
-                $doc->setData($records);
-                $offset = 0;
-                if(isset($queryParameters["paging"]) && isset($queryParameters["paging"][$resourceName])
-                    && isset($queryParameters["paging"][$resourceName]["offset"]))
-                    $offset = $queryParameters["paging"][$resourceName]["offset"];
-                $doc->setMeta(\JSONApi\Meta::factory(["offset"=>$offset,"totalRecords"=>$totalRecords]));
-
-            }
-
-            HttpResp::json_out(200, $doc->json_data());
 
         }
         catch (Exception $exception) {
             HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
+    }
+
+    /**
+     * @param $resourceName
+     * @param $recId
+     * @param $queryParameters
+     * @param $records
+     * @param $totalRecords
+     */
+    function out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+
+        if(!is_null($recId) && !$totalRecords) {
+            HttpResp::not_found();
+        }
+
+        function record2csv($record,$fieldsNames,$relationsNames) {
+            $rec = [];
+            foreach ($fieldsNames as $fldName) {
+                $rec[] = $record->attributes->$fldName;
+            }
+
+            foreach ($relationsNames as $relName) {
+                $rec[] = empty($record->relationships->$relName->data)?null:$record->relationships->$relName->data->id;
+            }
+
+            $str =  '"'.implode('","',$rec).'"';
+            return $str;
+        }
+        $out = [];
+
+        // extract fields
+        $fieldsNames = [];
+        $relationsNames = [];
+        foreach ($this->apiDm->get_config($resourceName)["fields"] as $fldName=>$spec) {
+            if(isset($spec["foreignKey"])) {
+                $relationsNames[] = $fldName;
+            }
+            else {
+                $fieldsNames[] = $fldName;
+            }
+        }
+
+        if(isset($queryParameters["includetablehead"]) && $queryParameters["includetablehead"]) {
+            $tmp = $fieldsNames;
+            array_splice($tmp,-1,0,$relationsNames);
+            $out[] = '"'.implode('","',$tmp).'"';
+        }
+
+        foreach ($records as $record) {
+            $out[] = record2csv($record,$fieldsNames,$relationsNames);
+        }
+        $out = implode("\n",$out);
+//        HttpResp::csv_out(200,implode("\n",$out));
+
+        HttpResp::instance()
+            ->header('Content-Disposition: attachment; filename="'.$resourceName.'.csv"')
+            ->header('Content-Type: text/csv"')
+            ->response_code(200)
+            ->body($out)
+            ->output();
+    }
+
+    /**
+     * @param $resourceName
+     * @param $recId
+     * @param $queryParameters
+     * @param $records
+     * @param $totalRecords
+     */
+    function out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+
+        if(!class_exists("\Vtiful\Kernel\Excel")) {
+            HttpResp::server_error("XLS extension not loaded. Please contact the server administrator");
+        }
+
+        if(!is_null($recId) && !$totalRecords) {
+            HttpResp::not_found();
+        }
+
+        function record2csv($record,$fieldsNames,$relationsNames) {
+            $rec = array_values(get_object_vars($record->attributes));
+
+            $rec = [];
+            foreach ($fieldsNames as $fldName) {
+                $rec[] = $record->attributes->$fldName;
+            }
+
+            foreach ($relationsNames as $relName) {
+                $rec[] = empty($record->relationships->$relName->data)?null:$record->relationships->$relName->data->id;
+            }
+
+            return $rec;
+        }
+
+        // extract fields
+        $fieldsNames = [];
+        $relationsNames = [];
+        foreach ($this->apiDm->get_config($resourceName)["fields"] as $fldName=>$spec) {
+            if(isset($spec["foreignKey"])) {
+                $relationsNames[] = $fldName;
+            }
+            else {
+                $fieldsNames[] = $fldName;
+            }
+        }
+        $xls = new \Vtiful\Kernel\Excel(["path"=>"/tmp"]);
+        $this->load->helper('string');
+        $fileName = random_string();
+        $xlsFile = $xls->fileName($fileName,$resourceName);
+
+        if(isset($queryParameters["includetablehead"]) && $queryParameters["includetablehead"]) {
+            $header = $fieldsNames;
+            array_splice($header, -1, 0, $relationsNames);
+            $xlsFile->header($header);
+        }
+
+        $data = [];
+
+        foreach ($records as $record) {
+            $data[] = record2csv($record,$fieldsNames,$relationsNames);
+        }
+        $xlsFile->data($data)->output();
+        $out = file_get_contents("/tmp/$fileName");
+        unlink("/tmp/$fileName");
+
+        HttpResp::instance()
+            ->header('Content-Disposition: attachment; filename="'.$resourceName.'.xls"')
+            ->header('Content-Type: application/vnd.ms-excel"')
+            ->response_code(200)
+            ->body($out)
+            ->output();
+    }
+
+
+    function out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+        $doc = \JSONApi\Document::create($this->JsonApiDocOptions);
+
+        // single record retrieval
+        if(!is_null($recId)) {
+            if (!$totalRecords) {
+                $doc = \JSONApi\Document::not_found($this->JsonApiDocOptions, "Not found", 404);
+                HttpResp::json_out(404, $doc->json_data());
+            }
+
+            $doc->setData($records[0]);
+        }
+        // multiple records retrieval
+        else {
+            $doc->setData($records);
+            $offset = 0;
+            if(isset($queryParameters["paging"]) && isset($queryParameters["paging"][$resourceName])
+                && isset($queryParameters["paging"][$resourceName]["offset"]))
+                $offset = $queryParameters["paging"][$resourceName]["offset"];
+            $doc->setMeta(\JSONApi\Meta::factory(["offset"=>$offset,"totalRecords"=>$totalRecords]));
+
+        }
+
+        HttpResp::json_out(200, $doc->json_data());
     }
 
 

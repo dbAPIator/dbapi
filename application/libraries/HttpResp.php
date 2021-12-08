@@ -176,6 +176,20 @@ class HttpResp{
     }
 
     /**
+     * singleton method for getting the response instance
+     * @return HttpResp
+     */
+    static function instance()
+    {
+        if(isset(HttpResp::$self))
+            return HttpResp::$self;
+
+        return new HttpResp();
+    }
+
+
+
+    /**
      * shorthand method for making a quick response
      * @param string|int $statusCode HTTP response code
      * @param string $contentType HTTP content type
@@ -338,6 +352,20 @@ class HttpResp{
     {
         HttpResp::quick($statusCode,"text/plain",$body);
     }
+
+    /**
+     * shorthand method for generating & sending a test response
+     * @param string|int $statusCode HTTP response code
+     * @param string $body
+     */
+    static function csv_out($statusCode, $body=null)
+    {
+        HttpResp::quick($statusCode,"text/csv",$body);
+    }
+
+
+
+
 
     /**
      * shorthand method for generating & sending a html response
