@@ -409,7 +409,7 @@ class Datamodel {
             case "bigint":
             case "decimal":
             case "tinyint":
-                if(preg_match("/^\d+$/",$value)) {
+                if(preg_match("/^-?\d+$/",$value)) {
                     return $value*1;
                 }
                 break;
@@ -421,7 +421,7 @@ class Datamodel {
             case "real":
             case "double":
             case "float":
-                if(preg_match("/^\d+(\.\d+)?$/",$value)) {
+                if(preg_match("/^-?\d+(\.\d+)?$/",$value)) {
                     return $value*1;
                 }
                 break;
@@ -445,7 +445,7 @@ class Datamodel {
                     return $value;
                 break;
             case "date":
-                if(preg_match("/^\d{4}\-\d{2}\-\d{2}$/",$value))
+                if(preg_match("/^\d{4}-\d{2}-\d{2}$/",$value))
                     return $value;
                 break;
             case "timestamp":
@@ -453,7 +453,7 @@ class Datamodel {
                     return $value;
                 break;
             case "time":
-                if(preg_match("/^\-?\d{2,3}:\d{2}:\d{2}$/i",$value))
+                if(preg_match("/^-?\d{2,3}:\d{2}:\d{2}$/i",$value))
                     return $value;
                 break;
             case "year":

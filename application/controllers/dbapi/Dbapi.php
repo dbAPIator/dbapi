@@ -672,7 +672,7 @@ class Dbapi extends CI_Controller
             if(isset($queryParameters["custom_where"])) {
                 unset($queryParameters["custom_where"][$resourceName]);
             }
-            if(isset($queryParameters["filter"])) {
+            if(isset($queryParameters["filter"]) && is_array($queryParameters["filter"])) {
                 unset($queryParameters["filter"][$resourceName]);
             }
         }
