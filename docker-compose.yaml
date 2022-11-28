@@ -1,0 +1,6 @@
+version: "3.7"
+
+services:
+  dbapi:
+    image: webdevops/php-nginx
+    
