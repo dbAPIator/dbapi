@@ -1084,8 +1084,8 @@ class Records {
                         $resourceData->attributes->$relName = null;
                         continue;
                     }
-                    if (!isset($relData->type))
-                        throw new \Exception("Invalid empty data type for relation '$relName' of record ID $id of type $table", 400);
+//                    if (!isset($relData->type))
+//                        throw new \Exception("Invalid empty data type for relation '$relName' of record ID $id of type $table", 400);
 
                     if (isset($relData->id) && $relData->id !== null) {
                         $this->updateById($relData->type, $relData->id, $relData);
