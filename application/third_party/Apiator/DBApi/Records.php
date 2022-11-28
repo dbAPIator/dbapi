@@ -1033,7 +1033,7 @@ class Records {
             $sql = "SELECT * FROM $table WHERE $priKey!='$id' AND (".implode(" OR ",$whereArr).")";
 
             if($this->dbdrv->query($sql)->num_rows()) {
-                throw new \Exception("Duplicate key fields",409);
+                throw new \Exception("Duplicate key fields for $table/$id: ".json_encode($attributes),409);
             }
         }
 
@@ -1066,6 +1066,7 @@ class Records {
      */
     function updateById($table, $id, $resourceData) {
 
+
         if(!$this->dm->getPrimaryKey($table))
             throw new \Exception("Update by ID not allowed: table '$table' does not have primary key/unique field.",500);
 
@@ -1084,7 +1085,9 @@ class Records {
                         $resourceData->attributes->$relName = null;
                         continue;
                     }
-//                    if (!isset($relData->type))
+                    if (!isset($relData->type)) {
+                        $relData->type = $relSpec["table"];
+                    }
 //                        throw new \Exception("Invalid empty data type for relation '$relName' of record ID $id of type $table", 400);
 
                     if (isset($relData->id) && $relData->id !== null) {
