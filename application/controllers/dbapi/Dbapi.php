@@ -7,6 +7,10 @@
  */
 require_once(APPPATH."libraries/HttpResp.php");
 require_once(APPPATH."third_party/Apiator/Autoloader.php");
+require_once (BASEPATH."/../vendor/autoload.php");
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
 \Apiator\Autoloader::register();
 
 /**
@@ -133,6 +137,7 @@ class Dbapi extends CI_Controller
 
         // TODO: implement CORS control
         header("Access-Control-Allow-Origin: *");
+
 
         //$this->_init();
     }

@@ -1,13 +1,18 @@
 <?php
 
-
+require_once(APPPATH."libraries/HttpResp.php");
+require_once (BASEPATH."/../vendor/autoload.php");
 require_once(APPPATH."third_party/Softaccel/Autoloader.php");
 \Softaccel\Autoloader::register();
 use Softaccel\Apiator\DBApi\DBWalk;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
 
 class Config extends CI_Controller {
     public function __construct() {
         parent::__construct();
+        header("Content-type: application/json");
         $this->config->load("apiator");
     }
 
@@ -16,9 +21,11 @@ class Config extends CI_Controller {
      * @return bool
      */
     private function project_exists($configName, $return=false) {
-        if(!is_dir($this->config->item("configs_dir")."/$configName")) {
-            http_response_code(404);
-            if(!$return) die("Not found");
+        $apiDir = $this->config->item("configs_dir")."/$configName";
+        if(!is_dir($apiDir)) {
+            if(!$return) {
+                HttpResp::json_out(404,["error"=>"API  $configName not found"]) && die();
+            }
             return false;
         }
         return true;
@@ -28,9 +35,10 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function create($configName) {
-        if($this->project_exists($configName,true) && !$this->input->get("regen")) {
+        if($this->project_exists($configName,true)) {
             http_response_code(409);
-            die("Project $configName already exists");
+            HttpResp::json_out(200,["error"=>"Project  $configName already exists"]);
+
         }
 
         if($_SERVER["REQUEST_METHOD"]!=="POST") {
@@ -46,18 +54,51 @@ class Config extends CI_Controller {
             "database" => ""
         ];
         $conn = array_merge($conn,$this->input->post());
+
         $path = $this->config->item("configs_dir")."/$configName";
-        if(!is_dir($path))
-            mkdir($path);
-        $this->generate_config($conn,$path);
+
+        try {
+            $structure = $this->generate_config($conn, $path);
+            if(!is_dir($path))
+                mkdir($path);
+        }
+        catch (Exception $exception){
+//            print_r($exception);
+            set_status_header(500);
+            die(json_encode(["error"=>$exception->getMessage()]));
+        }
+
+
+        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
+        file_put_contents("$path/connection.php","<?php\nreturn ".to_php_code($conn));
+        chmod("$path/structure.php",0600);
+        chmod("$path/connection.php",0600);
+
+        HttpResp::json_out(200,["result"=>"ok"]);
+
 
     }
 
+    function list_apis() {
+        $path = $this->config->item("configs_dir");
+        $dir = opendir($path);
+        $entries = [];
+        while($entry=readdir($dir)) {
+            if(in_array($entry,[".",".."])) continue;
+            $entries[] = $entry;
+        }
+        HttpResp::json_out(200,$entries);
+    }
     /**
      * @param $configName
      */
     function regen($configName) {
         $this->project_exists($configName);
+
+        $path = $this->config->item("configs_dir")."/$configName";
+        $conn = require  "$path/connection.php";
+        $structure = $this->generate_config($conn,$path);
+        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
     }
 
     /**
@@ -65,10 +106,9 @@ class Config extends CI_Controller {
      */
     function get_structure($configName) {
         $this->project_exists($configName);
-        header("Content-type: application/json");
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         //print_r($structure);
-        die(json_encode($structure));
+        HttpResp::json_out(200,$structure);
     }
 
     /**
@@ -79,25 +119,54 @@ class Config extends CI_Controller {
         $data = $this->input->raw_input_stream;
         $data = json_decode($data,JSON_OBJECT_AS_ARRAY);
         if(!$data) {
-            http_response_code(400);
-            die("Invalid input data");
+            HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
         }
 
-        header("Content-type: application/json");
         $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+        // get natural structure
         $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
-
-//        print_r($data);
+        // compute difference
         $diff = diff_arr($structure,$data);
+        // create patch file
         if(count($diff)) {
             $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
             file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
         }
         $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
-        file_put_contents($structFileName,"<?php\nreturn ".to_php_code(smart_array_merge_recursive($structure,$diff)));
-        die(json_encode($structure, JSON_UNESCAPED_SLASHES));
+        $newStruct = smart_array_merge_recursive($structure,$diff);
+        file_put_contents($structFileName,"<?php\nreturn ".to_php_code($newStruct));
+        HttpResp::json_out(200,$newStruct);
     }
 
+    function patch_structure($configName) {
+        $this->project_exists($configName);
+
+        $data = $this->input->raw_input_stream;
+        $data = json_decode($data,JSON_OBJECT_AS_ARRAY);
+        if(!$data) {
+            HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
+        }
+        $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+        $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+        $patch = @include $this->config->item("configs_dir")."/$configName/patch.php";
+        $patch = $patch ? $patch : [];
+        $newStruct = smart_array_merge_recursive($structure,$patch);
+        $newStruct = smart_array_merge_recursive($newStruct,$data);
+
+        // compute difference
+        $diff = diff_arr($structure,$newStruct);
+        // create patch file
+        if(count($diff)) {
+            $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
+            file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
+        }
+        $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
+        $newStruct = smart_array_merge_recursive($structure,$diff);
+        file_put_contents($structFileName,"<?php\nreturn ".to_php_code($newStruct));
+        HttpResp::json_out(200,$newStruct);
+
+
+    }
 
 
     /**
@@ -112,31 +181,137 @@ class Config extends CI_Controller {
      */
     function delete($configName) {
         $this->project_exists($configName);
-        if($_SERVER["REQUEST_METHOD"]!=="DELETE") {
-            http_response_code(405);
-            die("Method not allowed");
-        }
-        echo remove_dir_recursive($this->config->item("configs_dir")."/$configName");
-        http_response_code(200);
+
+        if(remove_dir_recursive($this->config->item("configs_dir")."/$configName"))
+            HttpResp::no_content();
+        else
+            HttpResp::server_error();
+
+
+
     }
+
+    function not_found() {
+        die(json_encode(["error"=>"Resource not found"]));
+    }
+
+    function home() {
+        $resp = [
+            "status"=>"ok",
+            "endpoints"=>[
+                "/apis/{apiName}"=>[
+                    [
+                        "method"=>"POST",
+                        "desc"=>"Create a new API"
+                    ]
+                ]
+            ]
+        ];
+        HttpResp::json_out(200,$resp);
+
+    }
+
+    function swagger($configName)
+    {
+        $this->project_exists($configName);
+        $this->load->helper("swagger");
+        $path = $this->config->item("configs_dir")."/$configName";
+        $structure = require "$path/structure.php";
+        $openApiSpec = generate_swagger(
+            $_SERVER["SERVER_NAME"],
+            $structure,
+            "/$configName",
+            "$configName Spec",
+            "$configName spec",
+            "$configName",
+            "test@user.com");
+        HttpResp::json_out(200,$openApiSpec);
+    }
+
+
+    function api($configName) {
+        $this->project_exists($configName);
+
+        $resp = [
+            "status"=>"ok",
+            "endpoints"=>[
+                "/config"=>[
+                    [
+                        "method"=>"GET",
+                        "desc"=>"Get Config Help"
+                    ]
+                ],
+                "/data"=>[
+                    [
+                        "method"=>"GET",
+                        "desc"=>"Get data help"
+                    ]
+                ],
+
+            ]
+        ];
+        HttpResp::json_out(200,$resp);
+
+    }
+
+    function endpoints($configName) {
+        $this->project_exists($configName);
+
+        $path = $this->config->item("configs_dir")."/$configName";
+        $structure = require "$path/structure.php";
+        HttpResp::json_out(200,array_keys($structure));
+    }
+
 
     /**
      * @param $configName
      */
     function get($configName) {
         $this->project_exists($configName);
+        $resp = [
+            "status"=>"ok",
+            "endpoints"=>[
+                "/regen" => [
+                    [
+                        "method"=>"GET",
+                        "desc"=>"Regenerate the configuration"
+                    ]
+                ],
+                "/structure"=>[
+                    [
+                        "method"=>"GET",
+                        "desc"=>"Get API definition"
+                    ],
+                    [
+                        "method"=>"PATCH",
+                        "desc"=>"Update API definition"
+                    ],
+                    [
+                        "method"=>"PUT",
+                        "desc"=>"Replace API definition"
+                    ]
+                ]
+            ]];
+        HttpResp::json_out(200,$resp);
     }
-
-
 
 
     /**
      * @param $conn
      * @param $path
+     * @return bool|null
+     * @throws Exception
      */
     private function generate_config($conn,$path,$structure=null){
         if(is_null($structure)) {
-            $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+            $db = @$this->load->database($conn,true);
+
+            $error = $db->error();
+//            print_r($error);
+            if($error["code"]!==0) {
+                throw new Exception($error["message"],$error["code"]);
+            }
+            $structure = DBWalk::parse_mysql($db,$conn['database'])['structure'];
         }
 
         $path = $path?$path:$_SERVER['PWD'];
@@ -152,10 +327,8 @@ class Config extends CI_Controller {
             }
         }
 
-        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
-        file_put_contents("$path/connection.php","<?php\nreturn ".to_php_code($conn));
-        chmod("$path/structure.php",0666);
-        chmod("$path/connection.php",0666);
+        return $structure;
+
     }
 
 }
