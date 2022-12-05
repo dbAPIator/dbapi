@@ -234,7 +234,7 @@ class HttpResp{
      */
     static function not_authorized($body=null)
     {
-        HttpResp::init()->response_code(401)->body($body)->content_type("text/plain")->output();
+        HttpResp::out_autodetect(401,$body);
         exit();
     }
 
@@ -244,8 +244,9 @@ class HttpResp{
      */
     static function not_found($body=null)
     {
-        HttpResp::init()->response_code(404)->body($body)->output();
+        HttpResp::out_autodetect(404,$body);
         exit();
+
     }
 
     /**
@@ -254,16 +255,16 @@ class HttpResp{
      */
     static function bad_request($body=null)
     {
-        HttpResp::init()->response_code(400)->body($body)->output();
+        HttpResp::out_autodetect(400,$body);
         exit();
     }
 
     /**
      *
      */
-    static function method_not_allowed()
+    static function method_not_allowed($body=null)
     {
-        HttpResp::init()->response_code(405)->body("Method not allowed 1")->output();
+        HttpResp::out_autodetect(405,$body);
         exit();
     }
 
@@ -273,8 +274,18 @@ class HttpResp{
      */
     static function server_error($body=null)
     {
-        HttpResp::init()->response_code(500)->body($body)->output();
+        HttpResp::out_autodetect(500,$body);
         exit();
+    }
+
+    static function out_autodetect($code,$body=null) {
+        $http = HttpResp::init();
+        if(is_array($body) || is_object($body)){
+            $body = json_encode($body);
+            $http->content_type("application/json");
+        }
+
+        $http->response_code($code)->body($body)->output();
     }
 
     /**
@@ -283,6 +294,8 @@ class HttpResp{
      */
     static function service_unavailable($body=null)
     {
+        if(is_array($body) || is_object($body))  $body = json_encode($body);
+
         HttpResp::init()->response_code(503)->body($body)->output();
         exit();
     }
@@ -383,6 +396,7 @@ class HttpResp{
     static function no_content($statusCode=204)
     {
         HttpResp::quick($statusCode);
+        exit();
     }
 
     /**

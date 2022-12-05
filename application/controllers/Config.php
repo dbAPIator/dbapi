@@ -8,15 +8,20 @@ use Softaccel\Apiator\DBApi\DBWalk;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-
+/**
+ * Class Config
+ * @property CI_Loader load
+ */
 class Config extends CI_Controller {
     public function __construct() {
         parent::__construct();
         header("Content-type: application/json");
         $this->config->load("apiator");
+        $this->load->helper("string");
     }
 
     /**
+     * check if API is defined by
      * @param $configName
      * @return bool
      */
@@ -24,7 +29,7 @@ class Config extends CI_Controller {
         $apiDir = $this->config->item("configs_dir")."/$configName";
         if(!is_dir($apiDir)) {
             if(!$return) {
-                HttpResp::json_out(404,["error"=>"API  $configName not found"]) && die();
+                HttpResp::not_found(["error"=>"API  $configName not found"]);
             }
             return false;
         }
@@ -34,16 +39,100 @@ class Config extends CI_Controller {
     /**
      * @param $configName
      */
+    function update_auth($configName) {
+        $this->project_exists($configName);
+
+        $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
+        $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        if(!count($authData)) {
+            file_put_contents($authFilePath,"<?php\nreturn ".to_php_code([]));
+            HttpResp::json_out([]);
+            return;
+        }
+
+        $oldAuth = @include $authFilePath;
+        $oldAuth = is_array($oldAuth) ? $oldAuth : [];
+
+        // @todo: validate auth input
+        $defaultAuth = [
+            "key" => $oldAuth["key"] ? $oldAuth["key"] : md5(random_string().time()),
+            "alg" => 'HS256',
+            "validity" => 3600
+        ];
+
+        $oldAuth = smart_array_merge_recursive($defaultAuth,$oldAuth);
+
+        $authData = smart_array_merge_recursive($oldAuth,$authData);
+        file_put_contents($authFilePath,"<?php\nreturn ".to_php_code($authData));
+
+        if(!$this->input->get("include") || $this->input->get("include")!=="key")
+            $authData["key"] = "**********";
+
+        HttpResp::json_out(200,$authData);
+    }
+
+    /**
+     * @param $configName
+     */
+    function replace_auth($configName) {
+        $this->project_exists($configName);
+
+        $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
+        $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        if(!count($authData)) {
+            file_put_contents($authFilePath,"<?php\nreturn ".to_php_code([]));
+            HttpResp::json_out([]);
+            return;
+        }
+
+
+        // @todo: validate auth input
+        $defaultAuth = [
+            "key" => md5(random_string().time()),
+            "alg" => 'HS256',
+            "validity" => 3600
+        ];
+
+
+        $authData = smart_array_merge_recursive($defaultAuth,$authData);
+        file_put_contents($authFilePath,"<?php\nreturn ".to_php_code($authData));
+
+        if(!$this->input->get("include") || $this->input->get("include")!=="key")
+            $authData["key"] = "**********";
+
+        HttpResp::json_out(200,$authData);
+    }
+
+
+    /**
+     * @param $configName
+     */
+    function get_auth($configName) {
+        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $auth = @include $authFilePath."/auth.php";
+        if(!$auth) {
+            HttpResp::json_out([]) && die();
+        }
+
+
+        if(!$this->input->get("include") || $this->input->get("include")!=="key")
+            $auth["key"] = "**********";
+
+        HttpResp::json_out(200,$auth);
+
+
+    }
+
+    /**
+     * @param $configName
+     */
     function create($configName) {
         if($this->project_exists($configName,true)) {
-            http_response_code(409);
-            HttpResp::json_out(200,["error"=>"Project  $configName already exists"]);
-
+            HttpResp::json_out(409,["error"=>"Project  $configName already exists"]);
         }
 
         if($_SERVER["REQUEST_METHOD"]!=="POST") {
-            http_response_code(405);
-            die("Method not allowed");
+            HttpResp::json_out(405,["error"=>"Method not allowed"]);
         }
 
         $conn = [
@@ -53,14 +142,21 @@ class Config extends CI_Controller {
             "password" => "",
             "database" => ""
         ];
-        $conn = array_merge($conn,$this->input->post());
 
-        $path = $this->config->item("configs_dir")."/$configName";
+        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        if(!isset($data["connection"])){
+            HttpResp::json_out(406,["error"=>"Connection parameters not provided"]);
+
+        }
+
+        $conn = array_merge($conn,$data["connection"]);
+
+        $authFilePath = $this->config->item("configs_dir")."/$configName";
 
         try {
-            $structure = $this->generate_config($conn, $path);
-            if(!is_dir($path))
-                mkdir($path);
+            $structure = $this->generate_config($data["connection"], $authFilePath);
+            if(!is_dir($authFilePath))
+                mkdir($authFilePath);
         }
         catch (Exception $exception){
 //            print_r($exception);
@@ -68,20 +164,31 @@ class Config extends CI_Controller {
             die(json_encode(["error"=>$exception->getMessage()]));
         }
 
+        $auth = [];
+        if($data["authentication"]) {
+            $auth = $data["authentication"];
+            $auth["key"] = md5(random_string().time());
+            $auth["alg"] = 'HS256';
+            $auth["validity"] = 3600;
+        }
 
-        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
-        file_put_contents("$path/connection.php","<?php\nreturn ".to_php_code($conn));
-        chmod("$path/structure.php",0600);
-        chmod("$path/connection.php",0600);
+
+        file_put_contents("$authFilePath/structure.php","<?php\nreturn ".to_php_code($structure));
+        chmod("$authFilePath/structure.php",0600);
+        file_put_contents("$authFilePath/connection.php","<?php\nreturn ".to_php_code($data["connection"]));
+        chmod("$authFilePath/connection.php",0600);
+        file_put_contents("$authFilePath/patch.php","<?php\nreturn ".to_php_code([]));
+        chmod("$authFilePath/patch.php",0600);
+        file_put_contents("$authFilePath/auth.php","<?php\nreturn ".to_php_code($auth));
+        chmod("$authFilePath/auth.php",0600);
 
         HttpResp::json_out(200,["result"=>"ok"]);
-
 
     }
 
     function list_apis() {
-        $path = $this->config->item("configs_dir");
-        $dir = opendir($path);
+        $authFilePath = $this->config->item("configs_dir");
+        $dir = opendir($authFilePath);
         $entries = [];
         while($entry=readdir($dir)) {
             if(in_array($entry,[".",".."])) continue;
@@ -89,16 +196,18 @@ class Config extends CI_Controller {
         }
         HttpResp::json_out(200,$entries);
     }
+
     /**
      * @param $configName
+     * @throws Exception
      */
     function regen($configName) {
         $this->project_exists($configName);
 
-        $path = $this->config->item("configs_dir")."/$configName";
-        $conn = require  "$path/connection.php";
-        $structure = $this->generate_config($conn,$path);
-        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
+        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $conn = require  "$authFilePath/connection.php";
+        $structure = $this->generate_config($conn,$authFilePath);
+        file_put_contents("$authFilePath/structure.php","<?php\nreturn ".to_php_code($structure));
     }
 
     /**
@@ -127,14 +236,20 @@ class Config extends CI_Controller {
         $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
         // compute difference
         $diff = diff_arr($structure,$data);
-        // create patch file
-        if(count($diff)) {
-            $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
-            file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
-        }
-        $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
+
+        // save patch file
+        $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
+        file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
+
         $newStruct = smart_array_merge_recursive($structure,$diff);
+
+        //save structure
+        $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
         file_put_contents($structFileName,"<?php\nreturn ".to_php_code($newStruct));
+
+
+
+
         HttpResp::json_out(200,$newStruct);
     }
 
@@ -215,8 +330,8 @@ class Config extends CI_Controller {
     {
         $this->project_exists($configName);
         $this->load->helper("swagger");
-        $path = $this->config->item("configs_dir")."/$configName";
-        $structure = require "$path/structure.php";
+        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $structure = require "$authFilePath/structure.php";
         $openApiSpec = generate_swagger(
             $_SERVER["SERVER_NAME"],
             $structure,
@@ -254,11 +369,11 @@ class Config extends CI_Controller {
 
     }
 
-    function endpoints($configName) {
+    function api_endpoints($configName) {
         $this->project_exists($configName);
 
-        $path = $this->config->item("configs_dir")."/$configName";
-        $structure = require "$path/structure.php";
+        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $structure = require "$authFilePath/structure.php";
         HttpResp::json_out(200,array_keys($structure));
     }
 
@@ -298,11 +413,11 @@ class Config extends CI_Controller {
 
     /**
      * @param $conn
-     * @param $path
+     * @param $authFilePath
      * @return bool|null
      * @throws Exception
      */
-    private function generate_config($conn,$path,$structure=null){
+    private function generate_config($conn,$authFilePath,$structure=null){
         if(is_null($structure)) {
             $db = @$this->load->database($conn,true);
 
@@ -314,16 +429,16 @@ class Config extends CI_Controller {
             $structure = DBWalk::parse_mysql($db,$conn['database'])['structure'];
         }
 
-        $path = $path?$path:$_SERVER['PWD'];
-        $patchFile =  is_file("$path/patch.php") ? "$path/patch.php" :
-            (is_file("$path/parse_helper.php") ? "$path/parse_helper.php" : null);
+        $authFilePath = $authFilePath?$authFilePath:$_SERVER['PWD'];
+        $patchFile =  is_file("$authFilePath/patch.php") ? "$authFilePath/patch.php" :
+            (is_file("$authFilePath/parse_helper.php") ? "$authFilePath/parse_helper.php" : null);
 
         if($patchFile) {
             $data = @include $patchFile;
             if(is_array($data)) {
                 $structure = smart_array_merge_recursive($structure, $data);
-                file_put_contents("$path/patch.php","<?php\nreturn ".to_php_code($data));
-                chmod("$path/patch.php",0666);
+                file_put_contents("$authFilePath/patch.php","<?php\nreturn ".to_php_code($data));
+                chmod("$authFilePath/patch.php",0666);
             }
         }
 

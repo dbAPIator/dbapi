@@ -122,7 +122,6 @@ class Dbapi extends CI_Controller
     }
 
 
-
     function __construct ()
     {
         parent::__construct();
@@ -142,7 +141,27 @@ class Dbapi extends CI_Controller
         //$this->_init();
     }
 
-
+    /**
+     *
+     */
+    private function  auth() {
+        /*
+         * Authenticate request based on JWT tokens
+         */
+        $headers = getallheaders();
+        $auth = @include $this->apiConfigDir."/auth.php";
+        if($auth && count($auth)) {
+            preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
+            $jwt = count($matches)==2 ? $matches[1] : null;
+            if(is_null($jwt)) {
+                HttpResp::not_authorized(["error"=>"Not authenticated."]);
+            }
+            $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
+            if($payload->_exp<time()) {
+                HttpResp::not_authorized(["error"=>"Token expired."]);
+            }
+        }
+    }
 
     /**
      * reads API configuration file, connects to the database and initializes the DataModel (structure)
@@ -167,18 +186,20 @@ class Dbapi extends CI_Controller
         }
 
         // load structure
-        $structure = require($this->apiConfigDir."/structure.php");
-        if(!isset($structure)) {
+        $structure = @include($this->apiConfigDir."/structure.php");
+        if(!$structure) {
             // Invalid API config
             // TODO: log error: wrong api config
             HttpResp::exception_out(new Exception("Invalid API configuration",404));
         }
 
         // load connection
-        $dbConf = require($this->apiConfigDir."/connection.php");
+        $dbConf = @include($this->apiConfigDir."/connection.php");
         if(!isset($dbConf)) {
             HttpResp::server_error("Invalid database config");
         }
+
+        $this->auth();
 
         // load permissions
         // todo: depending on the API client, load the appropriate permissions file
