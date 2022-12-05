@@ -630,41 +630,64 @@ function get_multiple_records($resourceName,$resourceSpecifications,$dataModel)
  * @param $type
  * @return array
  */
+
 function typeMap($type)
 {
-    switch($type["proto"]) {
-        case "int":
-            return [
-                "type"=>"integer"
-            ];
-        case "varchar":
-            return [
-                "type"=>"string"
-            ];
-        case "enum":
-            //print_r($type);
-            return [
-                "type"=>"string",
-                "enum"=>$type["vals"]
-            ];
-        case "set":
-
-            return [
-                "type"=>"string",
-                "enum"=>$type["vals"]
-            ];
-        case "date":
-            return [
-                "type"=>"string"
-            ];
-            break;
-        default:
-            // todo: log type && send alarm
-            //print_r($type);
-            return [
-                "type"=>"random"
-            ];
+    $mysqlTypes = [
+        "int"=>[
+            "type"=>"integer"
+        ],
+        "varchar"=>[
+            "type"=>"string"
+        ],
+        "enum"=> [
+            "type"=>"string",
+        ],
+        "set"=> [
+            "type"=>"string",
+        ],
+        "date"=>[
+            "type"=>"string"
+        ],
+        "tinyint"=>[
+            "type"=>"boolean"
+        ],
+        "datetime"=>[
+            "type"=>"string"
+        ],
+        "float"=>[
+            "type"=>"number"
+        ],
+        "double"=>[
+            "type"=>"number"
+        ],
+        "bigint"=>[
+            "type"=>"integer"
+        ],
+        "text"=>[
+            "type"=>"string"
+        ],
+        "decimal"=>[
+            "type"=>"number"
+        ],
+        "tinytext"=>[
+            "type"=>"string"
+        ],
+        "timestamp"=>[
+            "type"=>"string"
+        ],
+        "time"=>[
+            "type"=>"string"
+        ],
+        "bit"=>[
+            "type"=>"string"
+        ]
+    ];
+    $res = isset($mysqlTypes[$type["proto"]]) ? $mysqlTypes[$type["proto"]] : ["type"=>"random_".$type["proto"]];
+    if(in_array($type["proto"],["enum","set"])) {
+        $res["enum"] = $type["vals"];
     }
+    return $res;
 }
 
 /**
@@ -710,7 +733,7 @@ function create_single_record($resourceName,$resourceSpecifications)
                                         ],
                                         "attributes"=>[
                                             "type"=>"object",
-                                            "properties"=>[]
+                                            "properties"=> new stdClass()
                                         ]
                                     ],
                                     "required"=>["id","type"]
@@ -727,7 +750,7 @@ function create_single_record($resourceName,$resourceSpecifications)
     foreach ($resourceSpecifications["fields"] as $field=>$fieldSpec) {
         if(!isset($fieldSpec["type"]))
             continue;
-        $attrs["$field"] = typeMap($fieldSpec["type"]);
+        $attrs->$field = typeMap($fieldSpec["type"]);
     }
 
     return $data;

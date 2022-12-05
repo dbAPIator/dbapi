@@ -118,7 +118,7 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $auth = @include $authFilePath."/auth.php";
         if(!$auth) {
-            HttpResp::json_out([]) && die();
+            HttpResp::json_out(200,[]) && die();
         }
 
 
@@ -270,6 +270,9 @@ class Config extends CI_Controller {
             $auth["key"] = md5(random_string().time());
             $auth["alg"] = 'HS256';
             $auth["validity"] = 3600;
+            $auth["allowGuest"] = true;
+            $auth["defaultAction"] = "accept";
+            $auth["guestRules"] = [];
         }
 
         $security = [

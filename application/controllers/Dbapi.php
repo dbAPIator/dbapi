@@ -163,7 +163,7 @@ class Dbapi extends CI_Controller
         }
 
         // check if client is allowed (by IP)
-        if(!find_cidr($_SERVER["REMOTE_ADDR"],$security["from"])) {
+        if(!find_cidr($_SERVER["REMOTE_ADDR"],@$security["from"])) {
             throw new Exception("Not authorized due to source IP",401);
         }
 
@@ -175,6 +175,7 @@ class Dbapi extends CI_Controller
                 break;
             }
         }
+
         if(!$allow) {
             throw new Exception("Not authorized due to access policies",401);
         }
@@ -1471,7 +1472,9 @@ function custom_where($str) {
 function find_cidr($ip, $ranges)
 {
 
-
+    if(!is_array($ranges)) {
+        return false;
+    }
     foreach($ranges as $range)
     {
         if(cidr_match($ip, $range))
