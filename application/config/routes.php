@@ -118,11 +118,21 @@ $route["^apis/([\w\-\.\_\%]+)/config/auth"]["get"] = "config/get_auth/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["patch"] = "config/update_auth/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["put"] = "config/replace_auth/$1";
 
+$route["^apis/([\w\-\.\_\%]+)/config/clients"]["get"] = "config/get_clients/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/clients"]["post"] = "config/create_client/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/clients/(.*)$"]["get"] = "config/get_client/$1/$2";
+$route["^apis/([\w\-\.\_\%]+)/config/clients/(.*)$"]["delete"] = "config/delete_client/$1/$2";
 
-$route["^apis/([\w\-\.\_\%]+)"]["GET"] = "config/api/$1";
+
+$route["^apis/([\w\-\.\_\%]+)/config/security"]["get"] = "config/get_security/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/security"]["patch"] = "config/update_security/$1";
+
+
+
+$route["^apis/([\w\-\.\_\%]+)"]["GET"] = "config/get_config_endpoints/$1";
 $route["^apis/([\w\-\.\_\%]+)/(data|v2)"]["GET"] = "config/api_endpoints/$1";
-$route["^apis/([\w\-\.\_\%]+)$"]["post"] = "config/create/$1";
-$route["^apis/([\w\-\.\_\%]+)$"]["delete"] = "config/delete/$1";
+$route["^apis/([\w\-\.\_\%]+)$"]["post"] = "config/create_api/$1";
+$route["^apis/([\w\-\.\_\%]+)$"]["delete"] = "config/delete_api/$1";
 $route["^apis$"]["get"] = "config/list_apis";
 
 
@@ -203,7 +213,6 @@ $route["^$basePath/.*"]["options"] = "$controller/options";
 /*
  * new format
  */
-
 
 
 

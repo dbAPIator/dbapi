@@ -9,8 +9,12 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 /**
+ * @todo: authenticate/limit request
+ */
+/**
  * Class Config
  * @property CI_Loader load
+ * @property CI_Input input
  */
 class Config extends CI_Controller {
     public function __construct() {
@@ -45,7 +49,7 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
         $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
         if(!count($authData)) {
-            file_put_contents($authFilePath,"<?php\nreturn ".to_php_code([]));
+            file_put_contents($authFilePath,to_php_code([],true));
             HttpResp::json_out([]);
             return;
         }
@@ -57,13 +61,16 @@ class Config extends CI_Controller {
         $defaultAuth = [
             "key" => $oldAuth["key"] ? $oldAuth["key"] : md5(random_string().time()),
             "alg" => 'HS256',
-            "validity" => 3600
+            "validity" => 3600,
+            "allowGuest" => true,
+            "defaultAction" => "accept",
+            "guestRules" => []
         ];
 
         $oldAuth = smart_array_merge_recursive($defaultAuth,$oldAuth);
 
         $authData = smart_array_merge_recursive($oldAuth,$authData);
-        file_put_contents($authFilePath,"<?php\nreturn ".to_php_code($authData));
+        file_put_contents($authFilePath,to_php_code($authData,true));
 
         if(!$this->input->get("include") || $this->input->get("include")!=="key")
             $authData["key"] = "**********";
@@ -80,7 +87,7 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
         $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
         if(!count($authData)) {
-            file_put_contents($authFilePath,"<?php\nreturn ".to_php_code([]));
+            file_put_contents($authFilePath,to_php_code([],true));
             HttpResp::json_out([]);
             return;
         }
@@ -95,7 +102,7 @@ class Config extends CI_Controller {
 
 
         $authData = smart_array_merge_recursive($defaultAuth,$authData);
-        file_put_contents($authFilePath,"<?php\nreturn ".to_php_code($authData));
+        file_put_contents($authFilePath,to_php_code($authData,true));
 
         if(!$this->input->get("include") || $this->input->get("include")!=="key")
             $authData["key"] = "**********";
@@ -120,13 +127,106 @@ class Config extends CI_Controller {
 
         HttpResp::json_out(200,$auth);
 
-
     }
+
 
     /**
      * @param $configName
      */
-    function create($configName) {
+    function get_security($configName) {
+        $this->project_exists($configName);
+        $path = $this->config->item("configs_dir")."/$configName";
+        $security = @include "$path/security.php";
+        HttpResp::json_out(200,$security);
+    }
+
+    /**
+     * Update global security settings
+     * @param $configName
+     */
+    function update_security($configName) {
+        $this->project_exists($configName);
+        $secFilePath = $this->config->item("configs_dir")."/$configName/security.php";
+        $security = @include $secFilePath;
+        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        $security = array_merge($security,$data);
+        file_put_contents($secFilePath,to_php_code($security,true));
+        HttpResp::json_out(200,$security);
+    }
+
+
+    /**
+     * @param $configName
+     */
+    function get_clients($configName) {
+        $this->project_exists($configName);
+        $path = $this->config->item("configs_dir")."/$configName";
+        $d = opendir("$path/clients");
+        $clients = [];
+        while ($e=readdir($d)) {
+            if(in_array($e,[".",".."])) continue;
+            $clients[] = explode(".",$e)[0];
+        }
+        HttpResp::json_out(200,$clients);
+    }
+
+     /**
+     * @param $configName
+     * @param $apiKey
+     */
+    function create_client($configName) {
+        $this->project_exists($configName);
+        $path = $this->config->item("configs_dir")."/$configName";
+        $apiKey = guidv4();
+        $fn = "$path/clients/$apiKey.php";
+        $default_config = ["default_policy"=>"accept"];
+        $config = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+
+        if($this->input->get("includemyself")) {
+            if(!is_array($config["from"]))
+                $config["from"] = [@$config["from"]];
+            $config["from"][] = $_SERVER["REMOTE_ADDR"];
+        }
+
+        $config = array_merge($default_config,$config);
+
+        file_put_contents($fn,to_php_code($config,true));
+        HttpResp::json_out(200,["key"=>$apiKey]);
+    }
+
+
+    /**
+     * @param $configName
+     * @param $apiKey
+     */
+    function get_client($configName,$apiKey) {
+        $this->project_exists($configName);
+        $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
+        if(!file_exists($path)) {
+            HttpResp::not_found(["error"=>"API Key not found"]);
+        }
+        HttpResp::json_out(200,include $path);
+    }
+
+    /**
+     * @param $configName
+     * @param $apiKey
+     */
+    function delete_client($configName,$apiKey) {
+        $this->project_exists($configName);
+        $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
+        if(!file_exists($path)) {
+            HttpResp::not_found(["error"=>"API Key not found"]);
+        }
+        if(unlink($path))
+            HttpResp::no_content();
+        else
+            HttpResp::server_error(["error"=>"Could not delete client"]);
+    }
+    /**
+     * @param $configName
+     */
+    function create_api($configName) {
         if($this->project_exists($configName,true)) {
             HttpResp::json_out(409,["error"=>"Project  $configName already exists"]);
         }
@@ -151,12 +251,12 @@ class Config extends CI_Controller {
 
         $conn = array_merge($conn,$data["connection"]);
 
-        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $path = $this->config->item("configs_dir")."/$configName";
 
         try {
-            $structure = $this->generate_config($data["connection"], $authFilePath);
-            if(!is_dir($authFilePath))
-                mkdir($authFilePath);
+            $structure = $this->generate_config($data["connection"], $path);
+            if(!is_dir($path))
+                mkdir($path);
         }
         catch (Exception $exception){
 //            print_r($exception);
@@ -172,17 +272,28 @@ class Config extends CI_Controller {
             $auth["validity"] = 3600;
         }
 
+        $security = [
+            "default_policy"=>"accept"
+        ];
+        if($data["security"]) {
+            $security = array_merge($security,$data["security"]);
+        }
 
-        file_put_contents("$authFilePath/structure.php","<?php\nreturn ".to_php_code($structure));
-        chmod("$authFilePath/structure.php",0600);
-        file_put_contents("$authFilePath/connection.php","<?php\nreturn ".to_php_code($data["connection"]));
-        chmod("$authFilePath/connection.php",0600);
-        file_put_contents("$authFilePath/patch.php","<?php\nreturn ".to_php_code([]));
-        chmod("$authFilePath/patch.php",0600);
-        file_put_contents("$authFilePath/auth.php","<?php\nreturn ".to_php_code($auth));
-        chmod("$authFilePath/auth.php",0600);
 
-        HttpResp::json_out(200,["result"=>"ok"]);
+
+            mkdir("$path/clients");
+        file_put_contents("$path/structure.php",to_php_code($structure,true));
+        chmod("$path/structure.php",0600);
+        file_put_contents("$path/connection.php",to_php_code($data["connection"],true));
+        chmod("$path/connection.php",0600);
+        file_put_contents("$path/patch.php",to_php_code([],true));
+        chmod("$path/patch.php",0600);
+        file_put_contents("$path/auth.php",to_php_code($auth,true));
+        chmod("$path/auth.php",0600);
+        file_put_contents("$path/security.php",to_php_code($security,true));
+        chmod("$path/auth.php",0600);
+
+        HttpResp::json_out(200,["result"=>guidv4()]);
 
     }
 
@@ -207,7 +318,7 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $conn = require  "$authFilePath/connection.php";
         $structure = $this->generate_config($conn,$authFilePath);
-        file_put_contents("$authFilePath/structure.php","<?php\nreturn ".to_php_code($structure));
+        file_put_contents("$authFilePath/structure.php",to_php_code($structure,true));
     }
 
     /**
@@ -239,13 +350,13 @@ class Config extends CI_Controller {
 
         // save patch file
         $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
-        file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
+        file_put_contents($patchFileName,to_php_code($diff,true));
 
         $newStruct = smart_array_merge_recursive($structure,$diff);
 
         //save structure
         $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
-        file_put_contents($structFileName,"<?php\nreturn ".to_php_code($newStruct));
+        file_put_contents($structFileName,to_php_code($newStruct,true));
 
 
 
@@ -273,11 +384,11 @@ class Config extends CI_Controller {
         // create patch file
         if(count($diff)) {
             $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
-            file_put_contents($patchFileName,"<?php\nreturn ".to_php_code($diff));
+            file_put_contents($patchFileName,to_php_code($diff,true));
         }
         $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
         $newStruct = smart_array_merge_recursive($structure,$diff);
-        file_put_contents($structFileName,"<?php\nreturn ".to_php_code($newStruct));
+        file_put_contents($structFileName,to_php_code($newStruct,true));
         HttpResp::json_out(200,$newStruct);
 
 
@@ -294,7 +405,7 @@ class Config extends CI_Controller {
     /**
      * @param $configName
      */
-    function delete($configName) {
+    function delete_api($configName) {
         $this->project_exists($configName);
 
         if(remove_dir_recursive($this->config->item("configs_dir")."/$configName"))
@@ -344,7 +455,7 @@ class Config extends CI_Controller {
     }
 
 
-    function api($configName) {
+    function get_config_endpoints($configName) {
         $this->project_exists($configName);
 
         $resp = [
@@ -437,7 +548,7 @@ class Config extends CI_Controller {
             $data = @include $patchFile;
             if(is_array($data)) {
                 $structure = smart_array_merge_recursive($structure, $data);
-                file_put_contents("$authFilePath/patch.php","<?php\nreturn ".to_php_code($data));
+                file_put_contents("$authFilePath/patch.php",to_php_code($data,true));
                 chmod("$authFilePath/patch.php",0666);
             }
         }
@@ -452,11 +563,14 @@ class Config extends CI_Controller {
  * @param $data
  * @return string
  */
-function to_php_code($data)
+function to_php_code($data,$addBegining=false)
 {
-    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],json_encode($data,JSON_PRETTY_PRINT)).";";
+//    $json = json_encode($data,JSON_PRETTY_PRINT);
+//    print_r($json);
+//    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],$json).";";
 //    $str = str_replace('"',"'",$str);
-    return $str;
+
+    return ($addBegining ? "<?php\nreturn " : "").var_export($data,true).";";
 }
 
 function diff_arr($arr1,$arr2) {
@@ -525,4 +639,18 @@ function remove_dir_recursive($fsEntry) {
     closedir($dir);
     rmdir($fsEntry);
 
+}
+
+function guidv4($data = null) {
+    // Generate 16 bytes (128 bits) of random data or use the data passed into the function.
+    $data = $data ?? random_bytes(16);
+    assert(strlen($data) == 16);
+
+    // Set version to 0100
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    // Set bits 6-7 to 10
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+
+    // Output the 36 character UUID.
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }

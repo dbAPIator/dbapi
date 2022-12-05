@@ -268,13 +268,13 @@ class Setup extends CI_Controller
             $data = @include "$path/parse_helper.php";
             if(is_array($data)) {
                 $structure = smart_array_merge_recursive($structure, $data);
-                file_put_contents("$path/parse_helper.php","<?php\nreturn ".to_php_code($data));
+                file_put_contents("$path/parse_helper.php",to_php_code($data,true));
                 chmod("$path/parse_helper.php",0666);
             }
         }
 
-        file_put_contents("$path/structure.php","<?php\nreturn ".to_php_code($structure));
-        file_put_contents("$path/connection.php","<?php\nreturn ".to_php_code($conn));
+        file_put_contents("$path/structure.php",to_php_code($structure,true));
+        file_put_contents("$path/connection.php",to_php_code($conn,true));
         chmod("$path/structure.php",0666);
         chmod("$path/connection.php",0666);
     }
@@ -304,13 +304,21 @@ class Setup extends CI_Controller
  * @param $data
  * @return string
  */
-function to_php_code($data)
+//function to_php_code($data)
+//{
+//    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],json_encode($data,JSON_PRETTY_PRINT)).";";
+////    $str = str_replace('"',"'",$str);
+//    return $str;
+//}
+function to_php_code($data,$addBegining=false)
 {
-    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],json_encode($data,JSON_PRETTY_PRINT)).";";
+//    $json = json_encode($data,JSON_PRETTY_PRINT);
+//    print_r($json);
+//    $str =  preg_replace(["/\{/","/\}/","/\:/"],["[","]","=>"],$json).";";
 //    $str = str_replace('"',"'",$str);
-    return $str;
-}
 
+    return ($addBegining ? "<?php\nreturn " : "").var_export($data,true).";";
+}
 /**
  * @param $arr1
  * @param $arr2

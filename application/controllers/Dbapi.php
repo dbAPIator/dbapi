@@ -142,24 +142,62 @@ class Dbapi extends CI_Controller
     }
 
     /**
-     *
+     * do security checks like
+     * - check if client IP is allowed
+     * - check which client rules match and if req is allowed
+     * - authenticate req based on JWT
      */
-    private function  auth() {
+    private function  security_check() {
+        $headers = getallheaders();
+
+        // load default security
+        $security = [];
+        $data = @include $this->apiConfigDir."/security.php";
+        $security = array_merge($security,$data ? $data : []);
+
+        if(isset($headers["x-api-key"])) {
+            $security = @include $this->apiConfigDir."/client/".$headers["x-api-key"].".php";
+            if(!$security) {
+                HttpResp::not_authorized(["error"=>"Invalid API key"]);
+            }
+        }
+
+        // check if client is allowed (by IP)
+        if(!find_cidr($_SERVER["REMOTE_ADDR"],$security["from"])) {
+            throw new Exception("Not authorized due to source IP",401);
+        }
+
+        // check rules
+        $allow = (isset($security["default_policy"])? $security["default_policy"] : "accept") =="accept";
+        foreach ($security["rules"] as $rule) {
+            if(preg_match($rule[0],$_SERVER["REQUEST_METHOD"]) && preg_match($rule[1],$_SERVER["REQUEST_URI"])) {
+                $allow = $rule[2] == "accept";
+                break;
+            }
+        }
+        if(!$allow) {
+            throw new Exception("Not authorized due to access policies",401);
+        }
+
         /*
          * Authenticate request based on JWT tokens
          */
-        $headers = getallheaders();
         $auth = @include $this->apiConfigDir."/auth.php";
         if($auth && count($auth)) {
             preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
             $jwt = count($matches)==2 ? $matches[1] : null;
-            if(is_null($jwt)) {
-                HttpResp::not_authorized(["error"=>"Not authenticated."]);
+            if(!is_null($jwt) ) {
+                $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
+                if($payload->_exp<time()) {
+                    throw new Exception("Token expired",401);
+                }
             }
-            $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
-            if($payload->_exp<time()) {
-                HttpResp::not_authorized(["error"=>"Token expired."]);
+
+            if(!$auth["allowGuest"]) {
+                throw new Exception("Not authorized",401);
             }
+
+            // @todo: get UserID to be used later
         }
     }
 
@@ -185,6 +223,14 @@ class Dbapi extends CI_Controller
             HttpResp::exception_out(new Exception("Invalid API config dir $this->apiConfigDir",500));
         }
 
+        try{
+            $this->security_check();
+        }
+        catch (Exception $e) {
+            HttpResp::exception_out($e);
+        }
+
+
         // load structure
         $structure = @include($this->apiConfigDir."/structure.php");
         if(!$structure) {
@@ -199,7 +245,6 @@ class Dbapi extends CI_Controller
             HttpResp::server_error("Invalid database config");
         }
 
-        $this->auth();
 
         // load permissions
         // todo: depending on the API client, load the appropriate permissions file
@@ -1415,4 +1460,32 @@ function custom_where($str) {
     $str = str_replace("&&", "' AND ",$str);
     $str = str_replace("||", "' OR ",$str);
     return $str;
+}
+
+
+/**
+ * @param $ip
+ * @param $ranges
+ * @return bool
+ */
+function find_cidr($ip, $ranges)
+{
+
+
+    foreach($ranges as $range)
+    {
+        if(cidr_match($ip, $range))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+function cidr_match($ip, $range){
+    list ($subnet, $bits) = explode('/', $range);
+    $ip = ip2long($ip);
+    $subnet = ip2long($subnet);
+    $mask = -1 << (32 - $bits);
+    $subnet &= $mask; // in case the supplied subnet was not correctly aligned
+    return ($ip & $mask) == $subnet;
 }
