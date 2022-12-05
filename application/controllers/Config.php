@@ -256,7 +256,7 @@ class Config extends CI_Controller {
         try {
             $structure = $this->generate_config($data["connection"], $path);
             if(!is_dir($path))
-                mkdir($path);
+                @mkdir($path);
         }
         catch (Exception $exception){
 //            print_r($exception);
