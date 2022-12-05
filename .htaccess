@@ -3,12 +3,7 @@
     SetEnv CI_AUTODETECT_BASEURL true
 </IfModule>
 
-
-<Directory  ~ "\dbconfigs">
-  Order allow,deny
-  Deny from all
-</Directory>
-
+Options All -Indexes
 
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
