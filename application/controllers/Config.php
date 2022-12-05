@@ -302,7 +302,10 @@ class Config extends CI_Controller {
 
     function list_apis() {
         $authFilePath = $this->config->item("configs_dir");
-        $dir = opendir($authFilePath);
+        $dir = @opendir($authFilePath);
+        if(!$dir) {
+            HttpResp::server_error(["error"=>"Invalid configs directory"]);
+        }
         $entries = [];
         while($entry=readdir($dir)) {
             if(in_array($entry,[".",".."])) continue;
