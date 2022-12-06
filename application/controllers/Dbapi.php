@@ -368,7 +368,8 @@ class Dbapi extends CI_Controller
             $inputData = json_decode($this->input->raw_input_stream);
         }
         else {
-            throw new Exception("Invalid Content-Type",400);
+            $inputData = json_decode($this->input->raw_input_stream);
+//            throw new Exception("Invalid Content-Type",400);
         }
         if($no_validation) {
             return $inputData;
