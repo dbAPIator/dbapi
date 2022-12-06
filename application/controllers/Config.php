@@ -308,7 +308,7 @@ class Config extends CI_Controller {
         }
         $entries = [];
         while($entry=readdir($dir)) {
-            if(in_array($entry,[".",".."]) && is_file($entry)) continue;
+            if(in_array($entry,[".",".."]) || is_file($entry)) continue;
             $entries[] = $entry;
         }
         HttpResp::json_out(200,$entries);
