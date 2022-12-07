@@ -131,7 +131,7 @@ $route["^apis/([\w\-\.\_\%]+)/config/security"]["patch"] = "config/update_securi
 
 $route["^apis/([\w\-\.\_\%]+)"]["GET"] = "config/get_config_endpoints/$1";
 $route["^apis/([\w\-\.\_\%]+)/(data|v2)"]["GET"] = "config/api_endpoints/$1";
-$route["^apis/([\w\-\.\_\%]+)$"]["post"] = "config/create_api/$1";
+$route["^apis/?$"]["post"] = "config/create_api";
 $route["^apis/([\w\-\.\_\%]+)$"]["delete"] = "config/delete_api/$1";
 $route["^apis$"]["get"] = "config/list_apis";
 

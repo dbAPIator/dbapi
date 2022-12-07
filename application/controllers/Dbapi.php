@@ -169,7 +169,7 @@ class Dbapi extends CI_Controller
 
         // check rules
         $allow = (isset($security["default_policy"])? $security["default_policy"] : "accept") =="accept";
-        foreach ($security["rules"] as $rule) {
+        foreach ((isset($security["rules"]) ? $security["rules"] : []) as $rule) {
             if(preg_match($rule[0],$_SERVER["REQUEST_METHOD"]) && preg_match($rule[1],$_SERVER["REQUEST_URI"])) {
                 $allow = $rule[2] == "accept";
                 break;
@@ -754,7 +754,7 @@ class Dbapi extends CI_Controller
         // validation
         try {
             if(!$this->apiDm->resource_exists($resourceName))
-                throw new Exception("Resource $resourceName not found",404);
+                throw new Exception("Resource 1 s $resourceName not found",404);
 
             if(!is_null($recId)) {
                 $keyFld = $this->apiDm->getPrimaryKey($resourceName);

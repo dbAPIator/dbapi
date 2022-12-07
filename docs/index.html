@@ -1,0 +1,4408 @@
+<!doctype html>
+<html>
+  <head>
+    <title>example spec</title>
+    <style type="text/css">
+      body {
+      	font-family: Trebuchet MS, sans-serif;
+      	font-size: 15px;
+      	color: #444;
+      	margin-right: 24px;
+      }
+      
+      h1	{
+      	font-size: 25px;
+      }
+      h2	{
+      	font-size: 20px;
+      }
+      h3	{
+      	font-size: 16px;
+      	font-weight: bold;
+      }
+      hr	{
+      	height: 1px;
+      	border: 0;
+      	color: #ddd;
+      	background-color: #ddd;
+      }
+      
+      .app-desc {
+        clear: both;
+        margin-left: 20px;
+      }
+      .param-name {
+        width: 100%;
+      }
+      .license-info {
+        margin-left: 20px;
+      }
+      
+      .license-url {
+        margin-left: 20px;
+      }
+      
+      .model {
+        margin: 0 0 0px 20px;
+      }
+      
+      .method {
+        margin-left: 20px;
+      }
+      
+      .method-notes	{
+      	margin: 10px 0 20px 0;
+      	font-size: 90%;
+      	color: #555;
+      }
+      
+      pre {
+        padding: 10px;
+        margin-bottom: 2px;
+      }
+      
+      .http-method {
+       text-transform: uppercase;
+      }
+      
+      pre.get {
+        background-color: #0f6ab4;
+      }
+      
+      pre.post {
+        background-color: #10a54a;
+      }
+      
+      pre.put {
+        background-color: #c5862b;
+      }
+      
+      pre.delete {
+        background-color: #a41e22;
+      }
+      
+      .huge	{
+      	color: #fff;
+      }
+      
+      pre.example {
+        background-color: #f3f3f3;
+        padding: 10px;
+        border: 1px solid #ddd;
+      }
+      
+      code {
+        white-space: pre;
+      }
+      
+      .nickname {
+        font-weight: bold;
+      }
+      
+      .method-path {
+        font-size: 1.5em;
+        background-color: #0f6ab4;
+      }
+      
+      .up {
+        float:right;
+      }
+      
+      .parameter {
+        width: 500px;
+      }
+      
+      .param {
+        width: 500px;
+        padding: 10px 0 0 20px;
+        font-weight: bold;
+      }
+      
+      .param-desc {
+        width: 700px;
+        padding: 0 0 0 20px;
+        color: #777;
+      }
+      
+      .param-type {
+        font-style: italic;
+      }
+      
+      .param-enum-header {
+      width: 700px;
+      padding: 0 0 0 60px;
+      color: #777;
+      font-weight: bold;
+      }
+      
+      .param-enum {
+      width: 700px;
+      padding: 0 0 0 80px;
+      color: #777;
+      font-style: italic;
+      }
+      
+      .field-label {
+        padding: 0;
+        margin: 0;
+        clear: both;
+      }
+      
+      .field-items	{
+      	padding: 0 0 15px 0;
+      	margin-bottom: 15px;
+      }
+      
+      .return-type {
+        clear: both;
+        padding-bottom: 10px;
+      }
+      
+      .param-header {
+        font-weight: bold;
+      }
+      
+      .method-tags {
+        text-align: right;
+      }
+      
+      .method-tag {
+        background: none repeat scroll 0% 0% #24A600;
+        border-radius: 3px;
+        padding: 2px 10px;
+        margin: 2px;
+        color: #FFF;
+        display: inline-block;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+  <h1>example spec</h1>
+    <div class="app-desc">example Spec</div>
+    <div class="app-desc">More information: <a href="https://helloreverb.com">https://helloreverb.com</a></div>
+    <div class="app-desc">Contact Info: <a href="hello@helloreverb.com">hello@helloreverb.com</a></div>
+    <div class="app-desc">Version: 1.0.0</div>
+    
+    <div class="license-info">All rights reserved</div>
+    <div class="license-url">http://apache.org/licenses/LICENSE-2.0.html</div>
+  <h2>Access</h2>
+
+  <h2><a name="__Methods">Methods</a></h2>
+  [ Jump to <a href="#__Models">Models</a> ]
+
+  <h3>Table of Contents </h3>
+  <div class="method-summary"></div>
+  <h4><a href="#Assets">Assets</a></h4>
+  <ul>
+  <li><a href="#assetsCreateSingleRecord"><code><span class="http-method">post</span> /assets</code></a></li>
+  <li><a href="#assetsDeleteSingleRecord"><code><span class="http-method">delete</span> /assets/{id}</code></a></li>
+  <li><a href="#assetsGetMultipleRecords"><code><span class="http-method">get</span> /assets</code></a></li>
+  <li><a href="#assetsGetSingleRecord"><code><span class="http-method">get</span> /assets/{id}</code></a></li>
+  <li><a href="#assetsUpdateSingleRecord"><code><span class="http-method">patch</span> /assets/{id}</code></a></li>
+  </ul>
+  <h4><a href="#Assetslocations">Assetslocations</a></h4>
+  <ul>
+  <li><a href="#locationsGetRelatedRecordsAssets"><code><span class="http-method">get</span> /locations/{id}/assets</code></a></li>
+  </ul>
+  <h4><a href="#Assetsrelationshiplocation">Assetsrelationshiplocation</a></h4>
+  <ul>
+  <li><a href="#assetsCreateRelationshipLocation"><code><span class="http-method">post</span> /assets/{id}/__relationships/location</code></a></li>
+  <li><a href="#assetsDeleteRelationshipLocation"><code><span class="http-method">delete</span> /assets/{id}/__relationships/location</code></a></li>
+  <li><a href="#assetsGetRelationshipLocation"><code><span class="http-method">get</span> /assets/{id}/__relationships/location</code></a></li>
+  <li><a href="#assetsUpdateRelationshipLocation"><code><span class="http-method">patch</span> /assets/{id}/__relationships/location</code></a></li>
+  </ul>
+  <h4><a href="#Assetsrelationshipuser">Assetsrelationshipuser</a></h4>
+  <ul>
+  <li><a href="#assetsCreateRelationshipUser"><code><span class="http-method">post</span> /assets/{id}/__relationships/user</code></a></li>
+  <li><a href="#assetsDeleteRelationshipUser"><code><span class="http-method">delete</span> /assets/{id}/__relationships/user</code></a></li>
+  <li><a href="#assetsGetRelationshipUser"><code><span class="http-method">get</span> /assets/{id}/__relationships/user</code></a></li>
+  <li><a href="#assetsUpdateRelationshipUser"><code><span class="http-method">patch</span> /assets/{id}/__relationships/user</code></a></li>
+  </ul>
+  <h4><a href="#Assetsrelationshipvendor">Assetsrelationshipvendor</a></h4>
+  <ul>
+  <li><a href="#assetsCreateRelationshipVendor"><code><span class="http-method">post</span> /assets/{id}/__relationships/vendor</code></a></li>
+  <li><a href="#assetsDeleteRelationshipVendor"><code><span class="http-method">delete</span> /assets/{id}/__relationships/vendor</code></a></li>
+  <li><a href="#assetsGetRelationshipVendor"><code><span class="http-method">get</span> /assets/{id}/__relationships/vendor</code></a></li>
+  <li><a href="#assetsUpdateRelationshipVendor"><code><span class="http-method">patch</span> /assets/{id}/__relationships/vendor</code></a></li>
+  </ul>
+  <h4><a href="#Assetsusers">Assetsusers</a></h4>
+  <ul>
+  <li><a href="#usersGetRelatedRecordsAssets"><code><span class="http-method">get</span> /users/{id}/assets</code></a></li>
+  </ul>
+  <h4><a href="#Assetsvendors">Assetsvendors</a></h4>
+  <ul>
+  <li><a href="#vendorsGetRelatedRecordsAssets"><code><span class="http-method">get</span> /vendors/{name}/assets</code></a></li>
+  </ul>
+  <h4><a href="#Bulk">Bulk</a></h4>
+  <ul>
+  <li><a href="#createMultipleRecords"><code><span class="http-method">post</span> /</code></a></li>
+  <li><a href="#deleteMultipleRecords"><code><span class="http-method">delete</span> /</code></a></li>
+  <li><a href="#updateMultipleRecords"><code><span class="http-method">patch</span> /</code></a></li>
+  </ul>
+  <h4><a href="#Locationassets">Locationassets</a></h4>
+  <ul>
+  <li><a href="#assetsGetRelatedRecordsLocation"><code><span class="http-method">get</span> /assets/{id}/location</code></a></li>
+  </ul>
+  <h4><a href="#Locations">Locations</a></h4>
+  <ul>
+  <li><a href="#locationsCreateSingleRecord"><code><span class="http-method">post</span> /locations</code></a></li>
+  <li><a href="#locationsDeleteSingleRecord"><code><span class="http-method">delete</span> /locations/{id}</code></a></li>
+  <li><a href="#locationsGetMultipleRecords"><code><span class="http-method">get</span> /locations</code></a></li>
+  <li><a href="#locationsGetSingleRecord"><code><span class="http-method">get</span> /locations/{id}</code></a></li>
+  <li><a href="#locationsUpdateSingleRecord"><code><span class="http-method">patch</span> /locations/{id}</code></a></li>
+  </ul>
+  <h4><a href="#Locationsrelationshipassets">Locationsrelationshipassets</a></h4>
+  <ul>
+  <li><a href="#locationsCreateRelationshipAssets"><code><span class="http-method">post</span> /locations/{id}/__relationships/assets</code></a></li>
+  <li><a href="#locationsDeleteRelationshipAssets"><code><span class="http-method">delete</span> /locations/{id}/__relationships/assets</code></a></li>
+  <li><a href="#locationsGetRelationshipAssets"><code><span class="http-method">get</span> /locations/{id}/__relationships/assets</code></a></li>
+  <li><a href="#locationsUpdateRelationshipAssets"><code><span class="http-method">patch</span> /locations/{id}/__relationships/assets</code></a></li>
+  </ul>
+  <h4><a href="#Userassets">Userassets</a></h4>
+  <ul>
+  <li><a href="#assetsGetRelatedRecordsUser"><code><span class="http-method">get</span> /assets/{id}/user</code></a></li>
+  </ul>
+  <h4><a href="#Users">Users</a></h4>
+  <ul>
+  <li><a href="#usersCreateSingleRecord"><code><span class="http-method">post</span> /users</code></a></li>
+  <li><a href="#usersDeleteSingleRecord"><code><span class="http-method">delete</span> /users/{id}</code></a></li>
+  <li><a href="#usersGetMultipleRecords"><code><span class="http-method">get</span> /users</code></a></li>
+  <li><a href="#usersGetSingleRecord"><code><span class="http-method">get</span> /users/{id}</code></a></li>
+  <li><a href="#usersUpdateSingleRecord"><code><span class="http-method">patch</span> /users/{id}</code></a></li>
+  </ul>
+  <h4><a href="#Usersrelationshipassets">Usersrelationshipassets</a></h4>
+  <ul>
+  <li><a href="#usersCreateRelationshipAssets"><code><span class="http-method">post</span> /users/{id}/__relationships/assets</code></a></li>
+  <li><a href="#usersDeleteRelationshipAssets"><code><span class="http-method">delete</span> /users/{id}/__relationships/assets</code></a></li>
+  <li><a href="#usersGetRelationshipAssets"><code><span class="http-method">get</span> /users/{id}/__relationships/assets</code></a></li>
+  <li><a href="#usersUpdateRelationshipAssets"><code><span class="http-method">patch</span> /users/{id}/__relationships/assets</code></a></li>
+  </ul>
+  <h4><a href="#Vendorassets">Vendorassets</a></h4>
+  <ul>
+  <li><a href="#assetsGetRelatedRecordsVendor"><code><span class="http-method">get</span> /assets/{id}/vendor</code></a></li>
+  </ul>
+  <h4><a href="#Vendors">Vendors</a></h4>
+  <ul>
+  <li><a href="#vendorsCreateSingleRecord"><code><span class="http-method">post</span> /vendors</code></a></li>
+  <li><a href="#vendorsDeleteSingleRecord"><code><span class="http-method">delete</span> /vendors/{name}</code></a></li>
+  <li><a href="#vendorsGetMultipleRecords"><code><span class="http-method">get</span> /vendors</code></a></li>
+  <li><a href="#vendorsGetSingleRecord"><code><span class="http-method">get</span> /vendors/{name}</code></a></li>
+  <li><a href="#vendorsUpdateSingleRecord"><code><span class="http-method">patch</span> /vendors/{name}</code></a></li>
+  </ul>
+  <h4><a href="#Vendorsrelationshipassets">Vendorsrelationshipassets</a></h4>
+  <ul>
+  <li><a href="#vendorsCreateRelationshipAssets"><code><span class="http-method">post</span> /vendors/{name}/__relationships/assets</code></a></li>
+  <li><a href="#vendorsDeleteRelationshipAssets"><code><span class="http-method">delete</span> /vendors/{name}/__relationships/assets</code></a></li>
+  <li><a href="#vendorsGetRelationshipAssets"><code><span class="http-method">get</span> /vendors/{name}/__relationships/assets</code></a></li>
+  <li><a href="#vendorsUpdateRelationshipAssets"><code><span class="http-method">patch</span> /vendors/{name}/__relationships/assets</code></a></li>
+  </ul>
+
+  <h1><a name="Assets">Assets</a></h1>
+  <div class="method"><a name="assetsCreateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /assets</code></pre></div>
+    <div class="method-summary">Create single record of type assets (<span class="nickname">assetsCreateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_1">inline_response_200_1</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "type"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#inline_response_200_1">inline_response_200_1</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsDeleteSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /assets/{id}</code></pre></div>
+    <div class="method-summary">Delete single record of type assets (<span class="nickname">assetsDeleteSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Record successfully deleted
+        <a href="#"></a>
+    <h4 class="field-label">404</h4>
+    Record not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsGetMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets</code></pre></div>
+    <div class="method-summary">Get 'assets' records list (<span class="nickname">assetsGetMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">filter (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Comma separated list of filter criteria.
+A filtering criteria is expressed as follows: fieldName [operator] value, where operator can be:
+- ! negates the operator which follows. Not to be used alone&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&#x3D; equals&lt;/li&gt;
+&lt;li&gt;~&#x3D; begins with
+- &#x3D;~ ends with&lt;/li&gt;
+&lt;li&gt;~&#x3D;~ contains&lt;/li&gt;
+&lt;li&gt;&amp;lt; smaller then&lt;/li&gt;
+&lt;li&gt;&amp;lt;&#x3D; equal or smaller then&lt;/li&gt;
+&lt;li&gt;&amp;gt; bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&#x3D; equal or bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&amp;lt; in list. In this case the value should be a list of semicolon separated values&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Possible values for fieldName: id, title, content, creation_date, author, category, public&lt;/p&gt;
+ </div>      <div class="param">page[offset] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Page offset </div>      <div class="param">page[limit] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Maximum number of records to include </div>      <div class="param">fields[assets] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;assets&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;assets&#x27; </div>      <div class="param">sort (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of relationships to include. See example for list of valid values </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200">inline_response_200</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  } ],
+  "meta" : {
+    "total" : 2,
+    "offset" : 5
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return records list of type assets
+        <a href="#inline_response_200">inline_response_200</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsGetSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}</code></pre></div>
+    <div class="method-summary">Get 'assets' records list (<span class="nickname">assetsGetSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">fields[assets] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;assets&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;assets&#x27; </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_2">inline_response_200_2</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_2">inline_response_200_2</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsUpdateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /assets/{id}</code></pre></div>
+    <div class="method-summary">Update single record of type assets (<span class="nickname">assetsUpdateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#assets_id_body">assets_id_body</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; Record to be updated </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">onduplicate (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Select behaviour when a duplicate key conflict occurs. Possible options:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;update: update certain fields&lt;/li&gt;
+&lt;li&gt;ignore: do nothing and&lt;/li&gt;
+&lt;/ul&gt;
+ </div>      <div class="param">update (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of fields to update when parameter onduplicate&#x3D;update </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_2">inline_response_200_2</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_2">inline_response_200_2</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetslocations">Assetslocations</a></h1>
+  <div class="method"><a name="locationsGetRelatedRecordsAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /locations/{id}/assets</code></pre></div>
+    <div class="method-summary">Get related records of type assets for single record of type locations (<span class="nickname">locationsGetRelatedRecordsAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_13">inline_response_200_13</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type assets for locations
+        <a href="#inline_response_200_13">inline_response_200_13</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetsrelationshiplocation">Assetsrelationshiplocation</a></h1>
+  <div class="method"><a name="assetsCreateRelationshipLocation"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /assets/{id}/__relationships/location</code></pre></div>
+    <div class="method-summary">Create single or multiple assets relationships of type location (<span class="nickname">assetsCreateRelationshipLocation</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_7">inline_response_200_7</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "locations"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_7">inline_response_200_7</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsDeleteRelationshipLocation"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /assets/{id}/__relationships/location</code></pre></div>
+    <div class="method-summary">Delete single or multiple assets relationships of type location (<span class="nickname">assetsDeleteRelationshipLocation</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_7">inline_response_200_7</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "locations"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_7">inline_response_200_7</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsGetRelationshipLocation"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/__relationships/location</code></pre></div>
+    <div class="method-summary">Get 'location' relationship of type 'assets' (<span class="nickname">assetsGetRelationshipLocation</span>)</div>
+    <div class="method-notes">Get assets relationships of type location</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_7">inline_response_200_7</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "locations"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_7">inline_response_200_7</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsUpdateRelationshipLocation"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /assets/{id}/__relationships/location</code></pre></div>
+    <div class="method-summary">Update single or multiple assets relationships of type location (<span class="nickname">assetsUpdateRelationshipLocation</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_7">inline_response_200_7</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "locations"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_7">inline_response_200_7</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetsrelationshipuser">Assetsrelationshipuser</a></h1>
+  <div class="method"><a name="assetsCreateRelationshipUser"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /assets/{id}/__relationships/user</code></pre></div>
+    <div class="method-summary">Create single or multiple assets relationships of type user (<span class="nickname">assetsCreateRelationshipUser</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_3">inline_response_200_3</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "users"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_3">inline_response_200_3</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsDeleteRelationshipUser"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /assets/{id}/__relationships/user</code></pre></div>
+    <div class="method-summary">Delete single or multiple assets relationships of type user (<span class="nickname">assetsDeleteRelationshipUser</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_3">inline_response_200_3</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "users"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_3">inline_response_200_3</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsGetRelationshipUser"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/__relationships/user</code></pre></div>
+    <div class="method-summary">Get 'user' relationship of type 'assets' (<span class="nickname">assetsGetRelationshipUser</span>)</div>
+    <div class="method-notes">Get assets relationships of type user</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_3">inline_response_200_3</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "users"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_3">inline_response_200_3</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsUpdateRelationshipUser"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /assets/{id}/__relationships/user</code></pre></div>
+    <div class="method-summary">Update single or multiple assets relationships of type user (<span class="nickname">assetsUpdateRelationshipUser</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_3">inline_response_200_3</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "users"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_3">inline_response_200_3</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetsrelationshipvendor">Assetsrelationshipvendor</a></h1>
+  <div class="method"><a name="assetsCreateRelationshipVendor"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /assets/{id}/__relationships/vendor</code></pre></div>
+    <div class="method-summary">Create single or multiple assets relationships of type vendor (<span class="nickname">assetsCreateRelationshipVendor</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_5">inline_response_200_5</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "vendors"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_5">inline_response_200_5</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsDeleteRelationshipVendor"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /assets/{id}/__relationships/vendor</code></pre></div>
+    <div class="method-summary">Delete single or multiple assets relationships of type vendor (<span class="nickname">assetsDeleteRelationshipVendor</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_5">inline_response_200_5</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "vendors"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_5">inline_response_200_5</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsGetRelationshipVendor"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/__relationships/vendor</code></pre></div>
+    <div class="method-summary">Get 'vendor' relationship of type 'assets' (<span class="nickname">assetsGetRelationshipVendor</span>)</div>
+    <div class="method-notes">Get assets relationships of type vendor</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_5">inline_response_200_5</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "vendors"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_5">inline_response_200_5</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="assetsUpdateRelationshipVendor"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /assets/{id}/__relationships/vendor</code></pre></div>
+    <div class="method-summary">Update single or multiple assets relationships of type vendor (<span class="nickname">assetsUpdateRelationshipVendor</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_5">inline_response_200_5</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "id" : "id",
+    "type" : "vendors"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type assets identified by ID
+        <a href="#inline_response_200_5">inline_response_200_5</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetsusers">Assetsusers</a></h1>
+  <div class="method"><a name="usersGetRelatedRecordsAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /users/{id}/assets</code></pre></div>
+    <div class="method-summary">Get related records of type assets for single record of type users (<span class="nickname">usersGetRelatedRecordsAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_13">inline_response_200_13</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type assets for users
+        <a href="#inline_response_200_13">inline_response_200_13</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Assetsvendors">Assetsvendors</a></h1>
+  <div class="method"><a name="vendorsGetRelatedRecordsAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /vendors/{name}/assets</code></pre></div>
+    <div class="method-summary">Get related records of type assets for single record of type vendors (<span class="nickname">vendorsGetRelatedRecordsAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_13">inline_response_200_13</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "relationships" : {
+      "vendor" : {
+        "id" : "id",
+        "type" : "vendors"
+      },
+      "location" : {
+        "id" : "id",
+        "type" : "locations"
+      },
+      "user" : {
+        "id" : "id",
+        "type" : "users"
+      }
+    },
+    "links" : { },
+    "attributes" : {
+      "vendor" : "vendor",
+      "location" : 6,
+      "model" : "model",
+      "id" : 0,
+      "sn" : "sn",
+      "user" : 1,
+      "value" : 5.962133916683182
+    },
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type assets for vendors
+        <a href="#inline_response_200_13">inline_response_200_13</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Bulk">Bulk</a></h1>
+  <div class="method"><a name="createMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /</code></pre></div>
+    <div class="method-summary">Bulk create records (<span class="nickname">createMultipleRecords</span>)</div>
+    <div class="method-notes">Returns created records</div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#body">body</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; Array of objects to be created as records </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">onduplicate (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Select behaviour when a duplicate key conflict occurs. Possible options:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;update: update certain fields&lt;/li&gt;
+&lt;li&gt;ignore: do nothing and&lt;/li&gt;
+&lt;/ul&gt;
+ </div>      <div class="param">update (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of fields to update when parameter onduplicate&#x3D;update </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      array[<a href="#GenericResourceObject">GenericResourceObject</a>]
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>[ {
+  "relationships" : { },
+  "meta" : { },
+  "attributes" : { },
+  "links" : { },
+  "id" : "id",
+  "type" : "type"
+}, {
+  "relationships" : { },
+  "meta" : { },
+  "attributes" : { },
+  "links" : { },
+  "id" : "id",
+  "type" : "type"
+} ]</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">201</h4>
+    
+        
+    <h4 class="field-label">403</h4>
+    
+        <a href="#"></a>
+    <h4 class="field-label">409</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="deleteMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /</code></pre></div>
+    <div class="method-summary">Bulk update records (<span class="nickname">deleteMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#body_1">body_1</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; todo </div>
+                </div>  <!-- field-items -->
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    todo
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="updateMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /</code></pre></div>
+    <div class="method-summary">Bulk update records (<span class="nickname">updateMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#body_2">body_2</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; todo </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    todo
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Locationassets">Locationassets</a></h1>
+  <div class="method"><a name="assetsGetRelatedRecordsLocation"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/location</code></pre></div>
+    <div class="method-summary">Get related records of type location for single record of type assets (<span class="nickname">assetsGetRelatedRecordsLocation</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_8">inline_response_200_8</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "locations"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type location for assets
+        <a href="#inline_response_200_8">inline_response_200_8</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Locations">Locations</a></h1>
+  <div class="method"><a name="locationsCreateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /locations</code></pre></div>
+    <div class="method-summary">Create single record of type locations (<span class="nickname">locationsCreateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_10">inline_response_200_10</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "type"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#inline_response_200_10">inline_response_200_10</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsDeleteSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /locations/{id}</code></pre></div>
+    <div class="method-summary">Delete single record of type locations (<span class="nickname">locationsDeleteSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Record successfully deleted
+        <a href="#"></a>
+    <h4 class="field-label">404</h4>
+    Record not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsGetMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /locations</code></pre></div>
+    <div class="method-summary">Get 'locations' records list (<span class="nickname">locationsGetMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">filter (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Comma separated list of filter criteria.
+A filtering criteria is expressed as follows: fieldName [operator] value, where operator can be:
+- ! negates the operator which follows. Not to be used alone&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&#x3D; equals&lt;/li&gt;
+&lt;li&gt;~&#x3D; begins with
+- &#x3D;~ ends with&lt;/li&gt;
+&lt;li&gt;~&#x3D;~ contains&lt;/li&gt;
+&lt;li&gt;&amp;lt; smaller then&lt;/li&gt;
+&lt;li&gt;&amp;lt;&#x3D; equal or smaller then&lt;/li&gt;
+&lt;li&gt;&amp;gt; bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&#x3D; equal or bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&amp;lt; in list. In this case the value should be a list of semicolon separated values&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Possible values for fieldName: id, title, content, creation_date, author, category, public&lt;/p&gt;
+ </div>      <div class="param">page[offset] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Page offset </div>      <div class="param">page[limit] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Maximum number of records to include </div>      <div class="param">fields[locations] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;locations&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;locations&#x27; </div>      <div class="param">sort (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of relationships to include. See example for list of valid values </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_9">inline_response_200_9</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "locations"
+  }, {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "locations"
+  } ],
+  "meta" : {
+    "total" : 2,
+    "offset" : 5
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return records list of type locations
+        <a href="#inline_response_200_9">inline_response_200_9</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsGetSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /locations/{id}</code></pre></div>
+    <div class="method-summary">Get 'locations' records list (<span class="nickname">locationsGetSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">fields[locations] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;locations&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;locations&#x27; </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_11">inline_response_200_11</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "locations"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_11">inline_response_200_11</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsUpdateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /locations/{id}</code></pre></div>
+    <div class="method-summary">Update single record of type locations (<span class="nickname">locationsUpdateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#locations_id_body">locations_id_body</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; Record to be updated </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">onduplicate (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Select behaviour when a duplicate key conflict occurs. Possible options:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;update: update certain fields&lt;/li&gt;
+&lt;li&gt;ignore: do nothing and&lt;/li&gt;
+&lt;/ul&gt;
+ </div>      <div class="param">update (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of fields to update when parameter onduplicate&#x3D;update </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_11">inline_response_200_11</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "parent" : 6,
+      "name" : "name",
+      "id" : 0
+    },
+    "id" : "id",
+    "type" : "locations"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_11">inline_response_200_11</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Locationsrelationshipassets">Locationsrelationshipassets</a></h1>
+  <div class="method"><a name="locationsCreateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /locations/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Create single or multiple locations relationships of type assets (<span class="nickname">locationsCreateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsDeleteRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /locations/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Delete single or multiple locations relationships of type assets (<span class="nickname">locationsDeleteRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsGetRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /locations/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Get 'assets' relationship of type 'locations' (<span class="nickname">locationsGetRelationshipAssets</span>)</div>
+    <div class="method-notes">Get locations relationships of type assets</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="locationsUpdateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /locations/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Update single or multiple locations relationships of type assets (<span class="nickname">locationsUpdateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type locations identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Userassets">Userassets</a></h1>
+  <div class="method"><a name="assetsGetRelatedRecordsUser"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/user</code></pre></div>
+    <div class="method-summary">Get related records of type user for single record of type assets (<span class="nickname">assetsGetRelatedRecordsUser</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_4">inline_response_200_4</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "users"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type user for assets
+        <a href="#inline_response_200_4">inline_response_200_4</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Users">Users</a></h1>
+  <div class="method"><a name="usersCreateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /users</code></pre></div>
+    <div class="method-summary">Create single record of type users (<span class="nickname">usersCreateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_15">inline_response_200_15</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "type"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#inline_response_200_15">inline_response_200_15</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersDeleteSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /users/{id}</code></pre></div>
+    <div class="method-summary">Delete single record of type users (<span class="nickname">usersDeleteSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Record successfully deleted
+        <a href="#"></a>
+    <h4 class="field-label">404</h4>
+    Record not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersGetMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /users</code></pre></div>
+    <div class="method-summary">Get 'users' records list (<span class="nickname">usersGetMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">filter (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Comma separated list of filter criteria.
+A filtering criteria is expressed as follows: fieldName [operator] value, where operator can be:
+- ! negates the operator which follows. Not to be used alone&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&#x3D; equals&lt;/li&gt;
+&lt;li&gt;~&#x3D; begins with
+- &#x3D;~ ends with&lt;/li&gt;
+&lt;li&gt;~&#x3D;~ contains&lt;/li&gt;
+&lt;li&gt;&amp;lt; smaller then&lt;/li&gt;
+&lt;li&gt;&amp;lt;&#x3D; equal or smaller then&lt;/li&gt;
+&lt;li&gt;&amp;gt; bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&#x3D; equal or bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&amp;lt; in list. In this case the value should be a list of semicolon separated values&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Possible values for fieldName: id, title, content, creation_date, author, category, public&lt;/p&gt;
+ </div>      <div class="param">page[offset] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Page offset </div>      <div class="param">page[limit] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Maximum number of records to include </div>      <div class="param">fields[users] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;users&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;users&#x27; </div>      <div class="param">sort (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of relationships to include. See example for list of valid values </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_14">inline_response_200_14</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "users"
+  }, {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "users"
+  } ],
+  "meta" : {
+    "total" : 2,
+    "offset" : 5
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return records list of type users
+        <a href="#inline_response_200_14">inline_response_200_14</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersGetSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /users/{id}</code></pre></div>
+    <div class="method-summary">Get 'users' records list (<span class="nickname">usersGetSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">fields[users] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;users&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;users&#x27; </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_16">inline_response_200_16</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "users"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_16">inline_response_200_16</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersUpdateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /users/{id}</code></pre></div>
+    <div class="method-summary">Update single record of type users (<span class="nickname">usersUpdateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#users_id_body">users_id_body</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; Record to be updated </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">onduplicate (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Select behaviour when a duplicate key conflict occurs. Possible options:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;update: update certain fields&lt;/li&gt;
+&lt;li&gt;ignore: do nothing and&lt;/li&gt;
+&lt;/ul&gt;
+ </div>      <div class="param">update (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of fields to update when parameter onduplicate&#x3D;update </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_16">inline_response_200_16</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "password" : "password",
+      "id" : 0,
+      "username" : "username"
+    },
+    "id" : "id",
+    "type" : "users"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_16">inline_response_200_16</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Usersrelationshipassets">Usersrelationshipassets</a></h1>
+  <div class="method"><a name="usersCreateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /users/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Create single or multiple users relationships of type assets (<span class="nickname">usersCreateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersDeleteRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /users/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Delete single or multiple users relationships of type assets (<span class="nickname">usersDeleteRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersGetRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /users/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Get 'assets' relationship of type 'users' (<span class="nickname">usersGetRelationshipAssets</span>)</div>
+    <div class="method-notes">Get users relationships of type assets</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="usersUpdateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /users/{id}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Update single or multiple users relationships of type assets (<span class="nickname">usersUpdateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type users identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Vendorassets">Vendorassets</a></h1>
+  <div class="method"><a name="assetsGetRelatedRecordsVendor"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /assets/{id}/vendor</code></pre></div>
+    <div class="method-summary">Get related records of type vendor for single record of type assets (<span class="nickname">assetsGetRelatedRecordsVendor</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_6">inline_response_200_6</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "vendors"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Returns related resource objects of type vendor for assets
+        <a href="#inline_response_200_6">inline_response_200_6</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Vendors">Vendors</a></h1>
+  <div class="method"><a name="vendorsCreateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /vendors</code></pre></div>
+    <div class="method-summary">Create single record of type vendors (<span class="nickname">vendorsCreateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_18">inline_response_200_18</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "type"
+  }
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#inline_response_200_18">inline_response_200_18</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsDeleteSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /vendors/{name}</code></pre></div>
+    <div class="method-summary">Delete single record of type vendors (<span class="nickname">vendorsDeleteSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Record successfully deleted
+        <a href="#"></a>
+    <h4 class="field-label">404</h4>
+    Record not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsGetMultipleRecords"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /vendors</code></pre></div>
+    <div class="method-summary">Get 'vendors' records list (<span class="nickname">vendorsGetMultipleRecords</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">filter (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Comma separated list of filter criteria.
+A filtering criteria is expressed as follows: fieldName [operator] value, where operator can be:
+- ! negates the operator which follows. Not to be used alone&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&#x3D; equals&lt;/li&gt;
+&lt;li&gt;~&#x3D; begins with
+- &#x3D;~ ends with&lt;/li&gt;
+&lt;li&gt;~&#x3D;~ contains&lt;/li&gt;
+&lt;li&gt;&amp;lt; smaller then&lt;/li&gt;
+&lt;li&gt;&amp;lt;&#x3D; equal or smaller then&lt;/li&gt;
+&lt;li&gt;&amp;gt; bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&#x3D; equal or bigger then&lt;/li&gt;
+&lt;li&gt;&amp;gt;&amp;lt; in list. In this case the value should be a list of semicolon separated values&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Possible values for fieldName: id, title, content, creation_date, author, category, public&lt;/p&gt;
+ </div>      <div class="param">page[offset] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Page offset </div>      <div class="param">page[limit] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Maximum number of records to include </div>      <div class="param">fields[vendors] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;vendors&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;vendors&#x27; </div>      <div class="param">sort (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of relationships to include. See example for list of valid values </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_17">inline_response_200_17</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "vendors"
+  }, {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "vendors"
+  } ],
+  "meta" : {
+    "total" : 2,
+    "offset" : 5
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return records list of type vendors
+        <a href="#inline_response_200_17">inline_response_200_17</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsGetSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /vendors/{name}</code></pre></div>
+    <div class="method-summary">Get 'vendors' records list (<span class="nickname">vendorsGetSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">fields[vendors] (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of &#x27;vendors&#x27; field names when &#x27;include&#x27; parameter contains a relation of type &#x27;vendors&#x27; </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_19">inline_response_200_19</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "vendors"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_19">inline_response_200_19</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsUpdateSingleRecord"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /vendors/{name}</code></pre></div>
+    <div class="method-summary">Update single record of type vendors (<span class="nickname">vendorsUpdateSingleRecord</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#vendors_name_body">vendors_name_body</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; Record to be updated </div>
+                </div>  <!-- field-items -->
+
+    <h3 class="field-label">Request headers</h3>
+    <div class="field-items">
+    </div>  <!-- field-items -->
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">onduplicate (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; &lt;p&gt;Select behaviour when a duplicate key conflict occurs. Possible options:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;update: update certain fields&lt;/li&gt;
+&lt;li&gt;ignore: do nothing and&lt;/li&gt;
+&lt;/ul&gt;
+ </div>      <div class="param">update (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash; Comma separated list of fields to update when parameter onduplicate&#x3D;update </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_19">inline_response_200_19</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : {
+    "relationships" : {
+      "assets" : [ {
+        "id" : "id",
+        "type" : "assets"
+      }, {
+        "id" : "id",
+        "type" : "assets"
+      } ]
+    },
+    "links" : { },
+    "attributes" : {
+      "name" : "name"
+    },
+    "id" : "id",
+    "type" : "vendors"
+  },
+  "includes" : [ {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  }, {
+    "relationships" : { },
+    "meta" : { },
+    "attributes" : { },
+    "links" : { },
+    "id" : "id",
+    "type" : "type"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_19">inline_response_200_19</a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Vendorsrelationshipassets">Vendorsrelationshipassets</a></h1>
+  <div class="method"><a name="vendorsCreateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /vendors/{name}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Create single or multiple vendors relationships of type assets (<span class="nickname">vendorsCreateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsDeleteRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /vendors/{name}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Delete single or multiple vendors relationships of type assets (<span class="nickname">vendorsDeleteRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsGetRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /vendors/{name}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Get 'assets' relationship of type 'vendors' (<span class="nickname">vendorsGetRelationshipAssets</span>)</div>
+    <div class="method-notes">Get vendors relationships of type assets</div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="vendorsUpdateRelationshipAssets"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="patch"><code class="huge"><span class="http-method">patch</span> /vendors/{name}/__relationships/assets</code></pre></div>
+    <div class="method-summary">Update single or multiple vendors relationships of type assets (<span class="nickname">vendorsUpdateRelationshipAssets</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; Field which uniquely identifies the retrieved record </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#inline_response_200_12">inline_response_200_12</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "data" : [ {
+    "id" : "id",
+    "type" : "assets"
+  }, {
+    "id" : "id",
+    "type" : "assets"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Return record of type vendors identified by ID
+        <a href="#inline_response_200_12">inline_response_200_12</a>
+    <h4 class="field-label">404</h4>
+    Not found
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+
+  <h2><a name="__Models">Models</a></h2>
+  [ Jump to <a href="#__Methods">Methods</a> ]
+
+  <h3>Table of Contents</h3>
+  <ol>
+    <li><a href="#GenericErrorObject"><code>GenericErrorObject</code></a></li>
+    <li><a href="#GenericResourceIdentifierObject"><code>GenericResourceIdentifierObject</code></a></li>
+    <li><a href="#GenericResourceObject"><code>GenericResourceObject</code></a></li>
+    <li><a href="#assetsNewResourceObject"><code>assetsNewResourceObject</code></a></li>
+    <li><a href="#assetsNewResourceObject_attributes"><code>assetsNewResourceObject_attributes</code></a></li>
+    <li><a href="#assetsNewResourceObject_relationships"><code>assetsNewResourceObject_relationships</code></a></li>
+    <li><a href="#assetsResourceIdentifierObject"><code>assetsResourceIdentifierObject</code></a></li>
+    <li><a href="#assetsResourceObject"><code>assetsResourceObject</code></a></li>
+    <li><a href="#assetsResourceObject_attributes"><code>assetsResourceObject_attributes</code></a></li>
+    <li><a href="#assets_id_body"><code>assets_id_body</code></a></li>
+    <li><a href="#body"><code>body</code></a></li>
+    <li><a href="#body_1"><code>body_1</code></a></li>
+    <li><a href="#body_2"><code>body_2</code></a></li>
+    <li><a href="#inline_response_200"><code>inline_response_200</code></a></li>
+    <li><a href="#inline_response_200_1"><code>inline_response_200_1</code></a></li>
+    <li><a href="#inline_response_200_10"><code>inline_response_200_10</code></a></li>
+    <li><a href="#inline_response_200_10_data"><code>inline_response_200_10_data</code></a></li>
+    <li><a href="#inline_response_200_11"><code>inline_response_200_11</code></a></li>
+    <li><a href="#inline_response_200_12"><code>inline_response_200_12</code></a></li>
+    <li><a href="#inline_response_200_13"><code>inline_response_200_13</code></a></li>
+    <li><a href="#inline_response_200_14"><code>inline_response_200_14</code></a></li>
+    <li><a href="#inline_response_200_15"><code>inline_response_200_15</code></a></li>
+    <li><a href="#inline_response_200_15_data"><code>inline_response_200_15_data</code></a></li>
+    <li><a href="#inline_response_200_16"><code>inline_response_200_16</code></a></li>
+    <li><a href="#inline_response_200_17"><code>inline_response_200_17</code></a></li>
+    <li><a href="#inline_response_200_18"><code>inline_response_200_18</code></a></li>
+    <li><a href="#inline_response_200_18_data"><code>inline_response_200_18_data</code></a></li>
+    <li><a href="#inline_response_200_19"><code>inline_response_200_19</code></a></li>
+    <li><a href="#inline_response_200_1_data"><code>inline_response_200_1_data</code></a></li>
+    <li><a href="#inline_response_200_2"><code>inline_response_200_2</code></a></li>
+    <li><a href="#inline_response_200_3"><code>inline_response_200_3</code></a></li>
+    <li><a href="#inline_response_200_4"><code>inline_response_200_4</code></a></li>
+    <li><a href="#inline_response_200_5"><code>inline_response_200_5</code></a></li>
+    <li><a href="#inline_response_200_6"><code>inline_response_200_6</code></a></li>
+    <li><a href="#inline_response_200_7"><code>inline_response_200_7</code></a></li>
+    <li><a href="#inline_response_200_8"><code>inline_response_200_8</code></a></li>
+    <li><a href="#inline_response_200_9"><code>inline_response_200_9</code></a></li>
+    <li><a href="#inline_response_200_meta"><code>inline_response_200_meta</code></a></li>
+    <li><a href="#locationsNewResourceObject"><code>locationsNewResourceObject</code></a></li>
+    <li><a href="#locationsNewResourceObject_attributes"><code>locationsNewResourceObject_attributes</code></a></li>
+    <li><a href="#locationsNewResourceObject_relationships"><code>locationsNewResourceObject_relationships</code></a></li>
+    <li><a href="#locationsResourceIdentifierObject"><code>locationsResourceIdentifierObject</code></a></li>
+    <li><a href="#locationsResourceObject"><code>locationsResourceObject</code></a></li>
+    <li><a href="#locationsResourceObject_attributes"><code>locationsResourceObject_attributes</code></a></li>
+    <li><a href="#locations_id_body"><code>locations_id_body</code></a></li>
+    <li><a href="#onUpdatePara"><code>onUpdatePara</code></a></li>
+    <li><a href="#usersNewResourceObject"><code>usersNewResourceObject</code></a></li>
+    <li><a href="#usersNewResourceObject_attributes"><code>usersNewResourceObject_attributes</code></a></li>
+    <li><a href="#usersResourceIdentifierObject"><code>usersResourceIdentifierObject</code></a></li>
+    <li><a href="#usersResourceObject"><code>usersResourceObject</code></a></li>
+    <li><a href="#usersResourceObject_attributes"><code>usersResourceObject_attributes</code></a></li>
+    <li><a href="#users_id_body"><code>users_id_body</code></a></li>
+    <li><a href="#vendorsNewResourceObject"><code>vendorsNewResourceObject</code></a></li>
+    <li><a href="#vendorsNewResourceObject_attributes"><code>vendorsNewResourceObject_attributes</code></a></li>
+    <li><a href="#vendorsResourceIdentifierObject"><code>vendorsResourceIdentifierObject</code></a></li>
+    <li><a href="#vendorsResourceObject"><code>vendorsResourceObject</code></a></li>
+    <li><a href="#vendorsResourceObject_attributes"><code>vendorsResourceObject_attributes</code></a></li>
+    <li><a href="#vendors_name_body"><code>vendors_name_body</code></a></li>
+  </ol>
+
+  <div class="model">
+    <h3><a name="GenericErrorObject"><code>GenericErrorObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">status (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">code (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">title (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">detail (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">source (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="GenericResourceIdentifierObject"><code>GenericResourceIdentifierObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="GenericResourceObject"><code>GenericResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsNewResourceObject"><code>assetsNewResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">assets</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#assetsNewResourceObject_relationships">assetsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes </div><div class="param-desc"><span class="param-type"><a href="#assetsNewResourceObject_attributes">assetsNewResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsNewResourceObject_attributes"><code>assetsNewResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">location (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">model </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">sn </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">user (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">value </div><div class="param-desc"><span class="param-type"><a href="#BigDecimal">BigDecimal</a></span>  </div>
+<div class="param">vendor </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsNewResourceObject_relationships"><code>assetsNewResourceObject_relationships</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">user (optional)</div><div class="param-desc"><span class="param-type"><a href="#usersResourceIdentifierObject">usersResourceIdentifierObject</a></span>  </div>
+<div class="param">vendor (optional)</div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceIdentifierObject">vendorsResourceIdentifierObject</a></span>  </div>
+<div class="param">location (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsResourceIdentifierObject">locationsResourceIdentifierObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsResourceIdentifierObject"><code>assetsResourceIdentifierObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">assets</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsResourceObject"><code>assetsResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">assets</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#assetsNewResourceObject_relationships">assetsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject_attributes">assetsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assetsResourceObject_attributes"><code>assetsResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">location (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">model (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">sn (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">user (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">value (optional)</div><div class="param-desc"><span class="param-type"><a href="#BigDecimal">BigDecimal</a></span>  </div>
+<div class="param">vendor (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="assets_id_body"><code>assets_id_body</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject">assetsResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="body"><code>body</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="body_1"><code>body_1</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#GenericResourceIdentifierObject">array[GenericResourceIdentifierObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="body_2"><code>body_2</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200"><code>inline_response_200</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject">array[assetsResourceObject]</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_meta">inline_response_200_meta</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_1"><code>inline_response_200_1</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_1_data">inline_response_200_1_data</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_10"><code>inline_response_200_10</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_10_data">inline_response_200_10_data</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_10_data"><code>inline_response_200_10_data</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject_attributes">locationsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_11"><code>inline_response_200_11</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject">locationsResourceObject</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_12"><code>inline_response_200_12</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#assetsResourceIdentifierObject">array[assetsResourceIdentifierObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_13"><code>inline_response_200_13</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject">array[assetsResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_14"><code>inline_response_200_14</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject">array[usersResourceObject]</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_meta">inline_response_200_meta</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_15"><code>inline_response_200_15</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_15_data">inline_response_200_15_data</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_15_data"><code>inline_response_200_15_data</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject_attributes">usersResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_16"><code>inline_response_200_16</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject">usersResourceObject</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_17"><code>inline_response_200_17</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject">array[vendorsResourceObject]</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_meta">inline_response_200_meta</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_18"><code>inline_response_200_18</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_18_data">inline_response_200_18_data</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_18_data"><code>inline_response_200_18_data</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject_attributes">vendorsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_19"><code>inline_response_200_19</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject">vendorsResourceObject</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_1_data"><code>inline_response_200_1_data</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject_attributes">assetsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_2"><code>inline_response_200_2</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#assetsResourceObject">assetsResourceObject</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_3"><code>inline_response_200_3</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#usersResourceIdentifierObject">usersResourceIdentifierObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_4"><code>inline_response_200_4</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject">usersResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_5"><code>inline_response_200_5</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceIdentifierObject">vendorsResourceIdentifierObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_6"><code>inline_response_200_6</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject">vendorsResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_7"><code>inline_response_200_7</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#locationsResourceIdentifierObject">locationsResourceIdentifierObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_8"><code>inline_response_200_8</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject">locationsResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_9"><code>inline_response_200_9</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject">array[locationsResourceObject]</a></span>  </div>
+<div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#inline_response_200_meta">inline_response_200_meta</a></span>  </div>
+<div class="param">includes (optional)</div><div class="param-desc"><span class="param-type"><a href="#GenericResourceObject">array[GenericResourceObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="inline_response_200_meta"><code>inline_response_200_meta</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">offset (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">total </div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsNewResourceObject"><code>locationsNewResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">locations</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes </div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_attributes">locationsNewResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsNewResourceObject_attributes"><code>locationsNewResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">name </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">parent (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsNewResourceObject_relationships"><code>locationsNewResourceObject_relationships</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">assets (optional)</div><div class="param-desc"><span class="param-type"><a href="#assetsResourceIdentifierObject">array[assetsResourceIdentifierObject]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsResourceIdentifierObject"><code>locationsResourceIdentifierObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">locations</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsResourceObject"><code>locationsResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">locations</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject_attributes">locationsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locationsResourceObject_attributes"><code>locationsResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">parent (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="locations_id_body"><code>locations_id_body</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#locationsResourceObject">locationsResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="onUpdatePara"><code>onUpdatePara</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+          </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="usersNewResourceObject"><code>usersNewResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">users</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes </div><div class="param-desc"><span class="param-type"><a href="#usersNewResourceObject_attributes">usersNewResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="usersNewResourceObject_attributes"><code>usersNewResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">password </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">username </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="usersResourceIdentifierObject"><code>usersResourceIdentifierObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">users</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="usersResourceObject"><code>usersResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">users</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject_attributes">usersResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="usersResourceObject_attributes"><code>usersResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
+<div class="param">password (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">username (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="users_id_body"><code>users_id_body</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#usersResourceObject">usersResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendorsNewResourceObject"><code>vendorsNewResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">vendors</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes </div><div class="param-desc"><span class="param-type"><a href="#vendorsNewResourceObject_attributes">vendorsNewResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendorsNewResourceObject_attributes"><code>vendorsNewResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">name </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendorsResourceIdentifierObject"><code>vendorsResourceIdentifierObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">vendors</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendorsResourceObject"><code>vendorsResourceObject</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">type </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">vendors</div>
+<div class="param">links (optional)</div><div class="param-desc"><span class="param-type"><a href="#object">Object</a></span>  </div>
+<div class="param">relationships (optional)</div><div class="param-desc"><span class="param-type"><a href="#locationsNewResourceObject_relationships">locationsNewResourceObject_relationships</a></span>  </div>
+<div class="param">attributes (optional)</div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject_attributes">vendorsResourceObject_attributes</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendorsResourceObject_attributes"><code>vendorsResourceObject_attributes</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="vendors_name_body"><code>vendors_name_body</code></a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">data </div><div class="param-desc"><span class="param-type"><a href="#vendorsResourceObject">vendorsResourceObject</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  </body>
+</html>

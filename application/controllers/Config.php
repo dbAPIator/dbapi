@@ -226,7 +226,15 @@ class Config extends CI_Controller {
     /**
      * @param $configName
      */
-    function create_api($configName) {
+    function create_api() {
+        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        if(!$data || !is_array($data)) {
+            HttpResp::bad_request(["error"=>"Invalid input data"]);
+        }
+        if(!isset($data["name"])) {
+            HttpResp::bad_request(["error"=>"No API name provided"]);
+        }
+        $configName = $data["name"];
         if($this->project_exists($configName,true)) {
             HttpResp::json_out(409,["error"=>"Project  $configName already exists"]);
         }
@@ -243,7 +251,6 @@ class Config extends CI_Controller {
             "database" => ""
         ];
 
-        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
         if(!isset($data["connection"])){
             HttpResp::json_out(406,["error"=>"Connection parameters not provided"]);
 
@@ -265,7 +272,7 @@ class Config extends CI_Controller {
         }
 
         $auth = [];
-        if($data["authentication"]) {
+        if(isset($data["authentication"]) && is_array($data["authentication"])) {
             $auth = $data["authentication"];
             $auth["key"] = md5(random_string().time());
             $auth["alg"] = 'HS256';
@@ -275,10 +282,14 @@ class Config extends CI_Controller {
             $auth["guestRules"] = [];
         }
 
+
+
         $security = [
-            "default_policy"=>"accept"
+            "default_policy"=>"accept",
+            "from"=>["0.0.0.0/0","::/0"],
+
         ];
-        if($data["security"]) {
+        if(isset($data["security"]) && is_array($data["security"])) {
             $security = array_merge($security,$data["security"]);
         }
 

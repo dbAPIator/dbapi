@@ -237,6 +237,7 @@ class Datamodel {
      * @return boolean true if exists, false otherwise
      */
     function resource_exists($name) {
+//print_r($this->dataModel["activitites"]);
         return array_key_exists($name,$this->dataModel);
     }
 
