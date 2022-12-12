@@ -14,7 +14,7 @@ application/controllers/oauth
 cli/connection.php
 application/config/ezerpapi
 application/config/ezerpapi/structure.php
-application/config/apiconfig
+application/config/secret.php
 cli/structure.php
 dbconfigs/*
 !dbconfigs/.htaccess
