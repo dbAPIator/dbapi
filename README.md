@@ -1,17 +1,19 @@
-# DBAPI - no-code API for any MySQL database 
-DBAPI creates an API for working with any MySQL database without the need to write any code. Just connect it to you database  by making an API call an start using it right away. 
+# DBAPI - Extensible high-performance automatic REST API for MySQL
+Instant REST API for your MySQL database without the need to write any code. Just connect it to you database  by making an API call an start using it right away. 
 
-On top of this, it acts as authentication backend and performs rule based authorisation based per user and API client  
+It also provides API clients management, authentication services and fine grained rule based access to API endpoints.  
 
 ## Installation
 
 ###Prerequisites
 
 You can run the app either by installing it under the docroot of a web server or using the PHP built in server. 
-- a running Apache (prefered because of support of mod_rewrite and htaccess files) web server with PHP support. 
+- a running Apache (prefered because of support of mod_rewrite and htaccess files) web server with PHP 7.4 support. Might be working as well with PHP8, but I've never tested it.
 - PHP7.4
 - composer (https://getcomposer.org/)
 
+
+\* (A docker container is on it's way. Stay tuned)
 ### Install
 Clone repo, install dependencies and make configure rights  
 
@@ -21,7 +23,7 @@ Clone repo, install dependencies and make configure rights
     composer install
     chmod 777 dbconfigs
 
-Optional: launch PHP built in webserver
+Optional: launch PHP built in web server
     php -S localhost:4343  
 
 ### Setup

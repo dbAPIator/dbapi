@@ -15,6 +15,7 @@ use Firebase\JWT\Key;
  * Class Config
  * @property CI_Loader load
  * @property CI_Input input
+ * @property CI_Config config
  */
 class Config extends CI_Controller {
     public function __construct() {
@@ -22,6 +23,11 @@ class Config extends CI_Controller {
         header("Content-type: application/json");
         $this->config->load("apiator");
         $this->load->helper("string");
+        $headers = getallheaders();
+        $secret = isset($headers["x-api-key"]) ? $headers["x-api-key"] : $this->input->get("xApiKey");
+        if(!$secret || $secret!==$this->config->item("configApiSecret")) {
+            HttpResp::not_authorized("Not authorized");
+        }
     }
 
     /**
