@@ -42,6 +42,7 @@ class Auth extends CI_Controller {
         }
         return $auth;
     }
+
     /**
      * @param $configName
      */
