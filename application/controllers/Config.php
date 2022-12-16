@@ -301,7 +301,7 @@ class Config extends CI_Controller {
 
 
 
-            mkdir("$path/clients");
+        mkdir("$path/clients");
         file_put_contents("$path/structure.php",to_php_code($structure,true));
         chmod("$path/structure.php",0600);
         file_put_contents("$path/connection.php",to_php_code($data["connection"],true));
@@ -342,6 +342,7 @@ class Config extends CI_Controller {
         $conn = require  "$authFilePath/connection.php";
         $structure = $this->generate_config($conn,$authFilePath);
         file_put_contents("$authFilePath/structure.php",to_php_code($structure,true));
+        $this->get_structure($configName);
     }
 
     /**
