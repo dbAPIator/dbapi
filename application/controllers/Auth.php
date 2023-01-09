@@ -72,10 +72,10 @@ class Auth extends CI_Controller {
         }
 
         $payload = $res->row_array();
-        $payload["_exp"] = time()+$auth["validity"];
+        $payload["exp"] = time()+$auth["validity"];
 
         $jwt = JWT::encode($payload, $auth["key"], @$auth["alg"] ? $auth["alg"] : 'HS256');
-        HttpResp::json_out(200,["jwt"=>$jwt]);
+        HttpResp::json_out(200,["jwt"=>$jwt],["Authorization"=>"Bearer $jwt","Content-type"=>"application/json"]);
 
 
 //        $this->db->query()

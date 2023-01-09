@@ -136,6 +136,9 @@ $route["^apis/([\w\-\.\_\%]+)$"]["delete"] = "config/delete_api/$1";
 $route["^apis$"]["get"] = "config/list_apis";
 
 
+$apiAuthUrlPrefix = "^apis/([\w\-\.\_\%]+)/auth";
+$route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
+//$route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
 
 
 // stored procedures
@@ -281,9 +284,6 @@ $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\
 $route["^apis/.*"]["options"] = "$controller/options";
 
 
-$apiAuthUrlPrefix = "^apis/([\w\-\.\_\%]+)/auth";
-$route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
-$route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
 
 
 
