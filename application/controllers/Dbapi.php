@@ -135,7 +135,7 @@ class Dbapi extends CI_Controller
         $this->errors = $this->config->item("errors");
 
         // TODO: implement CORS control
-        header("Access-Control-Allow-Origin: *");
+        //header("Access-Control-Allow-Origin: *");
 
 
         //$this->_init();
