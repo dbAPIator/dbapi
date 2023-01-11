@@ -1430,9 +1430,9 @@ class Dbapi extends CI_Controller
     {
         //echo "options";
         HttpResp::init()
-            ->header("Access-Control-Allow-Origin: *")
+            //->header("Access-Control-Allow-Origin: *")
             ->header("Access-Control-Allow-Methods: PUT, PATCH, POST, GET, OPTIONS, DELETE")
-            ->header("Access-Control-Allow-Headers: *")
+            //->header("Access-Control-Allow-Headers: *")
             ->output();
     }
 
