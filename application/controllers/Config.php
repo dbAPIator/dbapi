@@ -332,6 +332,7 @@ class Config extends CI_Controller {
     }
 
     /**
+     * triggers the regeneration of the 
      * @param $configName
      * @throws Exception
      */
@@ -523,7 +524,7 @@ class Config extends CI_Controller {
             "endpoints"=>[
                 "/regen" => [
                     [
-                        "method"=>"GET",
+                        "method"=>"PUT",
                         "desc"=>"Regenerate the configuration"
                     ]
                 ],

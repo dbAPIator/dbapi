@@ -39,8 +39,8 @@ class DBWalk
             $structure[$rec->TABLE_NAME] = [
                 "fields"=>[],
                 "name"=>$rec->TABLE_NAME,
-                "description"=>"",
-                "comment"=>$rec->TABLE_COMMENT,
+                //"description"=>"",
+                //"comment"=>$rec->TABLE_COMMENT,
                 "type"=>"table",
                 "keyFld"=>null
             ];
@@ -62,8 +62,8 @@ class DBWalk
             $structure[$rec->TABLE_NAME] = [
                 "fields"=>[],
                 "relations"=>[],
-                "description"=>"",
-                "comment"=>"",
+                //"description"=>"",
+                //"comment"=>"",
                 "type"=>"view",
                 "keyFld"=>null
             ];
@@ -81,9 +81,9 @@ class DBWalk
                 "searchable"    => true,
             ];
             $structure[$item->TABLE_NAME]["fields"][$item->COLUMN_NAME] = [
-                "description"=>"",
+                //"description"=>"",
                 "name"=>$item->COLUMN_NAME,
-                "comment"=>$item->COLUMN_COMMENT,
+                //"comment"=>$item->COLUMN_COMMENT,
                 "type" => self::mysqlParseType($item->COLUMN_TYPE),
                 "iskey" => in_array($item->COLUMN_KEY, ["PRI","UNI"]),
                 "required" => !($item->IS_NULLABLE=="YES" ||  $item->EXTRA=="auto_increment" || $item->COLUMN_DEFAULT),

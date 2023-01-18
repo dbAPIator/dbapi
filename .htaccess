@@ -3,6 +3,8 @@
     SetEnv CI_AUTODETECT_BASEURL true
 </IfModule>
 
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Headers "*"
 Options All -Indexes
 
 RewriteEngine On

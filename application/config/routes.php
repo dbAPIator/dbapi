@@ -112,7 +112,7 @@ $route["^apis/([\w\-\.\_\%]+)/config/swagger"]["get"] = "config/swagger/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["get"] = "config/get_structure/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["put"] = "config/replace_structure/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["patch"] = "config/patch_structure/$1";
-$route["^apis/([\w\-\.\_\%]+)/config/structure/regen"]["get"] = "config/regen/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/structure/regen"]["put"] = "config/regen/$1";
 
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["get"] = "config/get_auth/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["patch"] = "config/update_auth/$1";
