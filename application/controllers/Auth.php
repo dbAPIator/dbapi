@@ -20,6 +20,10 @@ class Auth extends CI_Controller {
         $this->config->load("apiator");
     }
 
+    /**
+     * @param $configName
+     * @return mixed
+     */
     private function connectDb($configName) {
 
         $cfgDir = $this->config->item("api_config_dir")($configName);
