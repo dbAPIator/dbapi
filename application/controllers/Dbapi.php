@@ -779,13 +779,12 @@ class Dbapi extends CI_Controller
                             $queryParameters["outputformat"] ? $queryParameters["outputformat"] : ""
                         )
                 );
-            $filename = $queryParameters["filename"] ? $queryParameters["filename"] : $resourceName;
             switch ($format) {
                 case "csv":
-                    $this->out_csv($filename,$recId,$queryParameters,$records,$totalRecords);
+                    $this->out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords,$queryParameters["filename"]);
                     break;
                 case "xls":
-                    $this->out_xls($filename,$recId,$queryParameters,$records,$totalRecords);
+                    $this->out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords,$queryParameters["filename"]);
                     break;
                 default:
                     $this->out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords);
@@ -804,7 +803,7 @@ class Dbapi extends CI_Controller
      * @param $records
      * @param $totalRecords
      */
-    function out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+    function out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords,$fileName=null) {
 
         if(!is_null($recId) && !$totalRecords) {
             HttpResp::not_found();
@@ -848,9 +847,10 @@ class Dbapi extends CI_Controller
         }
         $out = implode("\n",$out);
 //        HttpResp::csv_out(200,implode("\n",$out));
+        $fileName = $fileName ? $fileName : $resourceName;
 
         HttpResp::instance()
-            ->header('Content-Disposition: attachment; filename="'.$resourceName.'.csv"')
+            ->header('Content-Disposition: attachment; filename="'.$fileName.'.csv"')
             ->header('Content-Type: text/csv"')
             ->response_code(200)
             ->body($out)
@@ -864,7 +864,7 @@ class Dbapi extends CI_Controller
      * @param $records
      * @param $totalRecords
      */
-    function out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+    function out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords,$fileName =null) {
 
         if(!class_exists("\Vtiful\Kernel\Excel")) {
             HttpResp::server_error("XLS extension not loaded. Please contact the server administrator");
@@ -920,8 +920,10 @@ class Dbapi extends CI_Controller
         $out = file_get_contents("/tmp/$fileName");
         unlink("/tmp/$fileName");
 
+        $fileName = $fileName ? $fileName : $resourceName;
+
         HttpResp::instance()
-            ->header('Content-Disposition: attachment; filename="'.$resourceName.'.xls"')
+            ->header('Content-Disposition: attachment; filename="'.$fileName.'.xls"')
             ->header('Content-Type: application/vnd.ms-excel"')
             ->response_code(200)
             ->body($out)
