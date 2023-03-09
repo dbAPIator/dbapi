@@ -1220,8 +1220,8 @@ class Records {
         if(isset($paging[$resName]["offset"]))
             $offset = $paging[$resName]["offset"];
 
-        if(isset($paging[$resName]["limit"]) && $paging[$resName]["limit"]*1<$instance->config->item("max_page_size"))
-            $limit = $paging[$resName]["limit"];
+        if(isset($paging[$resName]["limit"]))
+            $limit = $paging[$resName]["limit"]*1<$instance->config->item("max_page_size") ? $paging[$resName]["limit"]*1 :$instance->config->item("max_page_size");
 
         return [$offset,$limit];
     }

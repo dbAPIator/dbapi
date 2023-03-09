@@ -27,7 +27,7 @@ $config["configs_dir"] = CFG_DIR_BASEPATH;
 // default record set page size
 $config["default_relationships_page_size"] = 10;
 $config["default_page_size"] = 100;
-$config["max_page_size"] = 200;
+$config["max_page_size"] = 10000;
 
 $config["configApiSecret"] = include "secret.php";
 
