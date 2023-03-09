@@ -773,13 +773,19 @@ class Dbapi extends CI_Controller
         try {
             list($records,$totalRecords) = $this->recs->getRecords($resourceName,$queryParameters);
             $format = $queryParameters["format"] ? $queryParameters["format"] :
-                ($queryParameters["outputFormat"] ? $queryParameters["outputFormat"] : "");
+                (
+                    $queryParameters["outputFormat"] ? $queryParameters["outputformat"] :
+                        (
+                            $queryParameters["outputformat"] ? $queryParameters["outputformat"] : ""
+                        )
+                );
+            $filename = $queryParameters["filename"] ? $queryParameters["filename"] : $resourceName;
             switch ($format) {
                 case "csv":
-                    $this->out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords);
+                    $this->out_csv($filename,$recId,$queryParameters,$records,$totalRecords);
                     break;
                 case "xls":
-                    $this->out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords);
+                    $this->out_xls($filename,$recId,$queryParameters,$records,$totalRecords);
                     break;
                 default:
                     $this->out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords);

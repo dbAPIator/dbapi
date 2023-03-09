@@ -1,13 +1,22 @@
-# DBAPI - Extensible high-performance automatic REST API for MySQL
+# DBAPI - automatic REST API for MySQL (and others)
+DBAPI creates and exposes a REST API for any MySQL database. It supports multiple APIs for multiple databases on the same install. 
+
 Instant REST API for your MySQL database without the need to write any code. Just connect it to you database  by making an API call an start using it right away. 
 
 It also provides API clients management, authentication services and fine grained rule based access to API endpoints.  
 
-## Installation
+## Table of contents
+- [Instalation](#install)
+- [Configuration](#config)
+- [Usage](#use)
 
-###Prerequisites
+
+## <a id="install"></a>Installation
+
+### Prerequisites
 
 You can run the app either by installing it under the docroot of a web server or using the PHP built in server. 
+
 - a running Apache (prefered because of support of mod_rewrite and htaccess files) web server with PHP 7.4 support. Might be working as well with PHP8, but I've never tested it.
 - PHP7.4
 - composer (https://getcomposer.org/)
@@ -25,6 +34,8 @@ Clone repo, install dependencies and make configure rights
 
 Optional: launch PHP built in web server
     php -S localhost:4343  
+
+## <a id="setup"></a>Setup
 
 ### Setup
 
