@@ -681,7 +681,12 @@ class Dbapi extends CI_Controller
         
         if(isset($paging[0])) {
             $paging[$resName]  = $paging[0];
+            if(isset($paging[1])) {
+                $paging[$resName] = array_merge($paging[$resName],$paging[1]);
+            }
         }
+
+        
         if(is_array($paging))
             $queryParas["paging"] = $paging;
 
