@@ -678,7 +678,10 @@ class Dbapi extends CI_Controller
 
         // get paging fieldset fields
         $paging = $input->get("page");
-
+        
+        if(isset($paging[0])) {
+            $paging[$resName]  = $paging[0];
+        }
         if(is_array($paging))
             $queryParas["paging"] = $paging;
 
