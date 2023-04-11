@@ -1,0 +1,12 @@
+FROM alpine:latest
+
+RUN apk update;\
+    apk upgrade; \
+    apk add php81 php81-fpm php81-session php81-xmlwriter php81-bcmath php81-simplexml\
+        php81-sqlite3 php81-xmlreader php81-pecl-memcached php81-pgsql php81-pdo_sqlite php81-bz2 php81-curl php81-dba\
+        php81-intl  php81-mbstring php81-mysqli php81-mysqlnd php81-odbc php81-opcache php81-openssl php81-pdo php81-pdo_mysql php81-pdo_odbc php81-pdo_pgsql php81-pdo_sqlite php81-pear php81-pecl-redis php81-pecl-amqp \
+        php81-pecl-psr curl
+COPY phpfpm.conf /etc/php81/php-fpm.d/www.conf
+CMD ["/usr/sbin/php-fpm81","-F"]
+
+EXPOSE 9000
