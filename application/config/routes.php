@@ -114,6 +114,10 @@ $route["^apis/([\w\-\.\_\%]+)/config/structure"]["put"] = "config/replace_struct
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["patch"] = "config/patch_structure/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure/regen"]["put"] = "config/regen/$1";
 
+$route["^apis/([\w\-\.\_\%]+)/config/endpoints"] = "config/get_endpoints/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/endpoints/([\w\-\.\_\%]+)/structure"]["get"] = "config/get_endpoint_structure/$1/$2";
+
+
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["get"] = "config/get_auth/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["patch"] = "config/update_auth/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["put"] = "config/replace_auth/$1";

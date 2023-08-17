@@ -1,6 +1,11 @@
 <?php
 namespace Apiator\DBApi;
 
+// @todo: https://jcs.org/2023/07/12/api
+/**
+ * @todo Log a unique id with every request
+ * @todo Be descriptive in your error responses
+ */
 
 
 //require_once(__DIR__."/../../../libraries/Response.php");

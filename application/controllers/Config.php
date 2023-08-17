@@ -356,6 +356,21 @@ class Config extends CI_Controller {
         HttpResp::json_out(200,$structure);
     }
 
+    function get_endpoints($configName) {
+        $this->project_exists($configName);
+        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+        //print_r($structure);
+        HttpResp::json_out(200,array_keys($structure));
+    }
+
+    function get_endpoint_structure($configName, $endpointName) {
+        $this->project_exists($configName);
+        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+        if(isset($structure[$endpointName]))
+            HttpResp::json_out(200,$structure[$endpointName]);
+        else
+            $this->not_found();
+    }
     /**
      * @param $configName
      */
