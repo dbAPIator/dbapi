@@ -849,6 +849,8 @@ class Dbapi extends CI_Controller
             array_splice($tmp,-1,0,$relationsNames);
             $out[] = '"'.implode('","',$tmp).'"';
         }
+        $fieldsNames = $queryParameters["fields"] && $queryParameters["fields"][$resourceName] ?   explode(",",$queryParameters["fields"][$resourceName]   )  : $fieldsNames;
+
 
         foreach ($records as $record) {
             $out[] = record2csv($record,$fieldsNames,$relationsNames);
