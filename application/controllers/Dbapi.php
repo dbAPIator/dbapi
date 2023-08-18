@@ -1386,7 +1386,13 @@ class Dbapi extends CI_Controller
             {
 //                var_dump($exception);
                 $this->apiDb->trans_rollback();
-                HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+                $respHttpCode = 500;
+                switch ($exception->getCode()) {
+                    case 1062:
+                        $respHttpCode = 409;
+                        break;
+                }
+                HttpResp::json_out($respHttpCode,\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
             }
         }
 
