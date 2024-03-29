@@ -27,6 +27,7 @@ class Auth extends CI_Controller {
     private function connectDb($configName) {
 
         $cfgDir = $this->config->item("api_config_dir")($configName);
+
         if(!is_dir($cfgDir)) {
             HttpResp::not_found("API not found");
         }
@@ -41,6 +42,7 @@ class Auth extends CI_Controller {
         }
 
         $conn = @$this->load->database($conn);
+
         if($this->db->error()["code"]!==0) {
             HttpResp::server_error(["error"=>$this->db->error()]);
         }
@@ -52,7 +54,7 @@ class Auth extends CI_Controller {
      */
     function login($configName) {
         $auth = $this->connectDb($configName);
-        //print_r($auth);
+
         $uname = $this->input->post($auth["loginUserInputField"]);
         $upass = $this->input->post($auth["loginPassInputField"]);
         $unameFld = $auth["loginUserInputField"];

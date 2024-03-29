@@ -29,7 +29,7 @@ $config["default_relationships_page_size"] = 10;
 $config["default_page_size"] = 100;
 $config["max_page_size"] = 10000;
 
-$config["configApiSecret"] = include "secret.php";
+$config["configApiSecret"] = isset($_ENV["SECRET"]) ?  $_ENV["SECRET"]  : "9e1d5a10-a4b9-47b1-94ca-5e86e0cefcd8";
 
 $config["api_config_dir"] = function ($config) {
     return CFG_DIR_BASEPATH . "/" . $config;

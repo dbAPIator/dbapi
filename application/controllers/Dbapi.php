@@ -11,6 +11,7 @@ require_once (BASEPATH."/../vendor/autoload.php");
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
+
 \Apiator\Autoloader::register();
 
 /**
@@ -776,7 +777,6 @@ class Dbapi extends CI_Controller
             HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
-
         // fetch records
         try {
             list($records,$totalRecords) = $this->recs->getRecords($resourceName,$queryParameters);
@@ -794,6 +794,15 @@ class Dbapi extends CI_Controller
                 case "xls":
                     $this->out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords,$queryParameters["filename"]);
                     break;
+                case "binary":
+                    if(!$queryParameters["data_fld"]) {
+                        HttpResp::invalid_request("No data field provided");
+                    }
+
+                    if(!$recId) {
+                        HttpResp::invalid_request("Not allow to output binary data for collections");
+                    }
+
                 default:
                     $this->out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords);
             }
@@ -1300,6 +1309,7 @@ class Dbapi extends CI_Controller
     {
         $this->_init($configName);
 
+
         // get input data
         try {
             $input = $this->get_input_data($input);
@@ -1359,13 +1369,13 @@ class Dbapi extends CI_Controller
 //            HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
 //        }
 
+
         $includes = get_include($this->input);
         foreach($entries as $entry) {
             try {
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
                 $recId = $this->recs->insert($resourceName, $entry, $this->insertMaxRecursionLevel,
                     $onDuplicate, $updateFields,null,$includes);
-
                 $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$resourceName);
                 $filterStr = "$recIdFld=$recId";
                 $filter = get_filter($filterStr,$resourceName);
@@ -1381,9 +1391,11 @@ class Dbapi extends CI_Controller
 //                print_r($records);
                 $totalRecords += $noRecs;
                 $insertedRecords = array_merge_recursive($insertedRecords,$records);
+
             }
             catch (Exception $exception)
             {
+
 //                var_dump($exception);
                 $this->apiDb->trans_rollback();
                 $respHttpCode = 500;

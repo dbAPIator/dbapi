@@ -1,9 +1,23 @@
-# DBAPI - automatic REST API for MySQL (and others)
-DBAPI creates and exposes a REST API for any MySQL database. It supports multiple APIs for multiple databases on the same install. 
+# dbAPI: Instant REST API generation for MySQL databases
+dbAPI is a middleware tool designed to simplify the process of generating REST APIs  specifically for MySQL databases. It provides developers with an intuitive platform to automate the creation of these APIs, eliminating the need for manual development, which can be time-consuming and error-prone.
 
-Instant REST API for your MySQL database without the need to write any code. Just connect it to you database  by making an API call an start using it right away. 
+With dbAPI, developers can quickly and easily generate clean, well-documented APIs that are tailored to their MySQL database schema. This automation streamlines the development process, allowing developers to focus on other aspects of their projects.
 
-It also provides API clients management, authentication services and fine grained rule based access to API endpoints.  
+One of the key features of dbAPI is its versatility and adaptability. It can be used for various types of projects, including web applications, mobile apps, extending existing applications and more. Additionally, dbAPI includes built-in security measures to protect data, such as encryption, authentication mechanisms, and role-based access control.
+
+Overall, dbAPI empowers developers to efficiently interact with MySQL databases by providing a seamless solution for generating REST APIs.
+
+#Features
+- automatic API endpoints generation for creating, reading, updating and deleting data in a MySQL database
+- implements JSONAPI specification to allow recursive retrieval and creation of linked resources 
+- automatic API documentation  generation in Swagger format
+- authentication: offers authentication endpoints which can be customized by defining the SQL query.
+- authorization: ACL based
+- error handling: provides informative error messages in case of invalid requests, server errors, or other exceptional conditions. Error responses include HTTP status codes, error codes, and human-readable descriptions to help developers diagnose and troubleshoot issues.
+- scalability: being stateless, it can horizontally scale to any number of instances. 
+- performance: uses **OPcache** for storing precompiled script bytecode in shared memory and **memcached** for caching data 
+- security: implements security best practices to protect against common threats such as injection attacks, cross-site scripting (XSS), and cross-site request forgery (CSRF). This involves input validation, parameterized queries, and encryption of sensitive data.
+- multi-database: one dbAPI instance can be used to connect to multiple databases, each with their separate entry endpoint, access and authorization rules  
 
 ## Table of contents
 - [Instalation](#install)
@@ -39,7 +53,7 @@ Optional: launch PHP built in web server
 
 ### Setup
 
-Multiple databases/APIs can be set up using the same install of DBAPI.  
+Multiple databases/APIs can be set up using the same instance.  
 
 Setting up the API for a MySQL database is as easy as making a POST request to http://localhost:4343/apis/ (when using the PHP built in webserver, otherwise is http(s)://your_host_name/installation_path/apis/ with the following payload)
 

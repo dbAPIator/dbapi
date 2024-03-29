@@ -573,9 +573,13 @@ class Records {
         $countSql = "SELECT count(*) cnt FROM `{$relTree[$tableName]["name"]}` AS `{$relTree[$tableName]["alias"]}` "
             .($join!==""?$join:"")
             ." WHERE $whereStr";
-//        echo $countSql;
 
-        $row = $this->dbdrv->query($countSql)->row();
+        $res = $this->dbdrv->query($countSql);
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"]." on query: $countSql",500);
+        }
+        $row = $res->row();
         $totalRecs =$row->cnt*1;
         // return if no records matched
         if($totalRecs==0) return [[],0];
@@ -592,6 +596,10 @@ class Records {
         // run query
         /** @var \CI_DB_result $res */
         $res = $this->dbdrv->query($mainSql);
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"],500);
+        }
         //get_instance()->debug_log($mainSql);
 
         $rows = $res->result_array_num();
@@ -830,25 +838,21 @@ class Records {
 
         $this->dbdrv->db_debug = false;
 
-//        echo $insSql."\n";
+        //echo $insSql;
         $res = $this->dbdrv->query($insSql);
-
-        $this->dbdrv->db_debug = true;
-
-
-        if(!$res) {
-            // todo: log message to the app log file
-            $sqlErr = $this->dbdrv->error();
-//            log_message("error",$sqlErr["message"]." > $insSql");
-            throw new \Exception($sqlErr["message"]."\n".$this->dbdrv->last_query(), $sqlErr["code"]);
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"]." on query: $insSql",500);
         }
 
+        //$this->dbdrv->db_debug = true;
+
+
+
         // retrieve resource ID (mysql specific)
-
-
-
         // todo: evaluate impact for other DB engines and implement
         $newRecId = $this->dbdrv->insert_id();
+
 
         if($this->dbdrv->affected_rows()!==1) {
 
@@ -862,12 +866,14 @@ class Records {
             $selSql = $this->dbdrv
                 ->where($insertData)
                 ->get_compiled_select($table);
-//            print_r($selSql);
 
             $q = $this->dbdrv->query($selSql);
-//            get_instance()->debug_log($selSql);
-            $cnt = $q->num_rows();
+            $err=$this->dbdrv->error();
+            if($err["code"]){
+                throw new \Exception($err["message"]." on query: $selSql",500);
+            }
 
+            $cnt = $q->num_rows();
             if($cnt > 1) {
                 log_message("error", "More then one records returned on Insert new record: $insSql / $selSql");
                 return null;
@@ -983,23 +989,13 @@ class Records {
             ->get_compiled_update($table);
 
 
-        $this->dbdrv->db_debug = false;
-
         $this->dbdrv->query($updateSql);
-
-        $sqlErr = $this->dbdrv->error();
-//            print_r($sqlErr);
-//
-        if($sqlErr["code"]!==0) {
-//            var_dump($sqlErr);
-            log_message("error",$sqlErr["message"]." > $updateSql");
-            throw new \Exception($sqlErr["message"]."\n".$this->dbdrv->last_query(), $sqlErr["code"]);
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"]." on query: $updateSql",500);
         }
 
-
         // perform update
-
-//        echo $sql." - ".$this->dbdrv->affected_rows()."\n\n";
 
         // after insert hook
         $afterUpdate = @include($this->configDir."/hooks/".$table."/after.update.php");
@@ -1037,7 +1033,13 @@ class Records {
         if(count($whereArr)) {
             $sql = "SELECT * FROM $table WHERE $priKey!='$id' AND (".implode(" OR ",$whereArr).")";
 
-            if($this->dbdrv->query($sql)->num_rows()) {
+            $res = $this->dbdrv->query($sql);
+            $err=$this->dbdrv->error();
+            if($err["code"]){
+                throw new \Exception($err["message"]." on query: $sql",500);
+            }
+
+            if($res->num_rows()) {
                 throw new \Exception("Duplicate key fields for $table/$id: ".json_encode($attributes),409);
             }
         }
@@ -1158,6 +1160,11 @@ class Records {
 
         $this->dbdrv->where("$idFld in ('$recId')");
         $this->dbdrv->delete($tableName);
+
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"]." on delete record $tableName:$recId",500);
+        }
         if($this->dbdrv->affected_rows()) {
             return true;
         }
@@ -1183,6 +1190,10 @@ class Records {
 
         $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);
+        $err=$this->dbdrv->error();
+        if($err["code"]){
+            throw new \Exception($err["message"]." on delete by where from $tableName",500);
+        }
         if($this->dbdrv->affected_rows())
             return true;
 

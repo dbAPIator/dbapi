@@ -239,6 +239,17 @@ class HttpResp{
     }
 
     /**
+     * returns a 400 Invalid request and exists execution
+     * @param null $body
+     */
+    static function invalid_request($body=null)
+    {
+        HttpResp::out_autodetect(400,$body);
+        exit();
+    }
+
+
+    /**
      * returns a 401 Not authorized and exists the script
      * @param string $body
      */

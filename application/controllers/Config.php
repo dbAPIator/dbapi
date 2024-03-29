@@ -382,26 +382,26 @@ class Config extends CI_Controller {
             HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
         }
 
-        $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+        //$conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
         // get natural structure
-        $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+        //$structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
         // compute difference
-        $diff = diff_arr($structure,$data);
+        //$diff = diff_arr($structure,$data);
 
         // save patch file
-        $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
-        file_put_contents($patchFileName,to_php_code($diff,true));
+        //$patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
+        //file_put_contents($patchFileName,to_php_code($diff,true));
 
-        $newStruct = smart_array_merge_recursive($structure,$diff);
+        //$newStruct = smart_array_merge_recursive($structure,$diff);
 
         //save structure
         $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
-        file_put_contents($structFileName,to_php_code($newStruct,true));
+        file_put_contents($structFileName,to_php_code($data,true));
 
 
 
 
-        HttpResp::json_out(200,$newStruct);
+        HttpResp::json_out(200,$data);
     }
 
     function patch_structure($configName) {
