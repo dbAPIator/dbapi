@@ -165,7 +165,7 @@ class Dbapi extends CI_Controller
 
         // check if client is allowed (by IP)
         if(!find_cidr($_SERVER["REMOTE_ADDR"],@$security["from"])) {
-            throw new Exception("Not authorized due to source IP",401);
+            throw new Exception("IP ".$_SERVER["REMOTE_ADDR"]." not allowed",401);
         }
 
         // check rules
