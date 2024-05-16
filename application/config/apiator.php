@@ -20,7 +20,7 @@ $config["default_field_access_select"] = true;
 $config["default_field_access_sort"] = true;
 $config["default_field_access_search"] = true;
 
-$config["configs_dir"] = CFG_DIR_BASEPATH;
+$config["configs_dir"] = isset($_ENV["CONFIGS_DIR"]) ?  $_ENV["CONFIGS_DIR"]  : "/var/www/html/dbapi/dbconfigs";
 
 
 
@@ -31,6 +31,7 @@ $config["max_page_size"] = 10000;
 
 $config["configApiSecret"] = isset($_ENV["SECRET"]) ?  $_ENV["SECRET"]  : "9e1d5a10-a4b9-47b1-94ca-5e86e0cefcd8";
 
-$config["api_config_dir"] = function ($config) {
-    return CFG_DIR_BASEPATH . "/" . $config;
+$config["api_config_dir"] = function ($api_name) {
+    global $config;
+    return $config["configs_dir"] . "/" . $api_name;
 };

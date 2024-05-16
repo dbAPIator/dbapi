@@ -6,6 +6,7 @@ require_once(APPPATH."third_party/Softaccel/Autoloader.php");
 /**
  * Class ConfigGen
  * @property CI_Loader load
+ * @property CI_Config config
  */
 class Setup extends CI_Controller
 {
@@ -35,8 +36,8 @@ class Setup extends CI_Controller
     function __construct()
     {
         parent::__construct();
-        $this->load->config("apiator");
-        if(!is_dir(CFG_DIR_BASEPATH)) {
+        $cfg = $this->load->config("apiator");
+        if(!is_dir($cfg["configs_dir"])) {
             die("Invalid APIs config dir. Please set correct path in application/config/apiator.php by setting CFG_DIR_BASEPATH\n");
         }
     }
@@ -62,11 +63,13 @@ class Setup extends CI_Controller
 
     private function listprojects()
     {
-        if(!is_dir(CFG_DIR_BASEPATH)) {
-            throw new Exception("Invalid config directory ".CFG_DIR_BASEPATH);
+        $this->config->load("apiator");
+        $configsDir = $this->config->item("configs_dir");
+        if(!is_dir($configsDir)) {
+            throw new Exception("Invalid config directory $configsDir");
         }
-        $dp = opendir(CFG_DIR_BASEPATH);
-        echo "Projects configuration base path:\n\t".CFG_DIR_BASEPATH."\n";
+        $dp = opendir($configsDir);
+        echo "Projects configuration base path:\n\t$configsDir\n";
         echo "Existing projects:\n";
         while ($entry=readdir($dp)) {
             if(in_array($entry,[".",".."]))
@@ -185,7 +188,9 @@ class Setup extends CI_Controller
 
     private function handle_project_directory($projectName, $existingProject)
     {
-        $projPath = CFG_DIR_BASEPATH."/".$projectName;
+        $this->config->load("apiator");
+        $configsDir = $this->config->item("configs_dir");
+        $projPath = "$configsDir/$projectName";
         $dirExists = is_dir($projPath);
         if($existingProject && $dirExists) {
             $read = readline("Are you sure you want to override '$projectName'? ([Y]/N):");

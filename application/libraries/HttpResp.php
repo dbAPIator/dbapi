@@ -305,7 +305,11 @@ class HttpResp{
      */
     static function service_unavailable($body=null)
     {
-        if(is_array($body) || is_object($body))  $body = json_encode($body);
+        if(is_array($body) || is_object($body)) {
+            $body = json_encode($body);
+            HttpResp::init()->content_type("application/json")->response_code(503)->body($body)->output();
+            die();
+        }
 
         HttpResp::init()->response_code(503)->body($body)->output();
         exit();

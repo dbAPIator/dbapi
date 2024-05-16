@@ -1,10 +1,8 @@
 FROM php:7.4-apache-bullseye
-COPY . /var/www/html
-RUN a2enmod headers rewrite
-RUN apt-get update
-RUN ["apt","search","php7.4"]
-RUN docker-php-ext-install mysqli
-
+RUN apt-get update && apt-get upgrade -y
+RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable pdo_mysql
+RUN /usr/sbin/a2enmod rewrite
+COPY . /var/www
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+#CMD ["apache2-foreground"]

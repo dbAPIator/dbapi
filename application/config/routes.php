@@ -111,11 +111,14 @@ $route["^apis/([\w\-\.\_\%]+)/config/swagger"]["get"] = "config/swagger/$1";
 
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["get"] = "config/get_structure/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["put"] = "config/replace_structure/$1";
+$route["^apis/([\w\-\.\_\%]+)/config/testt"] = "config/testt";
 $route["^apis/([\w\-\.\_\%]+)/config/structure"]["patch"] = "config/patch_structure/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/structure/regen"]["put"] = "config/regen/$1";
 
 $route["^apis/([\w\-\.\_\%]+)/config/endpoints"] = "config/get_endpoints/$1";
-$route["^apis/([\w\-\.\_\%]+)/config/endpoints/([\w\-\.\_\%]+)/structure"]["get"] = "config/get_endpoint_structure/$1/$2";
+$route["^apis/([\w\-\.\_\%]+)/config/endpoints/([\w\-\.\_\%]+)"]["get"] = "config/get_endpoint_structure/$1/$2";
+$route["^apis/([\w\-\.\_\%]+)/config/endpoints/([\w\-\.\_\%]+)"]["patch"] = "config/update_endpoint_structure/$1/$2";
+$route["^apis/([\w\-\.\_\%]+)/config/endpoints/([\w\-\.\_\%]+)"]["post"] = "config/replace_endpoint_structure/$1/$2";
 
 
 $route["^apis/([\w\-\.\_\%]+)/config/auth"]["get"] = "config/get_auth/$1";
@@ -142,6 +145,8 @@ $route["^apis$"]["get"] = "config/list_apis";
 
 $apiAuthUrlPrefix = "^apis/([\w\-\.\_\%]+)/auth";
 $route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
+$route["$apiAuthUrlPrefix/verify"]["post"] = "auth/mfa_code_verify/$1";
+$route["$apiAuthUrlPrefix/apiclienttoken/(.*)/(\d+)"]["get"] = "auth/genApiClientToken/$1/$2/$3";
 //$route["$apiAuthUrlPrefix/login"]["post"] = "auth/login/$1";
 
 

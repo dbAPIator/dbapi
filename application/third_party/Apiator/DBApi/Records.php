@@ -664,7 +664,7 @@ class Records {
      * @return \Response
      * @throws \Exception
      */
-    function insert($table, $data, $watchDog, $onDuplicate, $fieldsToUpdate, $path, &$includes) {
+    function insert($table, $data, $watchDog, $onDuplicate, $insertIgnore, $fieldsToUpdate, $path, &$includes) {
         if($watchDog==0) {
             throw new \Exception("Maximum recursion level has been reached. Aborting. Please review your nested data.",400);
         }
@@ -774,7 +774,7 @@ class Records {
             // create 1:1 related record
             if(isset($relData->data->attributes)) {
 
-                $insertData[$relName] = $this->insert($fk->table,$relData->data,$watchDog-1,$onDuplicate,$fieldsToUpdate,$newPath,$includes);
+                $insertData[$relName] = $this->insert($fk->table,$relData->data,$watchDog-1,$onDuplicate,$insertIgnore,$fieldsToUpdate,$newPath,$includes);
                 if(!in_array($newPath,$includes)) {
                     $includes[] = $newPath;
                 }
@@ -807,6 +807,10 @@ class Records {
 
         $insSql = $this->dbdrv->get_compiled_insert($table);
 
+
+        if($insertIgnore) {
+            $insSql = str_replace("INSERT INTO","INSERT IGNORE INTO",$insSql);
+        }
         // todo: should put this in an external file: configure behaviour to update fields (database specific)
         switch ($onDuplicate) {
             case "update":
@@ -927,7 +931,7 @@ class Records {
 
                             $relItem->attributes->$fkFld = $newRecId;
 
-                            $this->insert($relationPeerTable,$relItem,$watchDog-1,$onDuplicate,$fieldsToUpdate,$newPath,$includes);
+                            $this->insert($relationPeerTable,$relItem,$watchDog-1,$onDuplicate,$insertIgnore,$fieldsToUpdate,$newPath,$includes);
                             break;
                         case "DocumentObject":
                             break;
@@ -1110,7 +1114,7 @@ class Records {
                     //                echo "inserting";
                     //                print_r($relData);
                     $resourceData->attributes->$relName = $this->insert($relData->type, $relData, get_instance()->get_max_insert_recursions(),
-                        "", [], null, $includes);
+                        "", false, [], null, $includes);
                     continue;
                 }
 

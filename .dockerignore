@@ -1,4 +1,11 @@
+build.sh
 dbconfigs
 container_configs
 Dockerfile*
 docker*
+*.md
+cli
+composer*
+etc
+.*
+index.html

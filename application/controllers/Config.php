@@ -342,6 +342,10 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $conn = require  "$authFilePath/connection.php";
         $structure = $this->generate_config($conn,$authFilePath);
+        if(!$structure) {
+            http_response_code(500);
+            die("Could not save config");
+        }
         file_put_contents("$authFilePath/structure.php",to_php_code($structure,true));
         $this->get_structure($configName);
     }
@@ -371,37 +375,72 @@ class Config extends CI_Controller {
         else
             $this->not_found();
     }
+
+    /**
+     * @todo: to implement update_endpoint_structure
+     * @param $configName
+     * @param $endpointName
+     */
+    function update_endpoint_structure($configName, $endpointName) {
+        $this->project_exists($configName);
+        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+        if(isset($structure[$endpointName]))
+            HttpResp::json_out(200,$structure[$endpointName]);
+        else
+            $this->not_found();
+    }
+
+    /**
+     * @todo  to implement replace_endpoint_structure
+     * @param $configName
+     * @param $endpointName
+     */
+    function replace_endpoint_structure($configName, $endpointName) {
+        $this->project_exists($configName);
+        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+        if(isset($structure[$endpointName]))
+            HttpResp::json_out(200,$structure[$endpointName]);
+        else
+            $this->not_found();
+    }
+
+
+    function testt() {
+        $new_structure = json_decode($this->input->raw_input_stream, JSON_OBJECT_AS_ARRAY);
+        if(is_null($new_structure)) {
+            HttpResp::json_out(400,["error"=>"Invalid input data"]);
+        }
+    }
+
+
     /**
      * @param $configName
      */
     function replace_structure($configName) {
         $this->project_exists($configName);
-        $data = $this->input->raw_input_stream;
-        $data = json_decode($data,JSON_OBJECT_AS_ARRAY);
-        if(!$data) {
-            HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
+
+        $new_structure = json_decode($this->input->raw_input_stream, JSON_OBJECT_AS_ARRAY);
+        if(is_null($new_structure)) {
+            HttpResp::json_out(400,["error"=>"Invalid input data"]);
         }
 
-        //$conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+
+        $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
         // get natural structure
-        //$structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+        $db_struct = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
         // compute difference
-        //$diff = diff_arr($structure,$data);
+        $diff = compute_struct_diff($db_struct,$new_structure);
+        echo json_encode($diff);
 
         // save patch file
-        //$patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
-        //file_put_contents($patchFileName,to_php_code($diff,true));
+        file_put_contents($this->config->item("configs_dir")."/$configName/patch.php",to_php_code($diff,true));
 
-        //$newStruct = smart_array_merge_recursive($structure,$diff);
+        //$newStruct = smart_array_merge_recursive($db_struct,$diff);
 
         //save structure
-        $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
-        file_put_contents($structFileName,to_php_code($data,true));
+        file_put_contents($this->config->item("configs_dir")."/$configName/structure.php",to_php_code($new_structure,true));
 
-
-
-
-        HttpResp::json_out(200,$data);
+        HttpResp::json_out(200,$new_structure);
     }
 
     function patch_structure($configName) {
@@ -420,7 +459,7 @@ class Config extends CI_Controller {
         $newStruct = smart_array_merge_recursive($newStruct,$data);
 
         // compute difference
-        $diff = diff_arr($structure,$newStruct);
+        $diff = compute_struct_diff($structure,$newStruct);
         // create patch file
         if(count($diff)) {
             $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
@@ -588,8 +627,11 @@ class Config extends CI_Controller {
             $data = @include $patchFile;
             if(is_array($data)) {
                 $structure = smart_array_merge_recursive($structure, $data);
-                file_put_contents("$authFilePath/patch.php",to_php_code($data,true));
-                chmod("$authFilePath/patch.php",0666);
+                $res = @file_put_contents("$authFilePath/patch.php", to_php_code($data, true));
+                if(!$res) {
+                    return null;
+                }
+                @chmod("$authFilePath/patch.php",0666);
             }
         }
 
@@ -613,25 +655,29 @@ function to_php_code($data,$addBegining=false)
     return ($addBegining ? "<?php\nreturn " : "").var_export($data,true).";";
 }
 
-function diff_arr($arr1,$arr2) {
-    if(is_array($arr1) xor is_array($arr2)) {
-        return $arr2;
+/**
+ * @param $db_struct
+ * @param $target_struct
+ * @return array
+ */
+function compute_struct_diff($db_struct, $target_struct) {
+    if(is_array($db_struct) xor is_array($target_struct)) {
+        return $target_struct;
     }
-    if(!is_array($arr2)) {
-        return $arr2;
+    if(!is_array($target_struct)) {
+        return $target_struct;
     }
-//    print_r($arr1);
-//    die();
+
     $diff = [];
-    foreach ($arr2 as $key=>$val) {
-        if(!isset($arr1[$key])) {
+    foreach ($target_struct as $key=>$val) {
+        if(!isset($db_struct[$key])) {
             $diff[$key] = $val;
             continue;
         }
-        if($val==$arr1[$key]) {
+        if($val==$db_struct[$key]) {
             continue;
         }
-        $diff[$key] = diff_arr($arr1[$key],$val);
+        $diff[$key] = compute_struct_diff($db_struct[$key],$val);
     }
     return $diff;
 }

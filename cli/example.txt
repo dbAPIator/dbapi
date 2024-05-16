@@ -1,1 +1,0 @@
-php ../public/index.php   dbapi/ConfigGen/cli/localhost/ezerp/parola123/ezerp

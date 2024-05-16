@@ -49,6 +49,8 @@ class Dbapi extends CI_Controller
      */
     private $apiDm;
 
+    private $currentUserId;
+
     /**
      * @var array
      */
@@ -185,20 +187,22 @@ class Dbapi extends CI_Controller
          * Authenticate request based on JWT tokens
          */
         $auth = @include $this->apiConfigDir."/auth.php";
-        if($auth && count($auth)) {
+        if($auth && count($auth) && $security["public"]==false) {
             preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
-            $jwt = count($matches)==2 ? $matches[1] : null;
-            if(!is_null($jwt) ) {
-                $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
-                if($payload->_exp<time()) {
-                    throw new Exception("Token expired",401);
-                }
+            $jwt = count($matches)==2 ? $matches[1] : $this->input->get("token");
+
+            if(is_null($jwt) ) {
+                HttpResp::not_authorized(['errors'=>[["message"=>"Public access is denied"]]]);
             }
 
-            if(!$auth["allowGuest"]) {
-                throw new Exception("Not authorized",401);
+            $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
+//                return;
+//                print_r($payload);
+            if($payload->exp<time()) {
+                throw new Exception("Token expired",401);
             }
 
+            $this->currentUserId = $payload->unm;
             // @todo: get UserID to be used later
         }
     }
@@ -214,7 +218,8 @@ class Dbapi extends CI_Controller
         if($this->apiConfigDir)
             return;
 
-        $this->apiConfigDir = $this->config->item("api_config_dir")($configName);
+//        $this->apiConfigDir = $this->config->item("api_config_dir")($configName);
+        $this->apiConfigDir = $this->config->item("configs_dir")."/$configName";
 
         $this->baseUrl = $this->config->item("base_url")."/v2";
         $this->JsonApiDocOptions["baseUrl"] = $this->baseUrl;
@@ -274,13 +279,17 @@ class Dbapi extends CI_Controller
 
 //        print_r($apiCfg);
         error_reporting(0);
+//        print_r($dbConf);
+        $dbConf["db_debug"] = FALSE;
+
         /**
          * @var CI_DB_pdo_driver db
          */
         $db = $this->load->database($dbConf,TRUE);
-        if(!$db) {
+
+        if($db->error()["code"]!==0) {
             // TODO log DB connection failed
-            HttpResp::service_unavailable("Failed to connect to database");
+            HttpResp::service_unavailable(["errors"=>[["message"=>"Could not connect to database"]]]);
         }
 
         // initializes DM with structure fetched from $apiCfg
@@ -1339,7 +1348,10 @@ class Dbapi extends CI_Controller
         if(!in_array($onDuplicate,["update","ignore","error"])) {
             $onDuplicate = "error";
         }
-
+        $insertIgnore = $this->input->get("insertignore");
+        if($insertIgnore="true") {
+            $insertIgnore  = true;
+        }
         // configure fields to be updated when onduplicate is set to "update"
         $updateFields = [];
         if($onDuplicate=="update") {
@@ -1375,7 +1387,7 @@ class Dbapi extends CI_Controller
             try {
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
                 $recId = $this->recs->insert($resourceName, $entry, $this->insertMaxRecursionLevel,
-                    $onDuplicate, $updateFields,null,$includes);
+                    $onDuplicate, $insertIgnore, $updateFields,null,$includes);
                 $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$resourceName);
                 $filterStr = "$recIdFld=$recId";
                 $filter = get_filter($filterStr,$resourceName);

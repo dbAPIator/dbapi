@@ -1,3 +1,3 @@
 <?php
 $system_path = 'system';
-require "public/index.php";
+require "html/index.php";
