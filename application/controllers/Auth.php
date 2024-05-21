@@ -29,20 +29,24 @@ class Auth extends CI_Controller {
     private function db_connect($configName) {
         $cfgDir = $this->config->item("configs_dir")."/$configName";
 
+//        print_r($_ENV);
         if(!is_dir($cfgDir)) {
             HttpResp::not_found("API not found");
         }
         $conn = @include $cfgDir."/connection.php";
-
-
 
         $auth = @include $cfgDir."/auth.php";
         if(!$auth) {
             HttpResp::bad_request(["error"=>"No authentication mechanism configured"]);
         }
         $conn["db_debug"] = FALSE;
-        $this->load->database($conn);
-
+        ini_set('display_errors','Off');
+        try {
+            $this->load->database($conn);
+        }
+        catch (Exception $exception) {
+            print_r($exception);
+        }
         if($this->db->error()["code"]!==0) {
             HttpResp::service_unavailable(["errors"=>[["message"=>"Could not connect to database"]]]);
         }
@@ -111,7 +115,7 @@ class Auth extends CI_Controller {
         $context = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
         if ($result === false) {
-            HttpResp::server_error("Could not send email with verification code. Please contact the administrator");
+            HttpResp::server_error("Could not send email with verification code. Please contact the administrator: ".print_r($options));
         }
     }
 
