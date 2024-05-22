@@ -166,20 +166,22 @@ class Datamodel {
     }
 
 
-
-
     /**
      * gets configuration of table or full model when no tableName is provided
      *
-     * @param string $tableName table name
+     * @param string $resourceName table name
      * @return Object config model
      *
+     * @throws Exception
      */
-    function get_config($tableName=null) {
-        if(is_null($tableName))
+    function &get_config($resourceName=null) {
+        if(is_null($resourceName))
             return $this->dataModel;
 
-        return $this->dataModel[$tableName];
+        if(!$this->is_valid_resource($resourceName))
+            throw new Exception("$resourceName not found",404);
+
+        return $this->dataModel[$resourceName];
     }
 
     /**
@@ -263,6 +265,13 @@ class Datamodel {
 
     }
 
+    /**
+     * @param $resource_name
+     * @return bool
+     */
+    function is_valid_resource($resource_name) {
+        return $this->resource_exists($resource_name);
+    }
     /**
      * @param $table
      * @param $relationName

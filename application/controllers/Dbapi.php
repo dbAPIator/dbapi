@@ -277,10 +277,8 @@ class Dbapi extends CI_Controller
 
         $apiCfg = array_merge_recursive($permissions,$structure);
 
-//        print_r($apiCfg);
-        error_reporting(0);
-//        print_r($dbConf);
-        $dbConf["db_debug"] = FALSE;
+//        error_reporting(0);
+//        $dbConf["db_debug"] = FALSE;
 
         /**
          * @var CI_DB_pdo_driver db
@@ -660,11 +658,12 @@ class Dbapi extends CI_Controller
     {
         if(is_null($input))
             $input = $this->input;
+
         $queryParas = $input->get();
 
         // get include
         if($input->get("include")) {
-            $queryParas["includeStr"] = $input->get("include");
+            $queryParas["includes"] = $input->get("include");
         }
 
         if($input->get("filter_advanced")) {
@@ -676,7 +675,6 @@ class Dbapi extends CI_Controller
                 ];
             }
         }
-
 
         // get sparse fieldset fields
         if($flds = $input->get("fields")) {
@@ -696,7 +694,6 @@ class Dbapi extends CI_Controller
             }
         }
 
-        
         if(is_array($paging))
             $queryParas["paging"] = $paging;
 
@@ -713,8 +710,6 @@ class Dbapi extends CI_Controller
                 unset($queryParas["paging"][$key]["offset"]);
             }
         }
-
-
 
         if(!isset($queryParas["paging"][$resName]))
             $queryParas["paging"][$resName] = ["offset"=>0];
@@ -744,6 +739,123 @@ class Dbapi extends CI_Controller
 
 
     /**
+     * Process request GET parameters and build the structure to be used for xtracting the data
+     * @param string $fqResName fully qualified resource name
+     * @param array|null $inputs
+     * @return DBAPIRequest
+     */
+    function processQueryParas(string $fqResName, &$inputs=null) {
+        $tmp = explode("/",$fqResName);
+        $simpleName = array_pop($tmp);
+
+        $request = DBAPIRequest::factory($simpleName);
+
+        // fetch include
+        set_para("include", $inputs,$fqResName, $request);
+        if($request->include) {
+            $request->include = explode(",",$request->include);
+            foreach ($request->include as $key=>$relName) {
+                $request->include[$relName] = $this->processQueryParas("$fqResName/$relName",$inputs);
+                unset($request->include[$key]);
+            }
+        }
+
+        // fetch filter
+        set_para("filter",$inputs,$fqResName, $request,$inputs);
+        if(is_string($request->filter)) {
+            $request->filter = explode(",",$request->filter);
+        }
+
+        set_para("fields",$inputs,$fqResName, $request,$inputs);
+        if(is_string($request->fields)) {
+            $request->fields = explode(",",$request->fields);
+        }
+
+        set_para("page",$inputs,$fqResName, $request,$inputs);
+        set_para("sort",$inputs,$fqResName, $request,$inputs);
+        if(is_string($request->sort)) {
+            $request->sort = explode(",",$request->sort);
+        }
+
+        set_para("filter_advanced",$inputs,$fqResName, $request,$inputs);
+
+        set_para("update", $inputs,$fqResName, $request,);
+        if(is_string($request->update)) {
+            $request->update = explode(",",$request->update);
+        }
+
+        $request->insertignore = @$inputs["insertignore"] === "true";
+
+        if($request->update) {
+            $request->onduplicate = "update";
+        }
+        else {
+            set_para("onduplicate", $inputs, $fqResName,$request, function($value) {return in_array($value,["ignore","error","update"]);});
+        }
+
+        return $request;
+
+    }
+
+    /**
+     * @param DBAPIRequest $request
+     * @param DBAPIRequest $parent
+     * @return mixed
+     * @throws \Apiator\DBApi\Exception
+     */
+    function attach_configuration_2_request($request, $parent=null, $relName=null) {
+        if(is_null($parent)) {
+            $request->config = $this->apiDm->get_config($request->resourceName);
+            if(!$this->apiDm->is_valid_resource($request->resourceName)) {
+                throw new \Apiator\DBApi\Exception("Resource not found $request->resourceName",404);
+            }
+        }
+        else {
+            try {
+                $rel = $this->apiDm->get_relationship($parent->resourceName, $relName);
+                $request->resourceName = $rel["table"];
+                $request->relSpec = $rel;
+            }
+            catch (Exception $exception) {
+                return null;
+            }
+        }
+
+        foreach ($request->include as $relName=>$inclReq) {
+            $rel = $this->attach_configuration_2_request($inclReq,$request,$relName);
+            if(is_null($rel))
+                unset($request->include[$relName]);
+            else
+                $request->include[$relName] = $rel;
+        }
+
+        return $request;
+    }
+
+    /**
+     * @param $resourceName
+     * @return DBAPIRequest|mixed
+     * @throws \Apiator\DBApi\Exception
+     */
+    private function getRequest($resourceName) {
+        $inputs = $this->input->get();
+
+        foreach (["filter","sort","includes","page","onduplicate","update","fields","insertignore"] as $param) {
+            if(isset($inputs[$param]) && !is_array($inputs[$param])) {
+                $inputs[$param] = [
+                    $resourceName => $inputs[$param]
+                ];
+            }
+        }
+        $request = $this->processQueryParas($resourceName,$inputs);
+        $request = $this->attach_configuration_2_request($request);
+        return $request;
+        // resolve resourceNames to table names (for relations)
+
+    }
+
+
+    /**
      * get records from table or from view identified by $resourceName
      * @param $configName
      * @param $resourceName
@@ -751,22 +863,22 @@ class Dbapi extends CI_Controller
      * @param array|null $queryParameters
      * @throws Exception
      */
-    function getRecords($configName,$resourceName, $recId=null, $queryParameters=null,$internal=true)
+//    function getRecords($configName, $resourceName, $recId=null, $fields=[],$filter=[],$includes=[],$sort=[],$paging=[],$options=[])
+    function getRecords($configName, $resourceName, $recId=null, $request=null)
     {
-//        print_r($_GET);
+        // init DB connection & load config
         $this->_init($configName);
-
-        if(is_null($queryParameters))
-            $queryParameters = $this->getQueryParameters($resourceName);
-
-        if($recId!==null) {
-            if(isset($queryParameters["custom_where"])) {
-                unset($queryParameters["custom_where"][$resourceName]);
-            }
-            if(isset($queryParameters["filter"]) && is_array($queryParameters["filter"])) {
-                unset($queryParameters["filter"][$resourceName]);
-            }
+        // parse input paramas into request
+        try {
+            $request = $this->getRequest($resourceName);
         }
+        catch (Exception $exception) {
+            HttpResp::exception_out($exception);
+            die();
+        }
+
+
+        log_message("info",json_encode($request,JSON_PRETTY_PRINT));
 
 
         // validation
@@ -779,7 +891,7 @@ class Dbapi extends CI_Controller
                 if(is_null($keyFld))
                     throw new Exception("Request not supported. $resourceName does not have a primary key defined", 404);
 
-                $queryParameters["filter"] = get_filter("$keyFld=$recId",$resourceName);
+                $request->resourceId = $recId;
             }
         }
         catch (Exception $exception) {
@@ -788,32 +900,19 @@ class Dbapi extends CI_Controller
 
         // fetch records
         try {
-            list($records,$totalRecords) = $this->recs->getRecords($resourceName,$queryParameters);
-            $format = $queryParameters["format"] ? $queryParameters["format"] :
-                (
-                    $queryParameters["outputFormat"] ? $queryParameters["outputformat"] :
-                        (
-                            $queryParameters["outputformat"] ? $queryParameters["outputformat"] : ""
-                        )
-                );
-            switch ($format) {
+            list($records,$totalRecords) = $this->recs->get_records($request);
+            $outputFormat = $this->input->get("format");
+            $outputFormat = $outputFormat && in_array($outputFormat,["csv","xls","json"]) ? $outputFormat : "json";
+
+            switch ($outputFormat) {
                 case "csv":
-                    $this->out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords,$queryParameters["filename"]);
+                    $this->out_csv($resourceName,$recId,$request,$records,$totalRecords,$this->input->get("filename"));
                     break;
                 case "xls":
-                    $this->out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords,$queryParameters["filename"]);
+                    $this->out_xls($resourceName,$recId,$request,$records,$totalRecords,$this->input->get("filename"));
                     break;
-                case "binary":
-                    if(!$queryParameters["data_fld"]) {
-                        HttpResp::invalid_request("No data field provided");
-                    }
-
-                    if(!$recId) {
-                        HttpResp::invalid_request("Not allow to output binary data for collections");
-                    }
-
-                default:
-                    $this->out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords);
+                case "json":
+                    $this->out_jsonapi($resourceName,$recId,$request,$records,$totalRecords);
             }
 
         }
@@ -829,7 +928,7 @@ class Dbapi extends CI_Controller
      * @param $records
      * @param $totalRecords
      */
-    function out_csv($resourceName,$recId,$queryParameters,$records,$totalRecords,$fileName=null) {
+    function out_csv($resourceName,$recId,$request,$records,$totalRecords,$fileName=null) {
 
         if(!is_null($recId) && !$totalRecords) {
             HttpResp::not_found();
@@ -862,12 +961,14 @@ class Dbapi extends CI_Controller
             }
         }
 
-        if(isset($queryParameters["includetablehead"]) && $queryParameters["includetablehead"]) {
+        $includeTHead = $this->input->get("includetablehead");
+        if($includeTHead && $includeTHead=="true") {
             $tmp = $fieldsNames;
             array_splice($tmp,-1,0,$relationsNames);
             $out[] = '"'.implode('","',$tmp).'"';
         }
-        $fieldsNames = $queryParameters["fields"] && $queryParameters["fields"][$resourceName] ?   explode(",",$queryParameters["fields"][$resourceName]   )  : $fieldsNames;
+
+        $fieldsNames = $request->fields ?   explode(",",$request->fields   )  : $fieldsNames;
 
 
         foreach ($records as $record) {
@@ -892,7 +993,7 @@ class Dbapi extends CI_Controller
      * @param $records
      * @param $totalRecords
      */
-    function out_xls($resourceName,$recId,$queryParameters,$records,$totalRecords,$fileName =null) {
+    function out_xls($resourceName,$recId,$queryParameters,$request,$records,$totalRecords,$fileName=null) {
 
         if(!class_exists("\Vtiful\Kernel\Excel")) {
             HttpResp::server_error("XLS extension not loaded. Please contact the server administrator");
@@ -930,10 +1031,11 @@ class Dbapi extends CI_Controller
         }
         $xls = new \Vtiful\Kernel\Excel(["path"=>"/tmp"]);
         $this->load->helper('string');
-        $fileName = random_string();
+        $fileName = $fileName ? $fileName : random_string();
         $xlsFile = $xls->fileName($fileName,$resourceName);
 
-        if(isset($queryParameters["includetablehead"]) && $queryParameters["includetablehead"]) {
+        $includeTHead = $this->input->get("includetablehead");
+        if($includeTHead && $includeTHead=="true") {
             $header = $fieldsNames;
             array_splice($header, -1, 0, $relationsNames);
             $xlsFile->header($header);
@@ -1247,7 +1349,7 @@ class Dbapi extends CI_Controller
         // fetch parent record
         try {
             if($relationType=="outbound") {
-                list($records, $count) = $this->recs->getRecords($resourceName, [
+                list($records, $count) = $this->recs->get_records($resourceName, [
                     "filter" => $filter
                 ]);
 
@@ -1396,7 +1498,7 @@ class Dbapi extends CI_Controller
                 }
 
 
-                list($records,$noRecs) = $this->recs->getRecords($resourceName,[
+                list($records,$noRecs) = $this->recs->get_records($resourceName,[
                     "includeStr" => implode(",",$includes),
                     "filter"=>$filter
                 ]);
@@ -1540,4 +1642,111 @@ function cidr_match($ip, $range){
     $mask = -1 << (32 - $bits);
     $subnet &= $mask; // in case the supplied subnet was not correctly aligned
     return ($ip & $mask) == $subnet;
+}
+
+
+/**
+ * shorthand method to fetch some of the GET parameters and set them to the request object
+ * It applies only to most of the request parameters with some exceptions
+ * the passed parameter must be a hash with keys being the resource name for which the parameter applies
+ * @param string $param
+ * @param array $inputs
+ * @param string $resourceName
+ * @param DBAPIRequest $request
+ */
+function set_para(string $param, array &$inputs, string $resourceName, DBAPIRequest &$request,$default=null) {
+    if(!isset($inputs[$param])) {
+        return;
+    }
+
+    if(!isset($inputs[$param][$resourceName]))
+        return;
+
+    $request->$param = $inputs[$param][$resourceName];
+    unset($inputs[$param][$resourceName]);
+}
+
+class DBAPIRequest {
+    /**
+     * resource name
+     * @var string
+     */
+    public $resourceName;    // resource name to be fetched (can be name of a table/view or relation name)
+
+    /**
+     * record ID
+     * @var string|null
+     */
+    public $resourceId = null;               // record ID
+
+    /**
+     * filter conditions
+     * @var array|string
+     */
+    public $filter = [];                     // filters (where)
+
+    /**
+     * array of fields to include
+     * @var array|string
+     */
+    public $fields = [];                     // fields to fetch
+
+    /**
+     * array of includes
+     * @var DBAPIRequest[]
+     */
+    public $include = [];                    // relations to include
+
+    /**
+     * pagging parameter
+     * @var array
+     */
+    public $paging = null;
+
+    /**
+     * array of sort options
+     * @var array|string
+     */
+    public $sort = [];                       // sort options
+
+    /**
+     * customer where query
+     * @var string|null
+     */
+    public $filter_advanced = null;
+
+
+
+    /**
+     * sets on duplicate behaviour: ignore, update, error
+     * @var string|null
+     */
+    public $onduplicate = "error";
+
+    /**
+     * array of fields to update when onduplicate=update
+     * @var array|string
+     */
+    public $update = [];
+
+    /**
+     * if true insert ignore will be applied on inserts
+     * @var boolean
+     */
+    public $insertignore = false;
+
+    /**
+     * relationship type [inbound|outbound]
+     * @var array|null
+     */
+    public $relSpec = null;
+    
+    private function __construct($resourceName)
+    {
+        $this->resourceName = $resourceName;
+    }
+
+    static function factory($resourceName) {
+        return new self($resourceName);
+    }
 }

@@ -81,7 +81,8 @@ class Records {
      * @return array
      * @throws \Exception
      */
-    private function generateSqlParts($top, &$includes, array $fields)
+    private function generateSqlParts(\DBAPIRequest $request)
+//    private function generateSqlParts($top, &$includes, array $fields)
     {
         sort($includes);
         for($i=0;$i<count($includes);$i++) {
@@ -410,7 +411,7 @@ class Records {
                 }
 
 //                print_r($options);
-                list($rec->relationships->$fk->data,$rec->relationships->$fk->total) = $this->getRecords($incNode["table"],$options);
+                list($rec->relationships->$fk->data,$rec->relationships->$fk->total) = $this->get_records($incNode["table"],$options);
 //                print_r($rec->relationships->$fk->data);
             }
         }
@@ -437,7 +438,7 @@ class Records {
         if($includes) {
             $opts["includeStr"] = $includes;
         }
-        list($recs,$total) = $this->getRecords($table,$opts);
+        list($recs,$total) = $this->get_records($table,$opts);
         if(count($recs))
             return $recs[0];
 
@@ -479,6 +480,9 @@ class Records {
         return count($orderByArr)?implode(", ",$orderByArr):1;
     }
 
+    function generate_select_sql_parts($request) {
+
+    }
     /**
      * Retrieves records from a database.
      *
@@ -493,80 +497,43 @@ class Records {
      * 8. run query
      * 9. parse result
      *
-     * @param string $resourceName
-     * @param array $opts [
-            * "includeStr" => "",
-            * "fields" => [],
-            * "filters"=>[],
-            * "offset"=>0,
-            * "limit"=>0,
-            * "order"=>[]
-        * ]
+     * @param \DBAPIRequest $request
      * @return array
      * @throws \Exception
      * @todo: check filtering
-     *
      */
-    function getRecords($resourceName, $opts=[])
+    function get_records(\DBAPIRequest $request)
     {
         // check if resource exists
-        if(!$this->dm->resource_exists($resourceName))
-            throw new \Exception("Resource '$resourceName' not found",404);
+        // removed because it's already handled by controller
+//        if(!$this->dm->resource_exists($resourceName))
+//            throw new \Exception("Resource '$resourceName' not found",404);
 
         // check if client is authorized
+        $resourceName = $request->resourceName;
         if(!$this->dm->resource_allow_read($resourceName))
             throw new \Exception("Not authorized to read from '$resourceName'",403);
 
         $cfg = $this->dm->get_config($resourceName);
         $tableName = isset($cfg["name"])?$cfg["name"]:$resourceName;
 
-        // prepare parameters
-        $defaultOpts = [
-            "includeStr" => [],
-            "fields" => [],
-            "filter"=>[],
-            "paging"=>[],
-            "order"=>[]
-        ];
-
-        $opts = array_merge($defaultOpts,$opts);
         // debug
 
-        $whereStr = $this->generateWhereSQL($opts['filter'][$tableName]);
+        $whereStr = $this->generateWhereSQL($request->filter);
         if(empty($whereStr)) {
             $whereStr = 1;
         }
 
-        if($opts["custom_where"] && $opts["custom_where"][$resourceName]) {
-            $whereStr .= " AND ".$opts['custom_where'][$resourceName];
+        if($request->filter_advanced) {
+            $whereStr .= " AND ".$request->filter_advanced;
         }
 
-        // prepare field selection (validate and ....
-        foreach ($opts['fields'] as $res=>$fldsStr) {
-            $opts['fields'][$res] = [];
-            $tmp = explode(",",$fldsStr);
-            foreach ($tmp as $fld) {
-                if($this->dm->is_valid_field($res,$fld))
-                    $opts['fields'][$res][] = $fld;
-                else
-                    throw new \Exception("Invalid field name $res.$fld",401);
-            }
-            if(empty($opts['fields'][$res]))
-                unset($opts['fields'][$res]);
-        }
+        list($select,$join,$relTree) = $this->generate_select_sql_parts($request);
 
-        // generate SQL parts & relation tree
-        if(is_string($opts['includeStr'])) {
-            $includeStr = trim($opts['includeStr']);
-            $opts['includeStr'] = $includeStr===""?[]:explode(",",$includeStr);
-        }
-
-        list($select,$join,$relTree) = $this->generateSqlParts($tableName,$opts['includeStr'],$opts['fields']);
-
-        list($offset,$limit) = $this->get_paging($resourceName,@$opts["paging"]);
+        list($offset,$limit) = $this->get_paging($request);
 
         // prepare ORDER BY part
-        $orderStr = $this->generateSortSQL($opts['order'],$tableName);
+        $orderStr = $this->generateSortSQL($request);
 
 
         // extract total number of records matched by the query
