@@ -168,7 +168,7 @@ $route["^$basePath/([\w\-\.\_\%]+)"]["patch"] ="$controller/updateMultipleRecord
 // second family: /resourceŃame
 // #4 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2";
 // #5
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/createRecords/$1/$2";
 // #5.1
@@ -181,7 +181,7 @@ $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/d
 // third family: /resourceName/id
 // #6 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getSingleRecord/$1/$2";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2/$3";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2/$3";
 // #7
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateSingleRecord/$1/$2/$3";
 // #8
@@ -242,7 +242,7 @@ $route[$apiDataUrlPrefix]["patch"] ="$controller/updateMultipleRecords/$1";
 // second family: /resourceŃame
 // #4 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2";
 // #5
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["post"] = "$controller/createRecords/$1/$2";
 // #5.1
@@ -255,7 +255,7 @@ $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteMult
 // third family: /resourceName/id
 // #6 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getSingleRecord/$1/$2";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2/$3";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2/$3";
 // #7
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateSingleRecord/$1/$2/$3";
 // #8

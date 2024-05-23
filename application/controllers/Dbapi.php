@@ -441,7 +441,7 @@ class Dbapi extends CI_Controller
                 $doc->json_data()
             );
         }
-        $this->getRecords($configName,$resourceName,null,$paras);
+        $this->get_records($configName,$resourceName,null,$paras);
     }
 
     /**
@@ -506,7 +506,7 @@ class Dbapi extends CI_Controller
         ];
 
 //        print_r($qp);
-        $this->getRecords($configName,$resourceName,null,$qp);
+        $this->get_records($configName,$resourceName,null,$qp);
 
 
         $doc = \JSONApi\Document::create($this->JsonApiDocOptions,[]);
@@ -588,7 +588,7 @@ class Dbapi extends CI_Controller
             if("".$recId!=="".@$updateData->id)
                 throw new Exception("Record ID mismatch $recId vs $updateData->id",400);
 
-            $resKeyFld = $this->apiDm->getPrimaryKey($resourceName);
+            $resKeyFld = $this->apiDm->get_primary_key($resourceName);
             if(!$resKeyFld)
                 throw new Exception("Cannot update by id: resource $resourceName is not configured with a primary key",400);
 
@@ -624,7 +624,7 @@ class Dbapi extends CI_Controller
                 ]
             ];
 
-            $this->getRecords($configName,$resourceName,$recId,$qp);
+            $this->get_records($configName,$resourceName,$recId,$qp);
 
         }
         catch (Exception $exception) {
@@ -743,27 +743,47 @@ class Dbapi extends CI_Controller
      * @param string $fqResName fully qualified resource name
      * @param array|null $inputs
      * @return DBAPIRequest
+     * @throws \Apiator\DBApi\Exception
      */
-    function processQueryParas(string $fqResName, &$inputs=null) {
+    function process_query_parameters(string $fqResName, &$inputs=null) {
         $tmp = explode("/",$fqResName);
         $simpleName = array_pop($tmp);
 
-        $request = DBAPIRequest::factory($simpleName);
+        $request = new DBAPIRequest($simpleName,$this->config->item("default_page_size"));
 
         // fetch include
         set_para("include", $inputs,$fqResName, $request);
         if($request->include) {
             $request->include = explode(",",$request->include);
             foreach ($request->include as $key=>$relName) {
-                $request->include[$relName] = $this->processQueryParas("$fqResName/$relName",$inputs);
+                $request->include[$relName] = $this->process_query_parameters("$fqResName/$relName",$inputs);
                 unset($request->include[$key]);
             }
         }
 
-        // fetch filter
+        // fetch filter and validate
         set_para("filter",$inputs,$fqResName, $request,$inputs);
         if(is_string($request->filter)) {
-            $request->filter = explode(",",$request->filter);
+            $validOps = ["!=","=","<","<=",">",">=","><","~=","!~=","=~","!=~","<>","!><"];
+            $tmp = explode(",",$request->filter);
+            $request->filter = [];
+            foreach ($tmp as $expression) {
+                if(!preg_match("/(\w+)([\>\<\=\~\!]+)(.*)/",$expression,$matches)) {
+                    throw new \Apiator\DBApi\Exception("Invalid filtering expression $expression ".
+                        "for resource $request->resourceName",400);
+                }
+
+                if(!in_array($matches[2],$validOps)) {
+                    throw new \Apiator\DBApi\Exception("Invalid comparison operator in".
+                        " filtering expression $expression for resource $request->resourceName",400);
+                }
+
+                $request->filter[] = [
+                    "left"=>$matches[1],
+                    "op"=>$matches[2],
+                    "right"=>$matches[3],
+                ];
+            }
         }
 
         set_para("fields",$inputs,$fqResName, $request,$inputs);
@@ -771,7 +791,25 @@ class Dbapi extends CI_Controller
             $request->fields = explode(",",$request->fields);
         }
 
-        set_para("page",$inputs,$fqResName, $request,$inputs);
+        if(isset($inputs["page"])) {
+            if(isset($inputs["page"][$fqResName])) {
+                if(isset($inputs["page"][$fqResName]["offset"])) {
+                    if(is_numeric($inputs["page"][$fqResName]["offset"]))
+                        $request->offset = $inputs["page"][$fqResName]["offset"];
+                    else
+                        throw new \Apiator\DBApi\Exception("Invalid page offset value".
+                            "for resource $request->resourceName",400);
+                }
+                if(isset($inputs["page"][$fqResName]["limit"])) {
+                    if(is_numeric($inputs["page"][$fqResName]["limit"]))
+                        $request->offset = $inputs["page"][$fqResName]["limit"];
+                    else
+                        throw new \Apiator\DBApi\Exception("Invalid page offset value".
+                            "for resource $request->resourceName",400);
+                }
+            }
+        }
+
         set_para("sort",$inputs,$fqResName, $request,$inputs);
         if(is_string($request->sort)) {
             $request->sort = explode(",",$request->sort);
@@ -804,27 +842,60 @@ class Dbapi extends CI_Controller
      * @throws \Apiator\DBApi\Exception
      */
     function attach_configuration_2_request($request, $parent=null, $relName=null) {
+
         if(is_null($parent)) {
-            $request->config = $this->apiDm->get_config($request->resourceName);
+            // for top level resource check if is valid resource
+//            $request->config = $this->apiDm->get_config($request->resourceName);
             if(!$this->apiDm->is_valid_resource($request->resourceName)) {
                 throw new \Apiator\DBApi\Exception("Resource not found $request->resourceName",404);
             }
         }
         else {
-            try {
-                $rel = $this->apiDm->get_relationship($parent->resourceName, $relName);
-                $request->resourceName = $rel["table"];
-                $request->relSpec = $rel;
+            // for included resource get valid relationship
+            $rel = $this->apiDm->get_relationship($parent->resourceName, $relName);
+            $request->resourceName = $rel["table"];
+            $request->relSpec = $rel;
+        }
+
+
+        // validate fields
+        foreach ($request->fields as $fld) {
+            if(!$this->apiDm->is_valid_field($request->resourceName,$fld)) {
+                throw new \Apiator\DBApi\Exception("Invalid field $fld of $request->resourceName for sparse field selection",404);
             }
-            catch (Exception $exception) {
-                return null;
+        }
+
+        // if no sparse field selection, get all fields to
+        if(!count($request->fields)) {
+            $request->fields = $this->apiDm->get_selectable_fields($request->resourceName);
+        }
+
+
+        $request->primaryKey = $this->apiDm->get_primary_key($request->resourceName);
+        // add primary key fld if not already present in fields list
+        if(!in_array($request->primaryKey,$request->fields)) {
+            $request->fields[] = $request->primaryKey;
+        }
+
+        foreach ($request->fields as $idx=>$fldName) {
+            $request->fieldsIndexes[$fldName] = $idx;
+        }
+
+        foreach ($request->sort as $key=>$sortOption) {
+            if(!preg_match("/^(\-?)(\w+)$/",$sortOption,$matches)) {
+                throw new \Apiator\DBApi\Exception("Invalid ordering expresion $sortOption of $request->resourceName to be used for ordering the results",404);
             }
+
+            if(!$this->apiDm->is_valid_field($request->resourceName,$matches[2])) {
+                throw new \Apiator\DBApi\Exception("Invalid field $sortOption of $request->resourceName to be used for ordering the results",404);
+            }
+            $request->sort[$key] = "`{$matches[2]}`".($matches[1] ? " DESC" : "");
         }
 
         foreach ($request->include as $relName=>$inclReq) {
             $rel = $this->attach_configuration_2_request($inclReq,$request,$relName);
             if(is_null($rel))
-                unset($request->include[$relName]);
+                throw new \Apiator\DBApi\Exception("Relationship $relName of $request->resourceName not found",404);
             else
                 $request->include[$relName] = $rel;
         }
@@ -837,7 +908,7 @@ class Dbapi extends CI_Controller
      * @return DBAPIRequest|mixed
      * @throws \Apiator\DBApi\Exception
      */
-    private function getRequest($resourceName) {
+    private function get_request($resourceName) {
         $inputs = $this->input->get();
 
         foreach (["filter","sort","includes","page","onduplicate","update","fields","insertignore"] as $param) {
@@ -847,7 +918,7 @@ class Dbapi extends CI_Controller
                 ];
             }
         }
-        $request = $this->processQueryParas($resourceName,$inputs);
+        $request = $this->process_query_parameters($resourceName,$inputs);
         $request = $this->attach_configuration_2_request($request);
         return $request;
         // resolve resourceNames to table names (for relations)
@@ -864,13 +935,13 @@ class Dbapi extends CI_Controller
      * @throws Exception
      */
 //    function getRecords($configName, $resourceName, $recId=null, $fields=[],$filter=[],$includes=[],$sort=[],$paging=[],$options=[])
-    function getRecords($configName, $resourceName, $recId=null, $request=null)
+    function get_records($configName, $resourceName, $recId=null, $request=null)
     {
         // init DB connection & load config
         $this->_init($configName);
         // parse input paramas into request
         try {
-            $request = $this->getRequest($resourceName);
+            $request = $this->get_request($resourceName);
         }
         catch (Exception $exception) {
             HttpResp::exception_out($exception);
@@ -880,6 +951,7 @@ class Dbapi extends CI_Controller
 
         log_message("info",json_encode($request,JSON_PRETTY_PRINT));
 
+//        echo(json_encode($request,JSON_PRETTY_PRINT));
 
         // validation
         try {
@@ -887,7 +959,7 @@ class Dbapi extends CI_Controller
                 throw new Exception("Resource 1 s $resourceName not found",404);
 
             if(!is_null($recId)) {
-                $keyFld = $this->apiDm->getPrimaryKey($resourceName);
+                $keyFld = $this->apiDm->get_primary_key($resourceName);
                 if(is_null($keyFld))
                     throw new Exception("Request not supported. $resourceName does not have a primary key defined", 404);
 
@@ -927,6 +999,7 @@ class Dbapi extends CI_Controller
      * @param $queryParameters
      * @param $records
      * @param $totalRecords
+     * @throws \Apiator\DBApi\Exception
      */
     function out_csv($resourceName,$recId,$request,$records,$totalRecords,$fileName=null) {
 
@@ -992,6 +1065,7 @@ class Dbapi extends CI_Controller
      * @param $queryParameters
      * @param $records
      * @param $totalRecords
+     * @throws \Apiator\DBApi\Exception
      */
     function out_xls($resourceName,$recId,$queryParameters,$request,$records,$totalRecords,$fileName=null) {
 
@@ -1061,7 +1135,16 @@ class Dbapi extends CI_Controller
     }
 
 
-    function out_jsonapi($resourceName,$recId,$queryParameters,$records,$totalRecords) {
+    /**
+     * @param $resourceName
+     * @param $recId
+     * @param DBAPIRequest $request
+     * @param $queryParameters
+     * @param $records
+     * @param $totalRecords
+     * @throws Exception
+     */
+    function out_jsonapi($resourceName,$recId,$request,$records,$totalRecords) {
         $doc = \JSONApi\Document::create($this->JsonApiDocOptions);
 
         // single record retrieval
@@ -1076,11 +1159,7 @@ class Dbapi extends CI_Controller
         // multiple records retrieval
         else {
             $doc->setData($records);
-            $offset = 0;
-            if(isset($queryParameters["paging"]) && isset($queryParameters["paging"][$resourceName])
-                && isset($queryParameters["paging"][$resourceName]["offset"]))
-                $offset = $queryParameters["paging"][$resourceName]["offset"];
-            $doc->setMeta(\JSONApi\Meta::factory(["offset"=>$offset,"totalRecords"=>$totalRecords]));
+            $doc->setMeta(\JSONApi\Meta::factory(["offset"=>$request->offset,"totalRecords"=>$totalRecords]));
 
         }
 
@@ -1342,7 +1421,7 @@ class Dbapi extends CI_Controller
 
 
         // prepare filter for matching the parent records
-        $filterStr = $this->apiDm->getPrimaryKey($resourceName)."=$recId";
+        $filterStr = $this->apiDm->get_primary_key($resourceName)."=$recId";
         $filter = get_filter($filterStr,$resourceName);
         $parent = null;
 
@@ -1367,12 +1446,12 @@ class Dbapi extends CI_Controller
 
         if($relationType=="inbound") {
             $_GET["filter"] = @$_GET["filter"] . "," . $relSpec["field"] . "=" . $recId;
-            $this->getRecords($configName,$relSpec["table"],$relRecId);
+            $this->get_records($configName,$relSpec["table"],$relRecId);
         }
 
         if($relationType=="outbound") {
             $_GET["filter"] = $relSpec["field"]."=".$fkId;
-            $this->getRecords($configName,$relSpec["table"],$fkId);
+            $this->get_records($configName,$relSpec["table"],$fkId);
         }
     }
 
@@ -1490,7 +1569,7 @@ class Dbapi extends CI_Controller
                 // todo: what happens when the records are not uniquely identifiable? think about adding an extra behavior
                 $recId = $this->recs->insert($resourceName, $entry, $this->insertMaxRecursionLevel,
                     $onDuplicate, $insertIgnore, $updateFields,null,$includes);
-                $recIdFld = $this->apiDm->getPrimaryKey($entry->type?$entry->type:$resourceName);
+                $recIdFld = $this->apiDm->get_primary_key($entry->type?$entry->type:$resourceName);
                 $filterStr = "$recIdFld=$recId";
                 $filter = get_filter($filterStr,$resourceName);
                 if(!$filter) {
@@ -1677,7 +1756,12 @@ class DBAPIRequest {
      * record ID
      * @var string|null
      */
-    public $resourceId = null;               // record ID
+    public $resourceId = null;
+
+    /**
+     * @var string|null
+     */
+    public $primaryKey = null;
 
     /**
      * filter conditions
@@ -1691,6 +1775,7 @@ class DBAPIRequest {
      */
     public $fields = [];                     // fields to fetch
 
+    public $fieldsIndexes = [];
     /**
      * array of includes
      * @var DBAPIRequest[]
@@ -1701,7 +1786,13 @@ class DBAPIRequest {
      * pagging parameter
      * @var array
      */
-    public $paging = null;
+    public $page = [
+        "offset"=>0,
+        "limit"=>10
+    ];
+
+    public $offset=0;
+    public $limit=10;
 
     /**
      * array of sort options
@@ -1740,13 +1831,13 @@ class DBAPIRequest {
      * @var array|null
      */
     public $relSpec = null;
-    
-    private function __construct($resourceName)
+
+    public $selectFieldsOffset;
+
+
+    function __construct($resourceName,$defaultPageSize)
     {
         $this->resourceName = $resourceName;
-    }
-
-    static function factory($resourceName) {
-        return new self($resourceName);
+        $this->page["limit"] = $defaultPageSize;
     }
 }

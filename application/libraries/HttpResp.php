@@ -356,6 +356,7 @@ class HttpResp{
     static function exception_out($e)
     {
         HttpResp::json_out($e->getCode(),["errors"=>[["message"=>$e->getMessage()]]]);
+        die();
     }
 
     /**

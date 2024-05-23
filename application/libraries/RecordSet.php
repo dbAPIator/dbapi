@@ -325,7 +325,7 @@ class Record {
     /**
      * add relationship
      * @param $relationName
-     * @param Record $record
+     * @param Record $relation
      * @return bool
      */
     public function add_relation($relationName, &$record) {
@@ -340,6 +340,7 @@ class Record {
         return true;
     }
 
+
     /**
      * @param $relationName
      * @param $records
@@ -347,11 +348,13 @@ class Record {
      * @param $offset
      * @param $total
      */
-    public  function add_relations($relationName,$records,$type,$offset,$total) {
+    public  function add_relations($relationName,$records,$type,$offset=0,$total=null) {
         if(is_null($this->relationships))
             $this->relationships = [];
 
         $this->relationships[$relationName] = new RecordSet($records,$type, $offset,$total);
         isset($_GET["dbg1979"])  && print_r($this);
     }
+
+
 }

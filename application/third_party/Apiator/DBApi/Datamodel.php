@@ -79,7 +79,7 @@ class Datamodel {
      * @param string $resourceName table nam
      * @return array|null
      */
-    function getResourceFields($resourceName) {
+    function get_fields($resourceName) {
         return $this->dataModel[$resourceName]["fields"];
     }
 
@@ -187,9 +187,9 @@ class Datamodel {
     /**
      * return name of the field used as primary key
      * @param $resName
-     * @return mixed
+     * @return string|null
      */
-    function getPrimaryKey($resName)
+    function get_primary_key($resName)
     {
         $keyFld =  isset($this->dataModel[$resName]["keyFld"])?$this->dataModel[$resName]["keyFld"]:null;
         return $keyFld;
@@ -319,13 +319,15 @@ class Datamodel {
         if(!$this->resource_exists($resName))
             throw new \Exception("Invalid resource $resName",400);
 
-        if(!isset($this->dataModel[$resName]["relations"][$relName]))
-            throw new \Exception("Invalid relationship name '$relName'",400);
-
-        if($this->dataModel[$resName]["relations"][$relName]["type"]!=="outbound")
-            throw new \Exception("Invalid outbound relationship '$relName'",400);
+        if(!isset($this->dataModel[$resName]["relations"][$relName])
+            || $this->dataModel[$resName]["relations"][$relName]["type"]!=="outbound")
+            return null;
 
         return $this->dataModel[$resName]["relations"][$relName];
+    }
+
+    function get_all_relations($resName) {
+        return $this->dataModel[$resName]["relations"];
     }
 
     /**
@@ -383,7 +385,7 @@ class Datamodel {
         if(!$this->is_valid_field($tableName,$fieldName))
             throw new \Exception("Invalid field $tableName.$fieldName",400);
 
-        $fields = $this->getResourceFields($tableName);
+        $fields = $this->get_fields($tableName);
 
         if($value==="") {
             if(in_array($fields[$fieldName]["type"]["proto"],$mysqlTypes["numeric"]))

@@ -239,7 +239,7 @@ class Records {
      */
     private function prepareQuery(&$node, $start, &$select, &$join)
     {
-        $id = $this->dm->getPrimaryKey($node["name"]);
+        $id = $this->dm->get_primary_key($node["name"]);
 
         $node["keyFld"] = $id;
         $node["offset"] = $start;
@@ -450,38 +450,126 @@ class Records {
      * @return int|string
      * @throws \Exception
      */
-    private function generateWhereSQL($filters)
+    private function generate_where_sql($filters,$alias)
     {
+
+
+        function generate_where_condition($where, $alias) {
+            // if element is not an object or left property of OBJ is not a field -> ignore -> return TRUE
+            if(!is_object($where) || !property_exists($where,"left")){
+                log_message("debug","invalid filter entry");
+                return "FALSE";
+            }
+
+
+            $validOps = ["!=","=","<","<=",">",">=","><","~=","!~=","=~","!=~","<>","!><"];
+
+            $where->right = $where->right=="NULL"?null:$where->right;
+
+            switch($where->op) {
+                case "><":
+                    $str = sprintf("`%s`.`%s` IN ('%s')",$alias,$where->left,str_replace(";","','",$where->right));
+                    break;
+                case "!><":
+                    $str = sprintf("`%s`.`%s` NOT IN ('%s')",$alias,$where->left,str_replace(";","','",$where->right));
+                    break;
+                case "~=":
+                    $str = sprintf("`%s`.`%s` LIKE ('%%%s')",$alias,$where->left,$where->right);
+                    break;
+                case "!~=":
+                    $str = sprintf("`%s`.`%s` NOT LIKE ('%%%s')",$alias,$where->left,$where->right);
+                    break;
+                case "=~":
+                    $str = sprintf("`%s`.`%s` LIKE ('%s%%')",$alias,$where->left,$where->right);
+                    break;
+                case "!=~":
+                    $str = sprintf("`%s`.`%s` NOT LIKE ('%s%%')",$alias,$where->left,$where->right);
+                    break;
+                case "~=~":
+                    $str = sprintf("`%s`.`%s` LIKE ('%%%s%%')",$alias,$where->left,$where->right);
+                    break;
+                case "!~=~":
+                    $str = sprintf("`%s`.`%s` NOT LIKE ('%%%s%%')",$alias,$where->left,$where->right);
+                    break;
+                case "=":
+                    if($where->right==="__NULL__") {
+                        $str = sprintf("`%s`.`%s` IS NULL",$alias,$where->left);
+                    }
+                    else {
+                        $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
+                    }
+                    break;
+                case "!=":
+                    if($where->right==="__NULL__") {
+                        $str = sprintf("`%s`.`%s` IS NOT NULL",$alias,$where->left);
+                    }
+                    else {
+                        $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
+                    }
+                    break;
+
+                default:
+                    if(in_array($where->op,$validOps))
+                        $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
+                    else
+                        $str = "TRUE";
+            }
+
+            return $str;
+        }
+
         // todo: correct filtering.... after allowing searching by fields beloning to joined tables...
         $whereArr = [];
         foreach ($filters as $filter) {
-            $whereArr[] = generate_where_str((object) $filter);
+            $whereArr[] = generate_where_condition((object) $filter,$alias);
         }
         return count($whereArr) ? implode(" AND ", $whereArr) : 1;
     }
 
+
     /**
-     * @param $order
-     * @param $resName
-     * @return string
-     * @throws \Exception
+     * @param \DBAPIRequest $request
+     * @return array
      */
-    private function generateSortSQL($order, $resName)
+    function generate_select_sql_parts(&$request)
     {
-        $orderByArr = [];
-        foreach ($order as $item) {
-            if($item->alias!==$resName)
-                continue;
-            if(!$this->dm->field_is_sortable($item->alias,$item->fld))
-                continue;
+        /**
+         * @param \DBAPIRequest $req
+         * @param $fields
+         * @param $join
+         * @param string $tableAlias
+         */
+        function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlias, $parentTableAlias="")
+        {
+            $req->selectFieldsOffset = count($req->fields);
+            foreach ($req->fields as $fld) {
+                $fields[] = "`$tableAlias`.`$fld`";
+            }
 
-            $orderByArr[] = sprintf("%s.%s %s",$resName,$item->fld,$item->dir);
+            // n:1 relationship -> skip
+
+            if($req->relSpec) {
+                if($req->relSpec["type"]=="inbound") return;
+
+                $join[] = "LEFT JOIN `$req->resourceName` AS `$tableAlias` ".
+                    "ON `$tableAlias`.`{$req->relSpec['field']}`=`$parentTableAlias`.`{$req->relSpec['fkfield']}`";
+            }
+
+            foreach ($req->sort as $idx=>$sort) {
+                $req->sort[$idx] = "`$tableAlias`.$sort";
+            }
+
+            foreach ($req->include as $relName=>$relReq) {
+                if($relReq->relSpec["type"]=="outbound")
+                    recursive_generate_select_and_joins($relReq,$fields,$join, $tableAlias."_".$relName,$tableAlias);
+            }
         }
-        return count($orderByArr)?implode(", ",$orderByArr):1;
-    }
 
-    function generate_select_sql_parts($request) {
-
+        $fields = [];
+        $join = [];
+        $sort = [];
+        recursive_generate_select_and_joins($request, $fields, $join,$request->resourceName);
+        return [$fields,$join,$sort,null];
     }
     /**
      * Retrieves records from a database.
@@ -504,22 +592,15 @@ class Records {
      */
     function get_records(\DBAPIRequest $request)
     {
-        // check if resource exists
-        // removed because it's already handled by controller
-//        if(!$this->dm->resource_exists($resourceName))
-//            throw new \Exception("Resource '$resourceName' not found",404);
-
         // check if client is authorized
         $resourceName = $request->resourceName;
         if(!$this->dm->resource_allow_read($resourceName))
             throw new \Exception("Not authorized to read from '$resourceName'",403);
 
         $cfg = $this->dm->get_config($resourceName);
-        $tableName = isset($cfg["name"])?$cfg["name"]:$resourceName;
-
         // debug
 
-        $whereStr = $this->generateWhereSQL($request->filter);
+        $whereStr = $this->generate_where_sql($request->filter,$request->resourceName);
         if(empty($whereStr)) {
             $whereStr = 1;
         }
@@ -528,17 +609,14 @@ class Records {
             $whereStr .= " AND ".$request->filter_advanced;
         }
 
-        list($select,$join,$relTree) = $this->generate_select_sql_parts($request);
-
-        list($offset,$limit) = $this->get_paging($request);
-
-        // prepare ORDER BY part
-        $orderStr = $this->generateSortSQL($request);
+        list($select,$join,$sort,$relTree) = $this->generate_select_sql_parts($request);
+//        print_r($select);
+//        print_r($join);
 
 
         // extract total number of records matched by the query
-        $countSql = "SELECT count(*) cnt FROM `{$relTree[$tableName]["name"]}` AS `{$relTree[$tableName]["alias"]}` "
-            .($join!==""?$join:"")
+        $countSql = "SELECT count(*) cnt FROM `$request->resourceName` "
+            .implode(" ",$join)
             ." WHERE $whereStr";
 
         $res = $this->dbdrv->query($countSql);
@@ -553,12 +631,12 @@ class Records {
 
 
         // compile SELECT
-        $mainSql = "SELECT $select FROM `{$relTree[$tableName]["name"]}` AS `{$relTree[$tableName]["alias"]}` "
-            .($join!==""?$join:"")
+        $mainSql = "SELECT ".join(",",$select)." FROM `$request->resourceName` "
+            .implode(" ",$join)
             ." WHERE $whereStr"
-            ." ORDER BY $orderStr"
-            ." LIMIT $offset, $limit";
-//         echo $mainSql."\n";
+            ." ORDER BY ".(count($request->sort) ? implode(",",$request->sort) : 1 )
+            ." LIMIT {$request->offset},{$request->limit}";
+        echo $mainSql."\n";
 
         // run query
         /** @var \CI_DB_result $res */
@@ -570,17 +648,81 @@ class Records {
         //get_instance()->debug_log($mainSql);
 
         $rows = $res->result_array_num();
+        print_r($rows);
 
         $recordSet = [];
         // parse result
         $allRecs = [];
         foreach ($rows as $row) {
-            $newRec = $this->parseResultRow($relTree[$resourceName],$row,$allRecs,$opts);
+//            $newRec = $this->parseResultRow($relTree[$resourceName],$row,$allRecs,$opts);
+            $newRec = $this->parse_result_row($request,$row,$allRecs);
             $recordSet[] = $newRec;
         }
 
 
         return [$recordSet,$totalRecs];
+    }
+
+    /**
+     * @param \DBAPIRequest $request
+     * @param array $row
+     * @param array $allRecs
+     * @return mixed|\stdClass
+     * @throws \Exception
+     */
+    function parse_result_row($request,$row,$allRecs){
+        $recId = null;
+        if($request->primaryKey) {
+            $recId = $row[$request->fieldsIndexes[$request->primaryKey]+$request->selectFieldsOffset];
+
+            $objIdx = $request->resourceName."_".$recId;
+            if(isset($allRecs[$objIdx])) {
+                $rec = &$allRecs[$objIdx];
+            }
+        }
+
+        // record not yet saved in allRecs -> need to extract it
+        if(!isset($rec)){
+            $rec = new \Record($request->resourceName,$recId ,[]);
+            $relations = $this->dm->get_all_relations($request->resourceName);
+            // extract values from record and populate attributes and outbound relations
+            foreach ($request->fields as $idx=>$fieldName) {
+                if(!isset($relations[$fieldName])) {
+                    $rec->attributes->$fieldName = $row[$request->fieldsIndexes[$fieldName]+$request->selectFieldsOffset];
+                    continue;
+                }
+                if(!isset($request->include[$fieldName])) {
+                    if($relations[$fieldName]["type"]==="outbound") {
+                        $rel = new \Record($relations[$fieldName]["table"],
+                            $row[$request->fieldsIndexes[$fieldName]+$request->selectFieldsOffset]);
+                        $rec->add_relation($fieldName,$rel);
+                    }
+                    else {
+                        $rec->add_relations($fieldName,[],$relations[$fieldName]["table"]);
+                    }
+                    continue;
+                }
+                if($relations[$fieldName]["type"]==="outbound") {
+                    $rel = $this->parse_result_row($request->include[$fieldName],$row,$allRecs);
+                    $rec->add_relation($fieldName,$rel);
+                }
+            }
+
+            foreach ($relations as $relName=>$relSpec) {
+                if($relSpec["type"]=="outbound" || !isset($request->include[$fieldName])) {
+                    continue;
+                }
+                $request->include[$fieldName]->filter[] = $relSpec["field"]."=".$recId;
+                print_r($request->include);
+                $relRecs = $this->get_records($request->include[$relName]);
+                $rec->add_relations($relName,$relRecs,$relSpec["table"],$request->include[$relName]->offset,count($relRecs));
+            }
+
+            if(isset($objIdx))
+                $allRecs[$objIdx] = $rec;
+        }
+
+        return $rec;
     }
 
      /**
@@ -594,7 +736,7 @@ class Records {
     private function validateInsertData($resName, $attributes) {
         $attributesNames = array_keys($attributes);
 
-        foreach($this->dm->getResourceFields($resName) as $fldName=> $fldSpec) {
+        foreach($this->dm->get_fields($resName) as $fldName=> $fldSpec) {
             if($fldSpec["required"] && is_null($fldSpec["default"]) && !in_array($fldName,$attributesNames))
                 throw new \Exception("Required attribute '$fldName' of '$resName' not provided",400);
 
@@ -654,7 +796,7 @@ class Records {
         // validate attributes
         $attributes = $data->attributes;
         $relations = isset($data->relationships)?$data->relationships:[];
-        $idFld = $this->dm->getPrimaryKey($table);
+        $idFld = $this->dm->get_primary_key($table);
 
         $insertData = [];
         if(isset($data->id)) {
@@ -925,7 +1067,7 @@ class Records {
         if(array_key_exists("custom_where",$paras))
             $where = $paras["custom_where"];
         else
-            $where = $this->generateWhereSQL($paras["filter"]);
+            $where = $this->generate_where_sql($paras["filter"]);
 
         return $this->updateAttributes($table,$attributes,$where);
     }
@@ -985,7 +1127,7 @@ class Records {
      */
     private function updateAttributesById($table, $id, $attributes)
     {
-        $priKey = $this->dm->getPrimaryKey($table);
+        $priKey = $this->dm->get_primary_key($table);
 
         $keyFields = $this->dm->get_key_flds($table);
 
@@ -1045,7 +1187,7 @@ class Records {
     function updateById($table, $id, $resourceData) {
 
 
-        if(!$this->dm->getPrimaryKey($table))
+        if(!$this->dm->get_primary_key($table))
             throw new \Exception("Update by ID not allowed: table '$table' does not have primary key/unique field.",500);
 
         // extract 1:1 relation data and insert
@@ -1127,7 +1269,7 @@ class Records {
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
 
-        $idFld = $this->dm->getPrimaryKey($tableName);
+        $idFld = $this->dm->get_primary_key($tableName);
 
         $this->dbdrv->where("$idFld in ('$recId')");
         $this->dbdrv->delete($tableName);
@@ -1157,7 +1299,7 @@ class Records {
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
 
-        $where = $this->generateWhereSQL($filter[$tableName]);
+        $where = $this->generate_where_sql($filter[$tableName]);
 
         $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);
@@ -1191,26 +1333,6 @@ class Records {
             return property_exists($obj,"attributes")?"ResourceObject":"ResourceIndicatorObject";
         else
             return property_exists($obj,"attributes")?"newResourceObject":"InvalidObject";
-    }
-
-
-    function get_paging($resName,$paging)
-    {
-//        print_r($resName);
-//        print_r($paging);
-        $instance = get_instance();
-        $offset = 0;
-        $limit = $instance->config->item("default_page_size");
-        if (!isset($paging) || !isset($paging[$resName]))
-            return [$offset,$limit];
-
-        if(isset($paging[$resName]["offset"]))
-            $offset = $paging[$resName]["offset"];
-
-        if(isset($paging[$resName]["limit"]))
-            $limit = $paging[$resName]["limit"]*1<$instance->config->item("max_page_size") ? $paging[$resName]["limit"]*1 :$instance->config->item("max_page_size");
-
-        return [$offset,$limit];
     }
 
 }
