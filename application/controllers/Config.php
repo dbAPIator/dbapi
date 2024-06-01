@@ -25,8 +25,11 @@ class Config extends CI_Controller {
         $this->load->helper("string");
         $headers = getallheaders();
         $secret = isset($headers["x-api-key"]) ? $headers["x-api-key"] : $this->input->get("xApiKey");
+
+
         if(!$secret || $secret!==$this->config->item("configApiSecret")) {
-            HttpResp::not_authorized("Not authorized");
+            //        echo $secret." ".$this->config->item("configApiSecret") ;
+            HttpResp::not_authorized("Not authorized to access config");
         }
     }
 
@@ -373,7 +376,7 @@ class Config extends CI_Controller {
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
-            $this->not_found();
+            echo "asdas" && $this->not_found();
     }
 
     /**
@@ -387,7 +390,7 @@ class Config extends CI_Controller {
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
-            $this->not_found();
+            echo "asdas" && $this->not_found();
     }
 
     /**
@@ -401,7 +404,7 @@ class Config extends CI_Controller {
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
-            $this->not_found();
+            echo "asdas" && $this->not_found();
     }
 
 

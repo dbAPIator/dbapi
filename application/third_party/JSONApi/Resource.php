@@ -39,28 +39,21 @@ class Resource extends json_ready
 
     /**
      * @param Document $document
-     * @param object $data
+     * @param \Record $data
      * @return Resource
      * @throws \Exception
      */
     static function factory($data)
     {
-        if(!is_object($data))
-            throw new \Exception("Invalid data parameter when creating a new Resource: not an object",500);
-        if(!isset($data->type))
-            throw new \Exception("Invalid data parameter when creating a new Resource: type property missing",500);
-        if(!isset($data->attributes))
-            throw new \Exception("Invalid data parameter when creating a new Resource: attributes property missing",500);
-        if(!is_object($data->attributes))
-            throw new \Exception("Invalid data parameter when creating a new Resource: attributes property not an object",500);
-
         $res = new self($data->type,$data->id);
         $res->setAttributes(Attributes::factory($data->attributes));
 
-        if(!isset($data->relationships) || !is_object($data->relationships))
+        if(!isset($data->relationships))
             return $res;
 
+
         foreach($data->relationships as $relName=>$relData) {
+
             $res->addRelationship($relName,$relData);
         }
 

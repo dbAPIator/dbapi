@@ -476,7 +476,7 @@ function is_valid_resource_object($obj) {
         throw new \Exception("Invalid resource: must be an object",400);
     }
 
-    if(property_exists($obj,"id") && empty($obj->id)) {
+    if(property_exists($obj,"id") && is_null($obj->id)) {
         throw new \Exception("Invalid object ID: cannot be null/empty",400);
     }
 

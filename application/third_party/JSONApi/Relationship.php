@@ -45,13 +45,18 @@ class Relationship extends json_ready
         if(!is_null($links) && !($links instanceof  Links))
             throw new \Exception("Invalid Links object",500);
 
-        switch($data->type) {
-            case "array":
-                return self::factory_one2many(isset($data->data)?$data->data:null,isset($data->data)?$data->total:null,$links);
-            case "object":
-                return self::factory_one2one(isset($data->data)?
-                    $data->data:null,
+        if(is_null($data)) {
+            return self::factory_one2one(null,$links);
+        }
+        switch (get_class($data)) {
+            case "Record":
+                return self::factory_one2one($data,
                     $links);
+                break;
+            case "RecordSet":
+                return self::factory_one2many($data,$links);
+                break;
+
         }
     }
 
@@ -63,31 +68,21 @@ class Relationship extends json_ready
      * @return Relationship
      * @throws \Exception
      */
-    static private function factory_one2many($data,$total,$links)
+    static private function factory_one2many($data,$links)
     {
-        //var_dump($data);
         $rs = new self(false);
 
         if(!is_null($links))
             $rs->setLinks($links);
 
-        if(!is_null($total))
-            $rs->meta = Meta::factory(["total"=>$total]);
+        $rs->meta = Meta::factory(["total"=>$data->total]);
 
-
-
-        if($data) {
-            $rs->setTotal($total);
-            foreach ($data as $relData) {
+        $rs->setTotal($data->total);
+        foreach ($data->records as $relData) {
                 //echo  "sda";
-                $rs->addRelation(
-                    ResourceIdentifier::factory($relData)
-                );
-            }
-        }
-        if(is_null($data)) {
-            unset($rs->data);
-            unset($rs->meta);
+            $rs->addRelation(
+                ResourceIdentifier::factory($relData)
+            );
         }
 
         return $rs;

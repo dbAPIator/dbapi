@@ -69,7 +69,7 @@ class HttpResp{
         foreach ($this->header as $header=>$value)
         {
             if(!is_null($value)) {
-                header("$header: $value");
+                @header("$header: $value");
             }
         }
         echo $this->body;
@@ -321,8 +321,9 @@ class HttpResp{
      * @param string|int $statusCode HTTP response code
      * @param string|array|object $body
      * @param array|string $headers assoc array of key->value or string containing header string
+     * @param int $jsonOptions
      */
-    static function json_out($statusCode, $body=null, $headers=null,$jsonOptions=JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    static function json_out($statusCode, $body=null, $headers=null,$jsonOptions=0)
     {
         if(is_array($body) || is_object($body))
             $body = json_encode($body,$jsonOptions);
@@ -347,6 +348,7 @@ class HttpResp{
                 ["message"=>$message]
             ]
         ]);
+        die();
     }
 
     /**

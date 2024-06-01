@@ -327,7 +327,7 @@ class Datamodel {
     }
 
     function get_all_relations($resName) {
-        return $this->dataModel[$resName]["relations"];
+        return isset($this->dataModel[$resName]["relations"]) ? $this->dataModel[$resName]["relations"] : [];
     }
 
     /**

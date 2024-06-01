@@ -147,7 +147,7 @@ class Document extends  json_ready
     }
 
     /**
-     * @param mixed $data
+     * @param \RecordSet|\Record $data
      * @return Document
      * @throws \Exception
      */
@@ -158,17 +158,27 @@ class Document extends  json_ready
             return $this;
         }
 
-        if(is_object($data)) {
-            $this->data = Resource::factory($data);
+        if(!is_object($data)) {
+//            print_r($data);
+            throw new \Exception("Invalid data");
         }
-        elseif(is_array($data)) {
-            $this->data = [];
-            foreach ($data as $item) {
-                $newRes = Resource::factory($item);
-                if($newRes) {
-                    $this->data[] = $newRes;
+
+        $objType = get_class($data);
+        switch ($objType ) {
+            case "RecordSet":
+                $this->data = [];
+                foreach ($data->records as $item) {
+                    $newRes = Resource::factory($item);
+                    if($newRes) {
+                        $this->data[] = $newRes;
+                    }
                 }
-            }
+                break;
+            case "Record":
+                $this->data = Resource::factory($data);
+                break;
+            default:
+                throw new \Exception("Invalid object class $objType");
         }
 
         return $this;

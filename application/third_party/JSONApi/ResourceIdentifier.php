@@ -33,12 +33,8 @@ class ResourceIdentifier extends json_ready
      */
     static function factory($data)
     {
-        if(!is_object($data))
-            throw new \Exception("Invalid ResourceIdentifier init data: not an object");
-        if(!isset($data->type))
-            throw new \Exception("Invalid ResourceIdentifier init data: no type attr");
-        if(!isset($data->id))
-            return null;
+//        echo "Resiucasdiasd as ffa factory -------------------";
+//        print_r($data);
 
         $ri = new self($data->type,$data->id);
 
