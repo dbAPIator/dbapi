@@ -145,7 +145,7 @@ class Records {
         $countSql = "SELECT count(*) cnt FROM `$request->resourceName` "
             .implode(" ",$join)
             ." WHERE $whereStr";
-//        echo $countSql;
+//        echo $countSql."\n";
 
         $res = $this->dbdrv->query($countSql);
         $err=$this->dbdrv->error();
@@ -182,6 +182,7 @@ class Records {
 
         // parse result
         $allRecs = [];
+//        print_r($request);
         foreach ($rows as $row) {
             $newRec = $this->parse_result_row($request,$row,$allRecs);
             $recordSet->add_record($newRec);
@@ -265,7 +266,6 @@ class Records {
 
             // process inbound (1:n) relations
             foreach ($relations as $relName=>$relSpec) {
-
                 // skip 1:1 relations (already processed)
                 if($relSpec["type"]=="outbound") {
                     continue;
@@ -290,16 +290,13 @@ class Records {
                 ];
 
 
-//                print_r($request->include[$relName]);
                 $recordSet = $this->get_records($request->include[$relName]);
                 $rec->add_one2many_relation($relName,$recordSet);
-//                $rec->add_relations($relName,$relRecs,$relSpec["table"],$request->include[$relName]->offset,count($relRecs));
             }
 
             if(isset($objIdx))
                 $allRecs[$objIdx] = $rec;
         }
-//        print_r($rec);
 
         return $rec;
     }
@@ -1009,10 +1006,10 @@ function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlia
     }
 
     // n:1 relationship -> skip
-
-    if($req->relSpec) {
-        if($req->relSpec["type"]=="inbound") return;
-
+//    echo "reqqqq....\n";
+//    print_r($req);
+    if($req->relSpec && $req->relSpec["type"]=="outbound") {
+//        echo "join....\n";
         $join[] = "LEFT JOIN `$req->resourceName` AS `$tableAlias` ".
             "ON `$tableAlias`.`{$req->relSpec['field']}`=`$parentTableAlias`.`{$req->relSpec['fkfield']}`";
     }
@@ -1021,9 +1018,13 @@ function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlia
         $req->sort[$idx] = "`$tableAlias`.$sort";
     }
 
+
+    $offset += count($req->fields);
     foreach ($req->include as $relName=>$relReq) {
-        if($relReq->relSpec["type"]=="outbound")
-            recursive_generate_select_and_joins($relReq,$fields,$join,
-                $tableAlias."_".$relName,$tableAlias,$req->selectFieldsOffset+count($req->fields));
+        if($relReq->relSpec["type"]=="outbound") {
+            $offset += recursive_generate_select_and_joins($relReq, $fields, $join,
+                $tableAlias . "_" . $relName, $tableAlias, $offset);
+        }
     }
+    return count($req->fields);
 }

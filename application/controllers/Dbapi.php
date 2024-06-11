@@ -961,6 +961,7 @@ class Dbapi extends CI_Controller
                 ];
             }
         }
+
         catch (Exception $exception) {
             if($internal)
                 throw $exception;
@@ -968,9 +969,11 @@ class Dbapi extends CI_Controller
                 HttpResp::json_out($exception->getCode(),\JSONApi\Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
+//        print_r($request);
         // fetch records
         try {
             $result = $this->recs->get_records($request);
+//            print_r($result);
         }
         catch (Exception $exception) {
             if($internal)
@@ -1559,7 +1562,6 @@ class Dbapi extends CI_Controller
     {
         $this->_init($configName);
 
-
         // get input data
         try {
             $input = $this->get_input_data($input);
@@ -1629,6 +1631,8 @@ class Dbapi extends CI_Controller
             }
         }
 
+
+
         $this->apiDb->trans_commit();
         //return [$insertedRecords,$totalRecords];
         try {
@@ -1644,6 +1648,7 @@ class Dbapi extends CI_Controller
         }
 
         $request->add_filter($this->apiDm->get_primary_key($resourceName)."><".implode(";",$newRecIds));
+
         $this->get_records($configName,$resourceName,null,$request);
     }
 
