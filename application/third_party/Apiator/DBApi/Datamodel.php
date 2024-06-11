@@ -79,7 +79,7 @@ class Datamodel {
      * @param string $resourceName table nam
      * @return array|null
      */
-    function getResourceFields($resourceName) {
+    function get_fields($resourceName) {
         return $this->dataModel[$resourceName]["fields"];
     }
 
@@ -166,28 +166,30 @@ class Datamodel {
     }
 
 
-
-
     /**
      * gets configuration of table or full model when no tableName is provided
      *
-     * @param string $tableName table name
+     * @param string $resourceName table name
      * @return Object config model
      *
+     * @throws Exception
      */
-    function get_config($tableName=null) {
-        if(is_null($tableName))
+    function &get_config($resourceName=null) {
+        if(is_null($resourceName))
             return $this->dataModel;
 
-        return $this->dataModel[$tableName];
+        if(!$this->is_valid_resource($resourceName))
+            throw new Exception("$resourceName not found",404);
+
+        return $this->dataModel[$resourceName];
     }
 
     /**
      * return name of the field used as primary key
      * @param $resName
-     * @return mixed
+     * @return string|null
      */
-    function getPrimaryKey($resName)
+    function get_primary_key($resName)
     {
         $keyFld =  isset($this->dataModel[$resName]["keyFld"])?$this->dataModel[$resName]["keyFld"]:null;
         return $keyFld;
@@ -264,6 +266,13 @@ class Datamodel {
     }
 
     /**
+     * @param $resource_name
+     * @return bool
+     */
+    function is_valid_resource($resource_name) {
+        return $this->resource_exists($resource_name);
+    }
+    /**
      * @param $table
      * @param $relationName
      * @param $relatedTable
@@ -310,13 +319,15 @@ class Datamodel {
         if(!$this->resource_exists($resName))
             throw new \Exception("Invalid resource $resName",400);
 
-        if(!isset($this->dataModel[$resName]["relations"][$relName]))
-            throw new \Exception("Invalid relationship name '$relName'",400);
-
-        if($this->dataModel[$resName]["relations"][$relName]["type"]!=="outbound")
-            throw new \Exception("Invalid outbound relationship '$relName'",400);
+        if(!isset($this->dataModel[$resName]["relations"][$relName])
+            || $this->dataModel[$resName]["relations"][$relName]["type"]!=="outbound")
+            return null;
 
         return $this->dataModel[$resName]["relations"][$relName];
+    }
+
+    function get_all_relations($resName) {
+        return isset($this->dataModel[$resName]["relations"]) ? $this->dataModel[$resName]["relations"] : [];
     }
 
     /**
@@ -374,7 +385,7 @@ class Datamodel {
         if(!$this->is_valid_field($tableName,$fieldName))
             throw new \Exception("Invalid field $tableName.$fieldName",400);
 
-        $fields = $this->getResourceFields($tableName);
+        $fields = $this->get_fields($tableName);
 
         if($value==="") {
             if(in_array($fields[$fieldName]["type"]["proto"],$mysqlTypes["numeric"]))

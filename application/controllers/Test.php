@@ -26,7 +26,7 @@ class Test extends CI_Controller
     }
 
     function index() {
-
+        echo "test";
     }
 
     function respond_something()

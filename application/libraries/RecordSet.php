@@ -15,72 +15,45 @@ class RecordSet {
      * @var Record[]
      */
     public $records = [];
+    /**
+     * @var int
+     */
     public $offset = 0;
+    /**
+     * @var int|null
+     */
     public $total = 0;
+    /**
+     * @var string
+     */
+    public $type = "";
 
     /**
      * Recordset constructor.
-     * @param $records
      * @param $type
-     * @param $idFld
-     * @param $offset
-     * @param $total
-     * @param bool $dbg
+     * @param array $records
+     * @param int $offset
+     * @param int $total
      */
-    public function __construct ($records, $type, $idFld, $offset=0, $total=null,$dbg=false)
+    public function __construct ($type, $records=[], $offset=0, $total=0)
     {
+        $this->type = $type;
         $this->offset = $offset;
         $this->total = $total;
         isset($_GET["dbg1979"]) && print_r($records);
-        foreach ($records as $record) {
-            $this->add_record($type,$record,$idFld);
-        }
+        $this->records = $records;
     }
 
 
     /**
      * add new  Record to recordset
-     * @param $type
-     * @param array|Record $record
-     * @param string $idFld
+     * @param Record $record
      * @return Record
      */
-    public function add_record($type,$record,$idFld) {
-        if(is_object($record) && get_class($record)=="Record") {
-            $this->records[] = $record;
-            return $this->records[count($this->records)-1];
-        }
-
-        $id = null;
-        if($idFld && isset($record[$idFld])) {
-            $id = $record[$idFld];
-        }
-        $this->records[] = new Record($type,$id,$record);
+    public function add_record($record) {
+        $this->records[] = $record;
         return $this->records[count($this->records)-1];
     }
-
-    /**
-     * @param $rec
-     * @return mixed
-     */
-    function &add_rec($rec)
-    {
-        $this->records[] = $rec;
-        return $this->records[count($this->records)-1];
-    }
-
-    /**
-     * @param $arr
-     * @param $type
-     * @param $idFld
-     * @return mixed
-     */
-    function &add_array_as_rec($arr,$type,$idFld)
-    {
-        $this->records[] = new Record($type,$arr[$idFld],$arr);
-        return $this->records[count($this->records)-1];
-    }
-
 }
 
 class JSONApiError {
@@ -325,7 +298,7 @@ class Record {
     /**
      * add relationship
      * @param $relationName
-     * @param Record $record
+     * @param Record $relation
      * @return bool
      */
     public function add_relation($relationName, &$record) {
@@ -341,17 +314,48 @@ class Record {
     }
 
     /**
+     * Add one 2 many relationship.
+     * If recordset is not provided it means that the relation data was not requested and an empty array will be
+     * @param $relationName
+     * @param RecordSet $recordSet
+     * @return bool
+     */
+    public function add_one2many_relation($relationName, &$recordSet=null) {
+        if(is_null($this->relationships)) {
+            $this->relationships = [];
+            return true;
+        }
+        $this->relationships[$relationName] = $recordSet;
+        return true;
+    }
+
+
+
+    /**
+     * @param string $relationName
+     * @param Record $record
+     */
+    public function add_one2one_relation($relationName,&$record) {
+        if(is_null($this->relationships))
+            $this->relationships = [];
+        $this->relationships[$relationName] = $record;
+    }
+
+
+    /**
      * @param $relationName
      * @param $records
      * @param $type
      * @param $offset
      * @param $total
      */
-    public  function add_relations($relationName,$records,$type,$offset,$total) {
+    public  function add_relations($relationName,$records,$type,$offset=0,$total=null) {
         if(is_null($this->relationships))
             $this->relationships = [];
 
-        $this->relationships[$relationName] = new RecordSet($records,$type, $offset,$total);
+        $this->relationships[$relationName] = new RecordSet($type, $records, $offset,$total);
         isset($_GET["dbg1979"])  && print_r($this);
     }
+
+
 }

@@ -168,9 +168,9 @@ $route["^$basePath/([\w\-\.\_\%]+)"]["patch"] ="$controller/updateMultipleRecord
 // second family: /resourceŃame
 // #4 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2";
 // #5
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/createRecords/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/create_records/$1/$2";
 // #5.1
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateMultipleRecords/$1/$2";
@@ -181,7 +181,7 @@ $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/d
 // third family: /resourceName/id
 // #6 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getSingleRecord/$1/$2";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2/$3";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2/$3";
 // #7
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateSingleRecord/$1/$2/$3";
 // #8
@@ -202,17 +202,17 @@ $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/_relationsh
 // fourth family: /resourceName/id/relation
 // #13
 // OK
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRelated/$1/$2/$3/$4";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_related/$1/$2/$3/$4";
 // OK
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/createRelated/$1/$2/$3/$4";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/create_related/$1/$2/$3/$4";
 // OK
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateRelated/$1/$2/$3/$4";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_related/$1/$2/$3/$4";
 
 
 // fifth family: /resourceName/id/relation/id
 // OK
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRelated/$1/$2/$3/$4/$5";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateRelated/$1/$2/$3/$4/$5";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_related/$1/$2/$3/$4/$5";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_related/$1/$2/$3/$4/$5";
 // OK
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteRelated/$1/$2/$3/$4/$5";
 
@@ -242,9 +242,9 @@ $route[$apiDataUrlPrefix]["patch"] ="$controller/updateMultipleRecords/$1";
 // second family: /resourceŃame
 // #4 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)"]["get"] = "$controller/getMultipleRecords/$1";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2";
 // #5
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["post"] = "$controller/createRecords/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["post"] = "$controller/create_records/$1/$2";
 // #5.1
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateMultipleRecords/$1/$2";
@@ -255,9 +255,10 @@ $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteMult
 // third family: /resourceName/id
 // #6 OK
 //$route["^$stdOpsPath/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getSingleRecord/$1/$2";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRecords/$1/$2/$3";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$1/$2/$3";
 // #7
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateSingleRecord/$1/$2/$3";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_single_record/$1/$2/$3";
 // #8
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteSingleRecord/$1/$2/$3";
 
@@ -276,17 +277,17 @@ $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/_relationships/([\w\
 // fourth family: /resourceName/id/relation
 // #13
 // OK
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRelated/$1/$2/$3/$4";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_related/$1/$2/$3/$4";
 // OK
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/createRelated/$1/$2/$3/$4";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/create_related/$1/$2/$3/$4";
 // OK
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateRelated/$1/$2/$3/$4";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_related/$1/$2/$3/$4";
 
 
 // fifth family: /resourceName/id/relation/id
 // OK
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/getRelated/$1/$2/$3/$4/$5";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateRelated/$1/$2/$3/$4/$5";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_related/$1/$2/$3/$4/$5";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_related/$1/$2/$3/$4/$5";
 // OK
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteRelated/$1/$2/$3/$4/$5";
 
