@@ -236,7 +236,7 @@ function update_multiple_records()
         "operationId" => "update_multiple_records",
         "tags"=>["_bulk"],
         "requestBody"=>[
-            "description"=>"todo",
+            "description"=>"Bulk update records by providing an array of resource objects",
             "content"=>[
                 "application/json"=>[
                     "schema"=>[
@@ -283,12 +283,12 @@ function delete_multiple_records()
 {
     // todo
     return [
-        "summary" => "Bulk update records",
+        "summary" => "Bulk delete records",
         "description" => "",
         "operationId" => "delete_multiple_records",
         "tags"=>["_bulk"],
         "requestBody"=>[
-            "description"=>"todo",
+            "description"=>"Bulk delete records by providing an array of resource identifier objects",
             "content"=>[
                 "application/json"=>[
                     "schema"=>[

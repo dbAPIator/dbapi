@@ -37,75 +37,65 @@ class Config extends CI_Controller {
 
     /**
      * check if API exists and if the client is authorized
-     * @param $configName
+     * @param $apiName
      * @return bool
      */
-    private function api_exists_and_is_authorized($configName, $return=false) {
-        $apiDir = $this->config->item("configs_dir")."/$configName";
+    private function api_exists($apiName, $return=false) {
+        $apiDir = $this->config->item("configs_dir")."/$apiName";
         if(!is_dir($apiDir)) {
             if(!$return) {
-                HttpResp::not_found(["error"=>"API  $configName not found"]);
+                HttpResp::not_found(["error"=>"API  $apiName not found"]);
             }
             return false;
         }
-        $this->authorize_config_update($configName);
         return true;
     }
 
     /**
-     * @param $configName
+     * @param $config
+     * @return mixed
+     * @todo to implement
      */
-    function update_auth($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    private function sanitize_auth_config($config) {
+        return $config;
+    }
 
-        $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
-        $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
-        if(!count($authData)) {
-            file_put_contents($authFilePath,to_php_code([],true));
-            HttpResp::json_out([]);
-            return;
-        }
+    /**
+     * @param $apiName
+     */
+    function update_auth($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $authFilePath = $this->config->item("configs_dir")."/$apiName/auth.php";
+
+        $authData = $this->sanitize_auth_config($this->get_input_data());
 
         $oldAuth = @include $authFilePath;
         $oldAuth = is_array($oldAuth) ? $oldAuth : [];
 
         // @todo: validate auth input
         $defaultAuth = [
-            "key" => $oldAuth["key"] ? $oldAuth["key"] : md5(random_string().time()),
+            "key" => $oldAuth["key"] ?? md5(random_string().time()),
             "alg" => 'HS256',
-            "validity" => 3600,
-            "allowGuest" => true,
-            "defaultAction" => "accept",
-            "guestRules" => []
+            "validity" => 3600
         ];
 
-        $oldAuth = smart_array_merge_recursive($defaultAuth,$oldAuth);
-
         $authData = smart_array_merge_recursive($oldAuth,$authData);
+        $authData = smart_array_merge_recursive($defaultAuth,$authData);
         file_put_contents($authFilePath,to_php_code($authData,true));
-
-        if(!$this->input->get("include") || $this->input->get("include")!=="key")
-            $authData["key"] = "**********";
 
         HttpResp::json_out(200,$authData);
     }
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function replace_auth($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function replace_auth($apiName) {
+        $this->authorize_config_update($apiName);
 
-        $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
-        $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
-        if(!count($authData)) {
-            file_put_contents($authFilePath,to_php_code([],true));
-            HttpResp::json_out([]);
-            return;
-        }
+        $authFilePath = $this->config->item("configs_dir")."/$apiName/auth.php";
+        $authData = $this->sanitize_auth_config($this->get_input_data()) ?? [];
 
-
-        // @todo: validate auth input
         $defaultAuth = [
             "key" => md5(random_string().time()),
             "alg" => 'HS256',
@@ -124,10 +114,12 @@ class Config extends CI_Controller {
 
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function get_auth($configName) {
-        $authFilePath = $this->config->item("configs_dir")."/$configName";
+    function get_auth($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $auth = @include $authFilePath."/auth.php";
         if(!$auth) {
             HttpResp::json_out(200,[]) && die();
@@ -143,24 +135,26 @@ class Config extends CI_Controller {
 
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function get_security($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $path = $this->config->item("configs_dir")."/$configName";
+    function get_security($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $path = $this->config->item("configs_dir")."/$apiName";
         $security = @include "$path/security.php";
         HttpResp::json_out(200,$security);
     }
 
     /**
      * Update global security settings
-     * @param $configName
+     * @param $apiName
      */
-    function update_security($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $secFilePath = $this->config->item("configs_dir")."/$configName/security.php";
+    function update_security($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $secFilePath = $this->config->item("configs_dir")."/$apiName/security.php";
         $security = @include $secFilePath;
-        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        $data = $this->get_input_data();
         $security = array_merge($security,$data);
         file_put_contents($secFilePath,to_php_code($security,true));
         HttpResp::json_out(200,$security);
@@ -168,11 +162,12 @@ class Config extends CI_Controller {
 
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function get_clients($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $path = $this->config->item("configs_dir")."/$configName";
+    function get_clients($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $path = $this->config->item("configs_dir")."/$apiName";
         $d = opendir("$path/clients");
         $clients = [];
         while ($e=readdir($d)) {
@@ -183,16 +178,17 @@ class Config extends CI_Controller {
     }
 
      /**
-     * @param $configName
+     * @param $apiName
      * @param $apiKey
      */
-    function create_client($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $path = $this->config->item("configs_dir")."/$configName";
+    function create_client($apiName) {
+        $this->authorize_config_update($apiName);
+
+        $path = $this->config->item("configs_dir")."/$apiName";
         $apiKey = guidv4();
         $fn = "$path/clients/$apiKey.php";
         $default_config = ["default_policy"=>"accept"];
-        $config = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+        $config = $this->get_input_data();
 
         if($this->input->get("includemyself")) {
             if(!is_array($config["from"]))
@@ -208,12 +204,13 @@ class Config extends CI_Controller {
 
 
     /**
-     * @param $configName
+     * @param $apiName
      * @param $apiKey
      */
-    function get_client($configName,$apiKey) {
-        $this->api_exists_and_is_authorized($configName);
-        $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
+    function get_client($apiName,$apiKey) {
+        $this->authorize_config_update($apiName);
+
+        $path = $this->config->item("configs_dir")."/$apiName/clients/$apiKey.php";
         if(!file_exists($path)) {
             HttpResp::not_found(["error"=>"API Key not found"]);
         }
@@ -221,12 +218,13 @@ class Config extends CI_Controller {
     }
 
     /**
-     * @param $configName
+     * @param $apiName
      * @param $apiKey
      */
-    function delete_client($configName,$apiKey) {
-        $this->api_exists_and_is_authorized($configName);
-        $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
+    function delete_client($apiName,$apiKey) {
+        $this->authorize_config_update($apiName);
+
+        $path = $this->config->item("configs_dir")."/$apiName/clients/$apiKey.php";
         if(!file_exists($path)) {
             HttpResp::not_found(["error"=>"API Key not found"]);
         }
@@ -236,12 +234,13 @@ class Config extends CI_Controller {
             HttpResp::server_error(["error"=>"Could not delete client"]);
     }
 
-    private function authorize_config_update($config) {
-        $authFilePath = $this->config->item("configs_dir")."/$config";
+    private function authorize_config_update($apiName) {
+        $this->api_exists($apiName);
+        
+        $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $security = require  "$authFilePath/security.php";
 
         $secret = isset($this->headers["x-api-key"]) ? $this->headers["x-api-key"] : $this->input->get("xApiKey");
-
 
         // check secret
         if(!$secret || $secret!==$security["secret"]) {
@@ -253,38 +252,56 @@ class Config extends CI_Controller {
             HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to update API config");
         }
 
+        return $this->config->item("configs_dir")."/$apiName/auth.php";
     }
 
     private function authorize_dbapi_config() {
-        $secret = isset($this->headers["x-api-key"]) ? $this->headers["x-api-key"] : $this->input->get("xApiKey");
+        $secret = $this->headers["x-api-key"] ?? $this->input->get("xApiKey") ?? null;
 
         // check secret
-        if(!$secret || $secret!==$this->config->item("configApiSecret")) {
+        if(!$secret || $secret!==$this->config->item("config_api_secret")) {
             HttpResp::not_authorized("API key not authorized to access config API");
         }
 
         // check if IP is allowed
-        if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$this->config->item("configApiAllowedIPs"))) {
+        if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$this->config->item("config_api_allowed_ips"))) {
             HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to access config API");
         }
     }
+
     /**
-     * @param $configName
+     * @return mixed
+     */
+    private function get_input_data() {
+        $contentType = isset($_SERVER["CONTENT_TYPE"]) ? explode(";",$_SERVER["CONTENT_TYPE"])[0] : null;
+        switch($contentType) {
+            case "multipart/form-data":
+                return $_POST;
+                break;
+            case "application/json":
+                return json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
+                break;
+            default:
+                HttpResp::invalid_request("Invalid content type");
+        }
+    }
+
+    /**
+     * @param $apiName
      */
     function create_api() {
         $this->authorize_dbapi_config();
+        $data = $this->get_input_data();
 
-
-        $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
         if(!$data || !is_array($data)) {
             HttpResp::bad_request(["error"=>"Invalid input data"]);
         }
         if(!isset($data["name"])) {
             HttpResp::bad_request(["error"=>"No API name provided"]);
         }
-        $configName = $data["name"];
-        if($this->api_exists_and_is_authorized($configName,true)) {
-            HttpResp::json_out(409,["error"=>"Project  $configName already exists"]);
+        $apiName = $data["name"];
+        if($this->api_exists($apiName,true)) {
+            HttpResp::json_out(409,["error"=>"Project  $apiName already exists"]);
         }
 
         if($_SERVER["REQUEST_METHOD"]!=="POST") {
@@ -306,7 +323,7 @@ class Config extends CI_Controller {
 
         $conn = array_merge($conn,$data["connection"]);
 
-        $path = $this->config->item("configs_dir")."/$configName";
+        $path = $this->config->item("configs_dir")."/$apiName";
 
         try {
             $structure = $this->generate_config($data["connection"], $path);
@@ -377,13 +394,13 @@ class Config extends CI_Controller {
 
     /**
      * triggers the regeneration of the 
-     * @param $configName
+     * @param $apiName
      * @throws Exception
      */
-    function regen($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function regen($apiName) {
+        $this->authorize_config_update($apiName);
 
-        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $conn = require  "$authFilePath/connection.php";
         $structure = $this->generate_config($conn,$authFilePath);
         if(!$structure) {
@@ -391,29 +408,54 @@ class Config extends CI_Controller {
             die("Could not save config");
         }
         file_put_contents("$authFilePath/structure.php",to_php_code($structure,true));
-        $this->get_structure($configName);
+        $this->get_structure($apiName);
     }
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function get_structure($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+    function get_structure($apiName) {
+        $this->authorize_config_update($apiName);
+        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
         //print_r($structure);
         HttpResp::json_out(200,$structure);
     }
 
-    function get_endpoints($configName) {
-        $this->api_exists_and_is_authorized($configName);
-        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+    private  function validate_connection_config($config) {
+        return $config;
+    }
+    /**
+     * @param $apiName
+     */
+    function get_connection($apiName) {
+        $this->authorize_config_update($apiName);
+        $connection = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
+        $connection["password"]="***********";
+        unset($connection["dbdriver"]);
+        HttpResp::json_out(200,$connection);
+    }
+
+    function update_connection($apiName) {
+        $this->authorize_config_update($apiName);
+        $connection = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
+        $config = $this->validate_connection_config($this->get_input_data());
+        $db = @$this->load->database($config,true);
+        if(!$db) {
+            HttpResp::bad_request("Invalid database connection parameters");
+        }
+    }
+
+
+    function get_endpoints($apiName) {
+        $this->authorize_config_update($apiName);
+        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
         //print_r($structure);
         HttpResp::json_out(200,array_keys($structure));
     }
 
-    function get_endpoint_structure($configName, $endpointName) {
-        $this->api_exists_and_is_authorized($configName);
-        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+    function get_endpoint_structure($apiName, $endpointName) {
+        $this->authorize_config_update($apiName);
+        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
@@ -422,12 +464,12 @@ class Config extends CI_Controller {
 
     /**
      * @todo: to implement update_endpoint_structure
-     * @param $configName
+     * @param $apiName
      * @param $endpointName
      */
-    function update_endpoint_structure($configName, $endpointName) {
-        $this->api_exists_and_is_authorized($configName);
-        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+    function update_endpoint_structure($apiName, $endpointName) {
+        $this->authorize_config_update($apiName);
+        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
@@ -436,12 +478,12 @@ class Config extends CI_Controller {
 
     /**
      * @todo  to implement replace_endpoint_structure
-     * @param $configName
+     * @param $apiName
      * @param $endpointName
      */
-    function replace_endpoint_structure($configName, $endpointName) {
-        $this->api_exists_and_is_authorized($configName);
-        $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
+    function replace_endpoint_structure($apiName, $endpointName) {
+        $this->authorize_config_update($apiName);
+        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
         else
@@ -449,27 +491,20 @@ class Config extends CI_Controller {
     }
 
 
-    function testt() {
-        $new_structure = json_decode($this->input->raw_input_stream, JSON_OBJECT_AS_ARRAY);
-        if(is_null($new_structure)) {
-            HttpResp::json_out(400,["error"=>"Invalid input data"]);
-        }
-    }
-
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function replace_structure($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function replace_structure($apiName) {
+        $this->authorize_config_update($apiName);
 
-        $new_structure = json_decode($this->input->raw_input_stream, JSON_OBJECT_AS_ARRAY);
+        $new_structure = $this->get_input_data();
         if(is_null($new_structure)) {
             HttpResp::json_out(400,["error"=>"Invalid input data"]);
         }
 
 
-        $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+        $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
         // get natural structure
         $db_struct = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
         // compute difference
@@ -477,27 +512,26 @@ class Config extends CI_Controller {
         echo json_encode($diff);
 
         // save patch file
-        file_put_contents($this->config->item("configs_dir")."/$configName/patch.php",to_php_code($diff,true));
+        file_put_contents($this->config->item("configs_dir")."/$apiName/patch.php",to_php_code($diff,true));
 
         //$newStruct = smart_array_merge_recursive($db_struct,$diff);
 
         //save structure
-        file_put_contents($this->config->item("configs_dir")."/$configName/structure.php",to_php_code($new_structure,true));
+        file_put_contents($this->config->item("configs_dir")."/$apiName/structure.php",to_php_code($new_structure,true));
 
         HttpResp::json_out(200,$new_structure);
     }
 
-    function patch_structure($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function patch_structure($apiName) {
+        $this->authorize_config_update($apiName);
 
-        $data = $this->input->raw_input_stream;
-        $data = json_decode($data,JSON_OBJECT_AS_ARRAY);
+        $data = $this->get_input_data();;
         if(!$data) {
             HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
         }
-        $conn = require_once($this->config->item("configs_dir")."/$configName/connection.php");
+        $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
         $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
-        $patch = @include $this->config->item("configs_dir")."/$configName/patch.php";
+        $patch = @include $this->config->item("configs_dir")."/$apiName/patch.php";
         $patch = $patch ? $patch : [];
         $newStruct = smart_array_merge_recursive($structure,$patch);
         $newStruct = smart_array_merge_recursive($newStruct,$data);
@@ -506,10 +540,10 @@ class Config extends CI_Controller {
         $diff = compute_struct_diff($structure,$newStruct);
         // create patch file
         if(count($diff)) {
-            $patchFileName = $this->config->item("configs_dir")."/$configName/patch.php";
+            $patchFileName = $this->config->item("configs_dir")."/$apiName/patch.php";
             file_put_contents($patchFileName,to_php_code($diff,true));
         }
-        $structFileName = $this->config->item("configs_dir")."/$configName/structure.php";
+        $structFileName = $this->config->item("configs_dir")."/$apiName/structure.php";
         $newStruct = smart_array_merge_recursive($structure,$diff);
         file_put_contents($structFileName,to_php_code($newStruct,true));
         HttpResp::json_out(200,$newStruct);
@@ -519,23 +553,26 @@ class Config extends CI_Controller {
 
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function patch($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function patch($apiName) {
+        $this->authorize_config_update($apiName);
     }
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function delete_api($configName) {
-        $this->authorize_dbapi_config();
-        $this->api_exists_and_is_authorized($configName);
+    function delete_api($apiName) {
+        $this->authorize_config_update($apiName);
 
-        if(remove_dir_recursive($this->config->item("configs_dir")."/$configName"))
+        try {
+            remove_dir_recursive($this->config->item("configs_dir")."/$apiName");
             HttpResp::no_content();
-        else
-            HttpResp::server_error();
+        }
+        catch (Exception $exception) {
+            HttpResp::exception_out($exception);
+        }
+
 
 
 
@@ -561,26 +598,29 @@ class Config extends CI_Controller {
 
     }
 
-    function swagger($configName)
+    /**
+     * @param $apiName
+     */
+    function swagger($apiName)
     {
-        $this->api_exists_and_is_authorized($configName);
+        $this->api_exists($apiName);
         $this->load->helper("swagger");
-        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $structure = require "$authFilePath/structure.php";
         $openApiSpec = generate_swagger(
             $_SERVER["SERVER_NAME"],
             $structure,
-            "/$configName",
-            "$configName Spec",
-            "$configName spec",
-            "$configName",
+            "/$apiName",
+            "$apiName Spec",
+            "$apiName spec",
+            "$apiName",
             "test@user.com");
         HttpResp::json_out(200,$openApiSpec);
     }
 
 
-    function get_config_endpoints($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function get_config_endpoints($apiName) {
+        $this->authorize_config_update($apiName);
 
         $resp = [
             "status"=>"ok",
@@ -604,21 +644,20 @@ class Config extends CI_Controller {
 
     }
 
-    function api_endpoints($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function api_endpoints($apiName) {
+        $this->authorize_config_update($apiName);
 
-
-        $authFilePath = $this->config->item("configs_dir")."/$configName";
+        $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $structure = require "$authFilePath/structure.php";
         HttpResp::json_out(200,array_keys($structure));
     }
 
 
     /**
-     * @param $configName
+     * @param $apiName
      */
-    function get($configName) {
-        $this->api_exists_and_is_authorized($configName);
+    function get($apiName) {
+        $this->authorize_config_update($apiName);
         $resp = [
             "status"=>"ok",
             "endpoints"=>[
@@ -759,8 +798,8 @@ function smart_array_merge_recursive($arr1,$arr2) {
 
 function remove_dir_recursive($fsEntry) {
     if(!is_dir($fsEntry)) {
-        unlink($fsEntry);
-        return;
+        if(!unlink($fsEntry)) throw new Exception("Could not remove $fsEntry");
+        return true;
     }
 
     $dir = opendir($fsEntry);
@@ -769,8 +808,8 @@ function remove_dir_recursive($fsEntry) {
         remove_dir_recursive($fsEntry."/".$entry);
     }
     closedir($dir);
-    rmdir($fsEntry);
-
+    if(!rmdir($fsEntry)) throw new Exception("Could not remove $fsEntry");
+    return true;
 }
 
 function guidv4($data = null) {

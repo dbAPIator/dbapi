@@ -1,41 +1,58 @@
-
+- [dbAPIator: Instant REST API for MySQL databases](#dbapiator-instant-rest-api-for-mysql-databases)
+  - [Features](#features)
+  - [How it works](#how-it-works)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [Web server configuration](#web-server-configuration)
+    - [Install](#install)
+    - [Configure](#configure)
+  - [Generate an API for an existing database](#generate-an-api-for-an-existing-database)
+  - [Using the API](#using-the-api)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 # dbAPIator: Instant REST API for MySQL databases
 
-dbAPIator is a backend for MySQL driven applications. It simplifies the process of creating REST APIs for any MySQL database by autodecting the database schema and creating the API endpoints based on the database structure.
+dbAPIator is a backend for MySQL applications that automatically generates REST APIs by detecting the database schema, making backend development 1000x faster than building APIs the traditional way.
 
 With dbAPIator, developers can quickly and easily generate clean, well-documented APIs that are tailored to their database schema. This automation basically eliminates the need to develop the database backend, allowing developers to focus on other aspects of their projects.
+
 
 ## Features
 
 - automatic API endpoints creation for CRUD operations based on the MySQL database schema
-- implements JSON-API specification to allow recursive retrieval, creation and update of linked resources 
-- automatic API documentation  generation in Swagger format
-- authentication: offers authentication endpoints which can be customized by defining the SQL query.
+- implements [JSON:API](https://jsonapi.org/) specification to allow recursive retrieval, creation and update of linked resources 
+- automatic API documentation  generation in OpenAPI format
+- embeded Swagger UI to explore the API and test the endpoints
+- authentication: exposes authentication endpoints which can be customized by defining the SQL query to match the user credentials.
 - authorization: ACLs based on logged in user 
-- error handling: provides informative error messages in case of invalid requests, server errors, or other exceptional conditions. Error responses include HTTP status codes, error codes, and human-readable descriptions to help developers diagnose and troubleshoot issues.
+- error handling: provides informative error messages in case of invalid requests, server errors, or other exceptional conditions.
 - scalability: being stateless, it can horizontally scale to any number of instances. 
 - security: implements security best practices to protect against common threats such as injection attacks, cross-site scripting (XSS), and cross-site request forgery (CSRF). This involves input validation, parameterized queries, and encryption of sensitive data.
-- multi-database: one dbAPIator instance can be used to connect to multiple databases, each with their separate entry endpoint, access and authorization rules  
-- configuration API: configuration of the APIs is performed through a dedicated API where new databases/APIs can be added, update their configuration 
-- instant update of the API endpoints when the database struncture changes
+- multi-database: one dbAPIator instance can be used to connect to multiple databases, each with their separate entry endpoint, access and authorization rules. This feature can be used to create multiple versions of the same API for different environments (dev, test, prod)
+- configuration API: configuration of the APIs is performed through a dedicated API where new databases/APIs can be added, update their configuration and delete them.
+- instant update of the API structure when the database struncture changes
+- support for MySQL, MariaDB and Percona Server
  
-<!-- - performance: uses **OPcache** for storing precompiled script bytecode in shared memory and **memcached** for caching data -->
+## How it works
 
+dbAPIator works by analyzing the database schema and automatically generating the API endpoints based on the table structure.
+
+For each table or view in the database, dbAPIator generates a dedicated API endpoint.
+
+The API endpoints are generated based on the JSON:API specification.
 ## Installation
 
 ### Prerequisites
 
-- PHP 7.4 or higher
-- MySQL 5.7 or higher 
-- Apache/Nginx web server 
-- Composer (PHP package manager)
+- PHP 7.4 or higher 
+- a web server configured to run PHP scripts (Apache, Nginx, etc.)
 - PHP Extensions:
   - mysqli
   - json 
   - mbstring
-  - opcache (recommended)
-  - memcached (recommended)
+
+### Web server configuration
 
 For Apache, ensure mod_rewrite is enabled.
 
@@ -47,7 +64,6 @@ location ~ /instalation_path/ {
 ```
 
 
-
 ### Install
 
 ```shell
@@ -57,135 +73,55 @@ git clone https://github.com/vsergione/dbapi .
 chmod 777 dbconfigs
 ```
 
-Edit ```installation_path/application/config/dbapiator.php``` and set a secret in the ```$config['configApiSecret']``` variable to be used for authenticating config API requests.
+### Configure
+Edit ```installation_path/application/config/dbapiator.php``` and update the configuration to suit your needs (the file is decently documented and you should be able to figure out the rest). You should at least update the following variables:
 
-## Create API from an existing database
+- ```$config['config_api_secret']```: the secret to be used for authenticating config API requests.
+- ```$config['base_url']```: the base URL of the API.
+- ```$config['configs_dir']```: the folder where the API configurations are stored.
 
-Creating your first API from a preexisting MySQL database is as easy as making a POST request using your favorite HTTP client to the API configuration endpoint ```http(s)://hostname/installation_path/apis``` 
 
- 
- Example using CURL:
- ```shell
-curl --location 'https://localhost/dbapi/apis' \
+
+## Generate an API for an existing database
+
+Creating your first API from a preexisting MySQL database is as easy as making a POST request using your favorite HTTP client (ours is Postman ;) )to the  configuration API ```http(s)://hostname/installation_path/apis``` 
+
+Example using CURL:
+```shell
+curl --location 'http://localhost/dbapi/apis' \
 --header 'Content-Type: application/json' \
 --header 'x-api-key: myverysecuresecret' \
 --data '{
-    "name":"api_name",
+    "name":"demo",
     "connection":{
-        "hostname": "localhost",
-        "username": "username",
-        "password": "myverysecurepassword",
-        "database": "database_name"
+        "hostname": "db_host",
+        "username": "db_user",
+        "password": "db_pass",
+        "database": "db_name"
     }
 }'
+
+{"result":"f64e0cb3-f2ff-4c1d-a9a4-1ebf22272a96"}
 ```
 
 And that's it! Your API is now ready to use... but not for production! 
 
-API configuration files are stored in the ```installation_path/dbconfigs/api_name/``` directory. Please refer to the [Configuration API](docs/configuration_api.md) documentation for more details.
-
-In order to properly secure your newly created API please refer to [Securying you API](docs/configuration_api.md#security) documentation.    
-
-For more details about the configuration API please refer to the [Configuration API](docs/configuration_api.md) documentation.
+Do not forget to save the API secret which is being returned in the response. Please check the [API configuration](docs/configuration_api.md) for more details.
 
 
 ## Using the API
-You can check the API endpoints by making a GET request to the API configuration endpoint ```http(s)://hostname/installation_path/apis```.
  
- 
-## Using the API
- 
-As mentioned before, the API follows the JSON-API specification. Each table or view in the database will be represented as a resource and the API endpoints will be generated accordingly. For example, if you have a table called ```vendors```, the API will create an endpoint called ```installation_path/api_name/data/vendors```.
+The easiest way to get started with the API is to use Swagger UI which is bundled within the installation and can be accessed at ```http(s)://hostname/installation_path/swagger.html?api=api_name```.
 
-### Reading data from a resource
- ```shell
-curl --location 'https://localhost/dbapi/apis/api_name/data/vendors' 
-```
-There are a few query parameters that can be used to customize the records returned:
-
-- page[resource_name][offset]: record set offset
-- page[resource_name][limit]: the number of records per page
-- sort: comma separated list of fields to sort by. Prefix with '-' for descending order, otherwise ascending.
-- filter: a filter to apply to the records. The filter is a comma separated list of filter clauses. Each filter clause is a field name, an operator and a value. The supported operators are:
-    - =  equal to
-    - != not equal to
-    - \> greater than
-    - \>= greater than or equal to
-    - \< less than
-    - \<= less than or equal to
-    - \>\< one of the semicolon separated values
-- fields[resource_name][]: the fields to return. The fields are the columns of the table. If not specified, all fields will be returned.
-- include: the relationships to include. The relationships are the foreign keys of the table. If not specified, no relationships will be included.
-
-### Reading data from a relationship
-
-To read data from a relationship, you can use the include query parameter. For example, if you have a table called ```vendors``` and a table called ```orders``` that has a foreign key to the ```vendors``` table, you can read the orders for a vendor by using the following request:    
-```shell
-curl --location 'https://localhost/dbapi/apis/api_name/data/vendors/{vedorId}/orders'
-```
-
-The ```{vedorId}``` is the id of the vendor you want to read the orders for. The API will return the orders for the vendor.
-
-The same parameters used to read data from a resource can be used to read data from a relationship.
-
-### Creating a record
-
-To create a record, you can use the POST method to the resource endpoint. For example, to create a new vendor, you can use the following request:
-```shell
-curl --location 'https://localhost/dbapi/apis/api_name/data/vendors' \
---data '{
-    "data": {
-        "type": "vendors",
-        "attributes": {
-            "name": "Vendor Name"
-        }
-    }
-}'  
-```
-In the same POST request you can include the relationships to be created. For example, to create a new vendor with an order, you can use the following request:
-```shell
-curl --location 'https://localhost/dbapi/apis/api_name/data/vendors' \
---data '{
-    "data": {
-        "type": "vendors",
-        "attributes": {
-            "name": "Vendor Name"
-        },
-        "relationships": {
-            "orders": {
-                "data": {
-                    "type": "orders",
-                    "attributes": {
-                        "name": "Order Name"
-                    }
-                }
-            }
-        }
-    }
-}'  
-```
-
-### Updating a record
-
-To update a record, you can use the PATCH method to the resource endpoint. For example, to update the name of a vendor, you can use the following request:
-```shell
-curl --location 'https://localhost/dbapi/apis/api_name/data/vendors/{vendorId}' \
---data '{
-    "data": {
-        "type": "vendors",
-        "id": "{vendorId}",
-        "attributes": {
-            "name": "New Vendor Name"
-        }   
-    }
-}'  
-```
-
-### Deleting a record
-
-To delete a record, you can use the DELETE method to the resource endpoint. For example, to delete a vendor, you can use the following request:
-```shell
-curl --location -X DELETE 'https://localhost/dbapi/apis/api_name/data/vendors/{vendorId}'
-```
+Please refer to the [Using the API](docs/using_the_api.md) documentation for more details.
 
 
+
+## Contributing
+
+We welcome contributions to dbAPIator! Please feel free to submit a pull request or open an issue.
+
+
+## License
+
+dbAPIator is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

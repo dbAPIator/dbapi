@@ -99,7 +99,7 @@ $route["^api/([\w\-\_]+)"] = "$controller/$1";
 - GET: get_related_records
  */
 
-$route["^swagger/([\w\-\. \_\%]+)"] = "$controller/swagger/$1";
+$route["^apis/([\w\-\.\_\%]+)/swagger"] = "config/swagger/$1";
 $route["^dm/([\w\-\. \_\%]+)"] ="$controller/dm/$1";
 $route["^test"] ="$controller/test";
 $route["^test/(.*)"] ="$controller/test/$1";
