@@ -195,7 +195,7 @@ class HttpResp{
      * @param string $contentType HTTP content type
      * @param string $body HTTP response body
      */
-    static function quick($statusCode, $contentType=null, $body=null)
+    static function quick($statusCode, $contentType=null, $body=null,$doExit=true)
     {
         $resp = HttpResp::init();
         $resp
@@ -203,7 +203,7 @@ class HttpResp{
             ->content_type($contentType)
             ->body($body)
             ->output();
-        exit();
+        if($doExit) exit();
     }
 
 
@@ -213,7 +213,7 @@ class HttpResp{
      * @param null $body
      * @param null $headers
      */
-    static private function ctype_out($statusCode, $contentType, $body=null, $headers=null)
+    static private function ctype_out($statusCode, $contentType, $body=null, $headers=null,$doExit=true)
     {
         if(is_null($headers))
             HttpResp::quick($statusCode, $contentType,  $body);
@@ -225,27 +225,27 @@ class HttpResp{
         else
             $resp->header($headers);
         $resp->content_type($contentType)->body($body)->output();
-        exit();
+        if($doExit) exit();
     }
 
     /**
      * returns a 401 Not authorized and exists execution
      * @param null $body
      */
-    static function not_authorized($body=null)
+    static function not_authorized($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(401,$body);
-        exit();
+        if($doExit) exit();
     }
 
     /**
      * returns a 400 Invalid request and exists execution
      * @param null $body
      */
-    static function invalid_request($body=null)
+    static function invalid_request($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(400,$body);
-        exit();
+        if($doExit) exit();
     }
 
 
@@ -253,10 +253,10 @@ class HttpResp{
      * returns a 401 Not authorized and exists the script
      * @param string $body
      */
-    static function not_found($body=null)
+    static function not_found($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(404,$body);
-        exit();
+        if($doExit) exit();
 
     }
 
@@ -264,29 +264,29 @@ class HttpResp{
      * returns a 401 Not authorized
      * @param string $body
      */
-    static function bad_request($body=null)
+    static function bad_request($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(400,$body);
-        exit();
+        if($doExit) exit();
     }
 
     /**
      *
      */
-    static function method_not_allowed($body=null)
+    static function method_not_allowed($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(405,$body);
-        exit();
+        if($doExit) exit();
     }
 
     /**
      * returns a 500 Server error
      * @param string $body
      */
-    static function server_error($body=null)
+    static function server_error($body=null,$doExit=true)
     {
         HttpResp::out_autodetect(500,$body);
-        exit();
+        if($doExit) exit();
     }
 
     static function out_autodetect($code,$body=null) {
@@ -303,16 +303,16 @@ class HttpResp{
      * returns a 401 Not authorized
      * @param string $body
      */
-    static function service_unavailable($body=null)
+    static function service_unavailable($body=null,$doExit=true)
     {
         if(is_array($body) || is_object($body)) {
             $body = json_encode($body);
             HttpResp::init()->content_type("application/json")->response_code(503)->body($body)->output();
-            die();
+            if($doExit) exit();
         }
 
         HttpResp::init()->response_code(503)->body($body)->output();
-        exit();
+        if($doExit) exit();
     }
 
     /**
@@ -341,24 +341,24 @@ class HttpResp{
         HttpResp::ctype_out($statusCode,"application/json",$body);
     }
 
-    static function error_out_json($message, $statusCode)
+    static function error_out_json($message, $statusCode,$doExit=true)
     {
         HttpResp::json_out($statusCode,[
             "errors"=>[
                 ["message"=>$message]
             ]
         ]);
-        die();
+        if($doExit) exit();
     }
 
     /**
      * helper to output an exception as a JSONAPI error
      * @param Exception $e
      */
-    static function exception_out($e)
+    static function exception_out($e,$doExit=true)
     {
         HttpResp::json_out($e->getCode(),["errors"=>[["message"=>$e->getMessage()]]]);
-        die();
+        if($doExit) exit();
     }
 
     /**
@@ -411,10 +411,10 @@ class HttpResp{
     /**
      * @param $statusCode
      */
-    static function no_content($statusCode=204)
+    static function no_content($statusCode=204,$doExit=true)
     {
         HttpResp::quick($statusCode);
-        exit();
+        if($doExit) exit();
     }
 
     /**
@@ -422,13 +422,13 @@ class HttpResp{
      * @param string $location
      * @param string|int $statusCode HTTP response code; defaults to 301 Moved permanently
      */
-    static function redirect($location, $statusCode=301)
+    static function redirect($location, $statusCode=301,$doExit=true)
     {
         HttpResp::init()
             ->response_code($statusCode)
             ->header("Location",$location)
             ->output();
-        exit();
+        if($doExit) exit();
     }
 }
 

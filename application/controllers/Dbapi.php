@@ -36,6 +36,7 @@ use Firebase\JWT\Key;
  * @property CI_Config config
  * @property CI_Loader load
  * @property CI_Input input
+ * @property  Utilities utilities
  */
 class Dbapi extends CI_Controller
 {
@@ -128,7 +129,7 @@ class Dbapi extends CI_Controller
     function __construct ()
     {
         parent::__construct();
-        $this->config->load("apiator");
+        $this->config->load("dbapiator");
 
         $this->deployment_type = $this->config->item("deployment_type");
 
@@ -151,10 +152,13 @@ class Dbapi extends CI_Controller
      * - authenticate req based on JWT
      */
     private function  security_check() {
+        $this->load->library("Utilities");
+
         $headers = getallheaders();
 
         // load default security
         $security = [];
+
         $data = @include $this->apiConfigDir."/security.php";
         $security = array_merge($security,$data ? $data : []);
 
@@ -165,29 +169,29 @@ class Dbapi extends CI_Controller
             }
         }
 
-        // check if client is allowed (by IP)
-        if(!find_cidr($_SERVER["REMOTE_ADDR"],@$security["from"])) {
+        // check if client IP is allowed 
+        if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],@$security["from"])) {
             throw new Exception("IP ".$_SERVER["REMOTE_ADDR"]." not allowed",401);
         }
 
         // check rules
-        $allow = (isset($security["default_policy"])? $security["default_policy"] : "accept") =="accept";
+        $allow = in_array( isset($security["default_policy"])? $security["default_policy"] : "allow",["allow","accept"]);
         foreach ((isset($security["rules"]) ? $security["rules"] : []) as $rule) {
             if(preg_match($rule[0],$_SERVER["REQUEST_METHOD"]) && preg_match($rule[1],$_SERVER["REQUEST_URI"])) {
-                $allow = $rule[2] == "accept";
+                $allow = in_array ($rule[2],["allow","accept"]);
                 break;
             }
         }
 
         if(!$allow) {
-            throw new Exception("Not authorized due to access policies",401);
+            throw new Exception("Not allowed due to access policies",401);
         }
 
         /*
          * Authenticate request based on JWT tokens
          */
         $auth = @include $this->apiConfigDir."/auth.php";
-        if($auth && count($auth) && $security["public"]==false) {
+        if($auth && count($auth) && (isset($security["public"]) && $security["public"]==false)) {
             preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
             $jwt = count($matches)==2 ? $matches[1] : $this->input->get("token");
 
@@ -218,7 +222,6 @@ class Dbapi extends CI_Controller
         if($this->apiConfigDir)
             return;
 
-//        $this->apiConfigDir = $this->config->item("api_config_dir")($configName);
         $this->apiConfigDir = $this->config->item("configs_dir")."/$configName";
 
         $this->baseUrl = $this->config->item("base_url")."/v2";
@@ -334,7 +337,7 @@ class Dbapi extends CI_Controller
     {
 
         $this->_init($configName);
-        $this->load->config("apiator");
+        $this->load->config("dbapiator");
         $this->load->helper("swagger");
 
         $openApiSpec = generate_swagger(
@@ -582,7 +585,7 @@ class Dbapi extends CI_Controller
             if(!$this->apiDm->resource_exists($resourceName))
                 throw new Exception("Resource '$resourceName' not found",404);
 
-            if($updateData->type && $resourceName!==$updateData->type) {
+            if(@$updateData->type && $resourceName!==$updateData->type) {
                 throw new Exception("Object type mismatch; '$updateData->type' instead of '$resourceName' ", 400);
             }
 
@@ -999,7 +1002,7 @@ class Dbapi extends CI_Controller
         $outputFormat = $outputFormat && in_array($outputFormat,["csv","xls","json"]) ? $outputFormat : "json";
 
 
-        switch ($outputFormat) {
+            switch ($outputFormat) {
             case "csv":
                 $this->out_csv($resourceName,$recId,$request,$result,$this->input->get("filename"));
                 break;
@@ -1722,36 +1725,6 @@ function custom_where($str) {
     $str = str_replace("&&", "' AND ",$str);
     $str = str_replace("||", "' OR ",$str);
     return $str;
-}
-
-
-/**
- * @param $ip
- * @param $ranges
- * @return bool
- */
-function find_cidr($ip, $ranges)
-{
-
-    if(!is_array($ranges)) {
-        return false;
-    }
-    foreach($ranges as $range)
-    {
-        if(cidr_match($ip, $range))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-function cidr_match($ip, $range){
-    list ($subnet, $bits) = explode('/', $range);
-    $ip = ip2long($ip);
-    $subnet = ip2long($subnet);
-    $mask = -1 << (32 - $bits);
-    $subnet &= $mask; // in case the supplied subnet was not correctly aligned
-    return ($ip & $mask) == $subnet;
 }
 
 

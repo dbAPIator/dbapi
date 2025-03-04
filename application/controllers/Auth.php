@@ -18,7 +18,7 @@ class Auth extends CI_Controller {
     function __construct()
     {
         parent::__construct();
-        $this->config->load("apiator");
+        $this->config->load("dbapiator");
     }
 
     /**
@@ -175,11 +175,25 @@ class Auth extends CI_Controller {
      * @param $auth
      */
     private function generate_token($result,$auth,$validity=null) {
-        $payload = [
-            "unm"=>$result["unm"],
-            "full_name"=>$result["full_name"],
-            "exp"=>time()+($validity?$validity:$auth["validity"])
-        ];
+        if($auth["jwtFormat"]) {
+            $tmp = [];
+            foreach (array_keys($result) as $key) {
+                $tmp["[[$key]]"] = $result[$key];
+            }
+
+            $payload = strtr($auth["jwtFormat"],$tmp);
+
+            $payload = json_decode($payload,JSON_OBJECT_AS_ARRAY);
+
+            $payload["exp"] = time()+($validity?$validity:$auth["validity"]);
+        }
+        else {
+            $payload = [
+                "unm" => $result["unm"],
+                "full_name" => $result["full_name"],
+                "exp" => time() + ($validity ? $validity : $auth["validity"])
+            ];
+        }
         $jwt = JWT::encode($payload, $auth["key"], @$auth["alg"] ? $auth["alg"] : 'HS256');
         HttpResp::json_out(200,["jwt"=>$jwt],["Authorization"=>"Bearer $jwt","Content-type"=>"application/json"]);
     }

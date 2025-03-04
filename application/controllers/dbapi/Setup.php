@@ -36,7 +36,7 @@ class Setup extends CI_Controller
     function __construct()
     {
         parent::__construct();
-        $cfg = $this->load->config("apiator");
+        $cfg = $this->load->config("dbapiator");
         if(!is_dir($cfg["configs_dir"])) {
             die("Invalid APIs config dir. Please set correct path in application/config/apiator.php by setting CFG_DIR_BASEPATH\n");
         }
@@ -63,7 +63,7 @@ class Setup extends CI_Controller
 
     private function listprojects()
     {
-        $this->config->load("apiator");
+        $this->config->load("dbapiator");
         $configsDir = $this->config->item("configs_dir");
         if(!is_dir($configsDir)) {
             throw new Exception("Invalid config directory $configsDir");
@@ -188,7 +188,7 @@ class Setup extends CI_Controller
 
     private function handle_project_directory($projectName, $existingProject)
     {
-        $this->config->load("apiator");
+        $this->config->load("dbapiator");
         $configsDir = $this->config->item("configs_dir");
         $projPath = "$configsDir/$projectName";
         $dirExists = is_dir($projPath);

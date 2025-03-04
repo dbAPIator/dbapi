@@ -144,7 +144,8 @@ function &DB($params = '', $query_builder_override = NULL)
 	}
 
 	// No DB specified yet? Beat them senseless...
-	if (empty($params['dbdriver']))
+    $params['dbdriver'] ??= "mysqli";
+	if (!in_array($params['dbdriver'],["mysqli"]))
 	{
 		show_error('You have not selected a database type to connect to.');
 	}

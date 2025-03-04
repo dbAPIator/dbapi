@@ -16,29 +16,31 @@ use Firebase\JWT\Key;
  * @property CI_Loader load
  * @property CI_Input input
  * @property CI_Config config
+ * @property Util util
  */
 class Config extends CI_Controller {
+    /**
+     * @var array|false
+     */
+    private $headers;
+
     public function __construct() {
         parent::__construct();
         header("Content-type: application/json");
-        $this->config->load("apiator");
+        $this->config->load("dbapiator");
+        $this->load->library("Utilities");
         $this->load->helper("string");
-        $headers = getallheaders();
-        $secret = isset($headers["x-api-key"]) ? $headers["x-api-key"] : $this->input->get("xApiKey");
+        $this->headers = getallheaders();
 
-
-        if(!$secret || $secret!==$this->config->item("configApiSecret")) {
-            //        echo $secret." ".$this->config->item("configApiSecret") ;
-            HttpResp::not_authorized("Not authorized to access config");
-        }
     }
 
+
     /**
-     * check if API is defined by
+     * check if API exists and if the client is authorized
      * @param $configName
      * @return bool
      */
-    private function project_exists($configName, $return=false) {
+    private function api_exists_and_is_authorized($configName, $return=false) {
         $apiDir = $this->config->item("configs_dir")."/$configName";
         if(!is_dir($apiDir)) {
             if(!$return) {
@@ -46,6 +48,7 @@ class Config extends CI_Controller {
             }
             return false;
         }
+        $this->authorize_config_update($configName);
         return true;
     }
 
@@ -53,7 +56,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function update_auth($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
         $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
@@ -91,7 +94,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function replace_auth($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $authFilePath = $this->config->item("configs_dir")."/$configName/auth.php";
         $authData = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
@@ -143,7 +146,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function get_security($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $path = $this->config->item("configs_dir")."/$configName";
         $security = @include "$path/security.php";
         HttpResp::json_out(200,$security);
@@ -154,7 +157,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function update_security($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $secFilePath = $this->config->item("configs_dir")."/$configName/security.php";
         $security = @include $secFilePath;
         $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
@@ -168,7 +171,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function get_clients($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $path = $this->config->item("configs_dir")."/$configName";
         $d = opendir("$path/clients");
         $clients = [];
@@ -184,7 +187,7 @@ class Config extends CI_Controller {
      * @param $apiKey
      */
     function create_client($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $path = $this->config->item("configs_dir")."/$configName";
         $apiKey = guidv4();
         $fn = "$path/clients/$apiKey.php";
@@ -209,7 +212,7 @@ class Config extends CI_Controller {
      * @param $apiKey
      */
     function get_client($configName,$apiKey) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
         if(!file_exists($path)) {
             HttpResp::not_found(["error"=>"API Key not found"]);
@@ -222,7 +225,7 @@ class Config extends CI_Controller {
      * @param $apiKey
      */
     function delete_client($configName,$apiKey) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $path = $this->config->item("configs_dir")."/$configName/clients/$apiKey.php";
         if(!file_exists($path)) {
             HttpResp::not_found(["error"=>"API Key not found"]);
@@ -232,10 +235,46 @@ class Config extends CI_Controller {
         else
             HttpResp::server_error(["error"=>"Could not delete client"]);
     }
+
+    private function authorize_config_update($config) {
+        $authFilePath = $this->config->item("configs_dir")."/$config";
+        $security = require  "$authFilePath/security.php";
+
+        $secret = isset($this->headers["x-api-key"]) ? $this->headers["x-api-key"] : $this->input->get("xApiKey");
+
+
+        // check secret
+        if(!$secret || $secret!==$security["secret"]) {
+            HttpResp::not_authorized("API key not authorized to update API config");
+        }
+
+        // check if IP is allowed
+        if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$security["config_allow_from"])) {
+            HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to update API config");
+        }
+
+    }
+
+    private function authorize_dbapi_config() {
+        $secret = isset($this->headers["x-api-key"]) ? $this->headers["x-api-key"] : $this->input->get("xApiKey");
+
+        // check secret
+        if(!$secret || $secret!==$this->config->item("configApiSecret")) {
+            HttpResp::not_authorized("API key not authorized to access config API");
+        }
+
+        // check if IP is allowed
+        if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$this->config->item("configApiAllowedIPs"))) {
+            HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to access config API");
+        }
+    }
     /**
      * @param $configName
      */
     function create_api() {
+        $this->authorize_dbapi_config();
+
+
         $data = json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
         if(!$data || !is_array($data)) {
             HttpResp::bad_request(["error"=>"Invalid input data"]);
@@ -244,7 +283,7 @@ class Config extends CI_Controller {
             HttpResp::bad_request(["error"=>"No API name provided"]);
         }
         $configName = $data["name"];
-        if($this->project_exists($configName,true)) {
+        if($this->api_exists_and_is_authorized($configName,true)) {
             HttpResp::json_out(409,["error"=>"Project  $configName already exists"]);
         }
 
@@ -275,7 +314,6 @@ class Config extends CI_Controller {
                 @mkdir($path);
         }
         catch (Exception $exception){
-//            print_r($exception);
             set_status_header(500);
             die(json_encode(["error"=>$exception->getMessage()]));
         }
@@ -287,27 +325,28 @@ class Config extends CI_Controller {
             $auth["alg"] = 'HS256';
             $auth["validity"] = 3600;
             $auth["allowGuest"] = true;
-            $auth["defaultAction"] = "accept";
+            $auth["defaultAction"] = "allow";
             $auth["guestRules"] = [];
         }
 
 
 
         $security = [
-            "default_policy"=>"accept",
+            "default_policy"=>"allow",
             "from"=>["0.0.0.0/0","::/0"],
-
+            "config_allow_from"=>["0.0.0.0/0","::/0"],
         ];
         if(isset($data["security"]) && is_array($data["security"])) {
             $security = array_merge($security,$data["security"]);
         }
+        $security["secret"] = guidv4();
 
 
 
         mkdir("$path/clients");
         file_put_contents("$path/structure.php",to_php_code($structure,true));
         chmod("$path/structure.php",0600);
-        file_put_contents("$path/connection.php",to_php_code($data["connection"],true));
+        file_put_contents("$path/connection.php",to_php_code($conn,true));
         chmod("$path/connection.php",0600);
         file_put_contents("$path/patch.php",to_php_code([],true));
         chmod("$path/patch.php",0600);
@@ -316,11 +355,13 @@ class Config extends CI_Controller {
         file_put_contents("$path/security.php",to_php_code($security,true));
         chmod("$path/auth.php",0600);
 
-        HttpResp::json_out(200,["result"=>guidv4()]);
+        HttpResp::json_out(200,["result"=>$security["secret"]]);
 
     }
 
     function list_apis() {
+        $this->authorize_dbapi_config();
+
         $authFilePath = $this->config->item("configs_dir");
         $dir = @opendir($authFilePath);
         if(!$dir) {
@@ -340,7 +381,7 @@ class Config extends CI_Controller {
      * @throws Exception
      */
     function regen($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $conn = require  "$authFilePath/connection.php";
@@ -357,21 +398,21 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function get_structure($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         //print_r($structure);
         HttpResp::json_out(200,$structure);
     }
 
     function get_endpoints($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         //print_r($structure);
         HttpResp::json_out(200,array_keys($structure));
     }
 
     function get_endpoint_structure($configName, $endpointName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
@@ -385,7 +426,7 @@ class Config extends CI_Controller {
      * @param $endpointName
      */
     function update_endpoint_structure($configName, $endpointName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
@@ -399,7 +440,7 @@ class Config extends CI_Controller {
      * @param $endpointName
      */
     function replace_endpoint_structure($configName, $endpointName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $structure = require_once($this->config->item("configs_dir")."/$configName/structure.php");
         if(isset($structure[$endpointName]))
             HttpResp::json_out(200,$structure[$endpointName]);
@@ -420,7 +461,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function replace_structure($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $new_structure = json_decode($this->input->raw_input_stream, JSON_OBJECT_AS_ARRAY);
         if(is_null($new_structure)) {
@@ -447,7 +488,7 @@ class Config extends CI_Controller {
     }
 
     function patch_structure($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $data = $this->input->raw_input_stream;
         $data = json_decode($data,JSON_OBJECT_AS_ARRAY);
@@ -481,14 +522,15 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function patch($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
     }
 
     /**
      * @param $configName
      */
     function delete_api($configName) {
-        $this->project_exists($configName);
+        $this->authorize_dbapi_config();
+        $this->api_exists_and_is_authorized($configName);
 
         if(remove_dir_recursive($this->config->item("configs_dir")."/$configName"))
             HttpResp::no_content();
@@ -521,7 +563,7 @@ class Config extends CI_Controller {
 
     function swagger($configName)
     {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $this->load->helper("swagger");
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $structure = require "$authFilePath/structure.php";
@@ -538,7 +580,7 @@ class Config extends CI_Controller {
 
 
     function get_config_endpoints($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
 
         $resp = [
             "status"=>"ok",
@@ -563,7 +605,8 @@ class Config extends CI_Controller {
     }
 
     function api_endpoints($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
+
 
         $authFilePath = $this->config->item("configs_dir")."/$configName";
         $structure = require "$authFilePath/structure.php";
@@ -575,7 +618,7 @@ class Config extends CI_Controller {
      * @param $configName
      */
     function get($configName) {
-        $this->project_exists($configName);
+        $this->api_exists_and_is_authorized($configName);
         $resp = [
             "status"=>"ok",
             "endpoints"=>[

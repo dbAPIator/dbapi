@@ -40,25 +40,16 @@ class Datamodel {
     function __construct($dataModel) {
         $ci = get_instance();
 
-        if(($tmp=$ci->config->item("default_resource_access_read"))!==null)
-            $this->default_resource_access_read = $tmp;
-        if(($tmp=$ci->config->item("default_resource_access_insert"))!==null)
-            $this->default_resource_access_insert = $tmp;
-        if(($tmp=$ci->config->item("default_resource_access_update"))!==null)
-            $this->default_resource_access_update = $tmp;
-        if(($tmp=$ci->config->item("default_resource_access_delete"))!==null)
-            $this->default_resource_access_delete = $tmp;
+        $this->default_resource_access_read = $ci->config->item("default_resource_access_read") ?? true;
+        $this->default_resource_access_insert = $ci->config->item("default_resource_access_insert") ?? true;
+        $this->default_resource_access_update = $ci->config->item("default_resource_access_update") ?? true;
+        $this->default_resource_access_delete = $ci->config->item("default_resource_access_delete") ?? true;
 
-        if(($tmp=$ci->config->item("default_field_access_select"))!==null)
-            $this->default_field_access_select = $tmp;
-        if(($tmp=$ci->config->item("default_field_access_insert"))!==null)
-            $this->default_field_access_insert = $tmp;
-        if(($tmp=$ci->config->item("default_field_access_search"))!==null)
-            $this->default_field_access_search = $tmp;
-        if(($tmp=$ci->config->item("default_field_access_sort"))!==null)
-            $this->default_field_access_sort = $tmp;
-        if(($tmp=$ci->config->item("default_field_access_update"))!==null)
-            $this->default_field_access_update = $tmp;
+        $this->default_field_access_select = $ci->config->item("default_field_access_select") ?? true;
+        $this->default_field_access_insert = $ci->config->item("default_field_access_insert") ?? true;
+        $this->default_field_access_search = $ci->config->item("default_field_access_search") ?? true;
+        $this->default_field_access_sort = $ci->config->item("default_field_access_sort") ?? true;
+        $this->default_field_access_update = $ci->config->item("default_field_access_update") ?? true;
 
         $this->dataModel = $dataModel;
     }
@@ -95,9 +86,7 @@ class Datamodel {
             throw new \Exception("Invalid field $fldName (is_selectable)",400);
 
 
-        return isset($this->dataModel[$resName]["fields"][$fldName]["select"]) ?
-            $this->dataModel[$resName]["fields"][$fldName]["select"] :
-            $this->default_field_access_select;
+        return $this->dataModel[$resName]["fields"][$fldName]["select"] ?? $this->default_field_access_select;
     }
 
     /**
@@ -112,9 +101,7 @@ class Datamodel {
         if(!isset($this->dataModel[$resName]["fields"][$fldName]))
             throw new \Exception("Invalid field $resName.$fldName (is_insertable)",400);
 
-        return isset($this->dataModel[$resName]["fields"][$fldName]["insert"])?
-            $this->dataModel[$resName]["fields"][$fldName]["insert"]:
-            $this->default_field_access_insert;
+        return $this->dataModel[$resName]["fields"][$fldName]["insert"] ??  $this->default_field_access_insert;
     }
 
     /**
@@ -128,9 +115,7 @@ class Datamodel {
         if(!isset($this->dataModel[$resName]["fields"][$fldName]))
             throw new \Exception("Invalid field $fldName (is_updateable)",400);
 
-        return isset($this->dataModel[$resName]["fields"][$fldName]["update"])?
-            $this->dataModel[$resName]["fields"][$fldName]["update"]:
-            $this->default_field_access_update;
+        return $this->dataModel[$resName]["fields"][$fldName]["update"] ?? $this->default_field_access_update;
     }
 
     /**
@@ -144,9 +129,7 @@ class Datamodel {
 //        print_r($this->dataModel[$resName]["fields"][$fldName]);
         if(!isset($this->dataModel[$resName]["fields"][$fldName]))
             throw new \Exception("Invalid field $fldName (is_sortable)",400);
-        return isset($this->dataModel[$resName]["fields"][$fldName]["sortable"])?
-            $this->dataModel[$resName]["fields"][$fldName]["sortable"]:
-            $this->default_field_access_sort;
+        return $this->dataModel[$resName]["fields"][$fldName]["sortable"] ?? $this->default_field_access_sort;
     }
 
     /**
@@ -160,9 +143,7 @@ class Datamodel {
         if(!isset($this->dataModel[$resName]["fields"][$fldName]))
             throw new \Exception("Invalid field $resName.$fldName (is_searchable)",400);
 
-        return isset($this->dataModel[$resName]["fields"][$fldName]["searchable"])?
-            $this->dataModel[$resName]["fields"][$fldName]["searchable"]:
-            $this->default_field_access_search;
+        return $this->dataModel[$resName]["fields"][$fldName]["searchable"] ?? $this->default_field_access_search;
     }
 
 
@@ -689,10 +670,7 @@ class Datamodel {
     public function resource_allow_read($resName)
     {
 
-        $res =  isset($this->dataModel[$resName]["read"]) ?
-            $this->dataModel[$resName]["read"] :
-            $this->default_resource_access_read;
-//        echo $this->default_resource_access_read;
+        $res =  $this->dataModel[$resName]["read"] ?? $this->default_resource_access_read;
         return  $res;
     }
 
@@ -702,9 +680,7 @@ class Datamodel {
      */
     public function resource_allow_insert ($resName)
     {
-        return isset($this->dataModel[$resName]["insert"]) ?
-            $this->dataModel[$resName]["insert"] :
-            $this->default_resource_access_insert;
+        return $this->dataModel[$resName]["insert"] ?? $this->default_resource_access_insert;
 
     }
 
@@ -714,9 +690,7 @@ class Datamodel {
      */
     public function resource_allow_update ($resourceName)
     {
-        return isset($this->dataModel[$resourceName]["update"]) ?
-            $this->dataModel[$resourceName]["update"] :
-            $this->default_resource_access_update;
+        return $this->dataModel[$resourceName]["update"] ?? $this->default_resource_access_update;
     }
 
     /**
@@ -725,9 +699,7 @@ class Datamodel {
      */
     public function resource_allow_delete ($resName)
     {
-        return isset($this->dataModel[$resName]["delete"]) ?
-            $this->dataModel[$resName]["delete"] :
-            $this->default_resource_access_delete;
+        return $this->dataModel[$resName]["delete"] ?? $this->default_resource_access_delete;
     }
 
     /**

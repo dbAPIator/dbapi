@@ -22,7 +22,6 @@ connections/*
 apis/*
 ezerp/*
 dbs
-vendor
 composer.lock
 etc/mysqldata
 etc/*.sql
