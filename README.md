@@ -1,7 +1,7 @@
-- [dbAPIator: Instant REST API for MySQL databases](#dbapiator-instant-rest-api-for-mysql-databases)
+- [dbAPI: Instant REST API for MySQL databases](#dbapi-instant-rest-api-for-mysql-databases)
   - [Features](#features)
   - [How it works](#how-it-works)
-  - [Installation](#installation)
+  - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Web server configuration](#web-server-configuration)
     - [Install](#install)
@@ -11,11 +11,11 @@
   - [Contributing](#contributing)
   - [License](#license)
 
-# dbAPIator: Instant REST API for MySQL databases
+# dbAPI: Instant REST API for MySQL databases
 
-dbAPIator is a backend for MySQL applications that automatically generates REST APIs by detecting the database schema, making backend development 1000x faster than building APIs the traditional way.
+dbAPI is a middleware that instantly creates a REST API for any Mysql database  by dynamically adapting to the database schema, accelerating backend development exponentially compared to traditional API building methods
 
-With dbAPIator, developers can quickly and easily generate clean, well-documented APIs that are tailored to their database schema. This automation basically eliminates the need to develop the database backend, allowing developers to focus on other aspects of their projects.
+With dbAPI, developers can quickly and easily generate clean, well-documented APIs that are tailored to their database schema. This automation basically eliminates the need to develop the database backend, allowing developers to focus on other aspects of their projects.
 
 
 ## Features
@@ -29,19 +29,16 @@ With dbAPIator, developers can quickly and easily generate clean, well-documente
 - error handling: provides informative error messages in case of invalid requests, server errors, or other exceptional conditions.
 - scalability: being stateless, it can horizontally scale to any number of instances. 
 - security: implements security best practices to protect against common threats such as injection attacks, cross-site scripting (XSS), and cross-site request forgery (CSRF). This involves input validation, parameterized queries, and encryption of sensitive data.
-- multi-database: one dbAPIator instance can be used to connect to multiple databases, each with their separate entry endpoint, access and authorization rules. This feature can be used to create multiple versions of the same API for different environments (dev, test, prod)
+- multi-database: one dbAPI instance can be used to connect to multiple databases, each with their separate entry endpoint, access and authorization rules. This feature can be used to create multiple versions of the same API for different environments (dev, test, prod)
 - configuration API: configuration of the APIs is performed through a dedicated API where new databases/APIs can be added, update their configuration and delete them.
 - instant update of the API structure when the database struncture changes
 - support for MySQL, MariaDB and Percona Server
  
 ## How it works
 
-dbAPIator works by analyzing the database schema and automatically generating the API endpoints based on the table structure.
+dbAPI works by analyzing the database schema and automatically generating the API endpoints based on the table structure.
 
-For each table or view in the database, dbAPIator generates a dedicated API endpoint.
-
-The API endpoints are generated based on the JSON:API specification.
-## Installation
+## Getting Started
 
 ### Prerequisites
 
@@ -74,7 +71,7 @@ chmod 777 dbconfigs
 ```
 
 ### Configure
-Edit ```installation_path/application/config/dbapiator.php``` and update the configuration to suit your needs (the file is decently documented and you should be able to figure out the rest). You should at least update the following variables:
+Edit ```installation_path/application/config/dbAPI.php``` and update the configuration to suit your needs (the file is decently documented and you should be able to figure out the rest). You should at least update the following variables:
 
 - ```$config['config_api_secret']```: the secret to be used for authenticating config API requests.
 - ```$config['base_url']```: the base URL of the API.
@@ -119,9 +116,9 @@ Please refer to the [Using the API](docs/using_the_api.md) documentation for mor
 
 ## Contributing
 
-We welcome contributions to dbAPIator! Please feel free to submit a pull request or open an issue.
+We welcome contributions to dbAPI! Please feel free to submit a pull request or open an issue.
 
 
 ## License
 
-dbAPIator is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+dbAPI is licensed under the MIT License. See the [LICENSE](LICENSE.md) file for details.

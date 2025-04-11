@@ -105,7 +105,6 @@ $route["^test"] ="$controller/test";
 $route["^test/(.*)"] ="$controller/test/$1";
 
 
-
 $route["^apis/([\w\-\.\_\%]+)/config"]["get"] = "config/get/$1";
 $route["^apis/([\w\-\.\_\%]+)/config/swagger"]["get"] = "config/swagger/$1";
 
@@ -151,17 +150,17 @@ $route["$apiAuthUrlPrefix/apiclienttoken/(.*)/(\d+)"]["get"] = "auth/genApiClien
 
 
 // stored procedures
-$route["^$basePath/([\w\-\.\_\%]+)/__call__/([\w\-\. \_\%]+)$"] ["post"] = "$controller/callStoredProcedure/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/__call__/([\w\-\. \_\%]+)$"] ["post"] = "$controller/call_stored_procedure/$1/$2";
 
 
 
 // first family: - bulk operations /
 // #1
-$route["^$basePath/([\w\-\.\_\%]+)"]["post"] ="$controller/createMultipleRecords/$1";
+//$route["^$basePath/([\w\-\.\_\%]+)"]["post"] ="$controller/createMultipleRecords/$1";
 // #2
-$route["^$basePath/([\w\-\.\_\%]+)"]["patch"] ="$controller/updateMultipleRecords/$1";
+$route["^$basePath/([\w\-\.\_\%]+)"]["patch"] ="$controller/bulk_update/$1";
 // #3
-//$route["^$basePath/([\w\-\. \_\%]+)"]["delete"] ="$controller/deleteMultipleRecords/$1";
+$route["^$basePath/([\w\-\. \_\%]+)"]["delete"] ="$controller/bulk_delete/$1";
 
 //$route["^[v2|data]/([\w\-\.\_\%]+)"] = "$controller/base/$1";
 
@@ -173,10 +172,10 @@ $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["get"] = "$controller/get_
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["post"] = "$controller/create_records/$1/$2";
 // #5.1
 $route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateMultipleRecords/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["patch"] = "$controller/bulk_update/$1/$2";
 
 // #5.2
-$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteMultipleRecords/$1/$2";
+$route["^$basePath/([\w\-\.\_\%]+)/([\w\-\. \_\%]+)"]["delete"] = "$controller/bulk_delete/$1/$2";
 
 // third family: /resourceName/id
 // #6 OK
@@ -233,9 +232,9 @@ $apiDataUrlPrefix = "^apis/([\w\-\.\_\%]+)/data";
 // #1
 $route[$apiDataUrlPrefix]["post"] ="$controller/createMultipleRecords/$1";
 // #2
-$route[$apiDataUrlPrefix]["patch"] ="$controller/updateMultipleRecords/$1";
+$route[$apiDataUrlPrefix]["patch"] ="$controller/bulk_update/$1";
 // #3
-//$route["^apis/([\w\-\. \_\%]+)"]["delete"] ="$controller/deleteMultipleRecords/$1";
+//$route["^apis/([\w\-\. \_\%]+)"]["delete"] ="$controller/bulk_delete/$1";
 
 //$route["^[v2|data]/([\w\-\.\_\%]+)"] = "$controller/base/$1";
 
@@ -246,11 +245,11 @@ $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["get"] = "$controller/get_records/$
 // #5
 $route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["post"] = "$controller/create_records/$1/$2";
 // #5.1
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateWhere/$1/$2";
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/updateMultipleRecords/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/update_where/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["patch"] = "$controller/bulk_update/$1/$2";
 
 // #5.2
-$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["delete"] = "$controller/deleteMultipleRecords/$1/$2";
+$route["$apiDataUrlPrefix/([\w\-\. \_\%]+)"]["delete"] = "$controller/bulk_delete/$1/$2";
 
 // third family: /resourceName/id
 // #6 OK

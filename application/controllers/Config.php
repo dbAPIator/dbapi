@@ -1,7 +1,7 @@
 <?php
 
 require_once(APPPATH."libraries/HttpResp.php");
-require_once (BASEPATH."/../vendor/autoload.php");
+//require_once (BASEPATH."/../vendor/autoload.php");
 require_once(APPPATH."third_party/Softaccel/Autoloader.php");
 \Softaccel\Autoloader::register();
 use Softaccel\Apiator\DBApi\DBWalk;
@@ -16,13 +16,15 @@ use Firebase\JWT\Key;
  * @property CI_Loader load
  * @property CI_Input input
  * @property CI_Config config
- * @property Util util
+ * @property Utilities utilities
+ * @property CI_DBUtil dbutil
  */
 class Config extends CI_Controller {
     /**
      * @var array|false
      */
     private $headers;
+    private $errorsCatalog;
 
     public function __construct() {
         parent::__construct();
@@ -31,6 +33,8 @@ class Config extends CI_Controller {
         $this->load->library("Utilities");
         $this->load->helper("string");
         $this->headers = getallheaders();
+        $this->load->config("errorscatalog");
+        $this->errorsCatalog = $this->config->item("errors_catalog");
 
     }
 
@@ -44,7 +48,7 @@ class Config extends CI_Controller {
         $apiDir = $this->config->item("configs_dir")."/$apiName";
         if(!is_dir($apiDir)) {
             if(!$return) {
-                HttpResp::not_found(["error"=>"API  $apiName not found"]);
+                HttpResp::not_found($this->errorsCatalog["config"]["api_not_found"]);
             }
             return false;
         }
@@ -199,7 +203,7 @@ class Config extends CI_Controller {
         $config = array_merge($default_config,$config);
 
         file_put_contents($fn,to_php_code($config,true));
-        HttpResp::json_out(200,["key"=>$apiKey]);
+        HttpResp::json_out(201,["key"=>$apiKey]);
     }
 
 
@@ -244,12 +248,12 @@ class Config extends CI_Controller {
 
         // check secret
         if(!$secret || $secret!==$security["secret"]) {
-            HttpResp::not_authorized("API key not authorized to update API config");
+            HttpResp::not_authorized($this->errorsCatalog["access"]["api_config_secret_not_authorized"]);
         }
 
         // check if IP is allowed
         if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$security["config_allow_from"])) {
-            HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to update API config");
+            HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
         }
 
         return $this->config->item("configs_dir")."/$apiName/auth.php";
@@ -260,12 +264,12 @@ class Config extends CI_Controller {
 
         // check secret
         if(!$secret || $secret!==$this->config->item("config_api_secret")) {
-            HttpResp::not_authorized("API key not authorized to access config API");
+            HttpResp::not_authorized($this->errorsCatalog["access"]["secret_not_authorized"]);
         }
 
         // check if IP is allowed
         if(!$this->utilities->find_cidr($_SERVER["REMOTE_ADDR"],$this->config->item("config_api_allowed_ips"))) {
-            HttpResp::not_authorized("IP {$_SERVER["REMOTE_ADDR"]} not authorized to access config API");
+            HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
         }
     }
 
@@ -282,7 +286,7 @@ class Config extends CI_Controller {
                 return json_decode($this->input->raw_input_stream,JSON_OBJECT_AS_ARRAY);
                 break;
             default:
-                HttpResp::invalid_request("Invalid content type");
+                HttpResp::invalid_request($this->errorsCatalog["input"]["invalid_content_type"]);
         }
     }
 
@@ -291,22 +295,23 @@ class Config extends CI_Controller {
      */
     function create_api() {
         $this->authorize_dbapi_config();
-        $data = $this->get_input_data();
+            $data = $this->get_input_data();
 
         if(!$data || !is_array($data)) {
-            HttpResp::bad_request(["error"=>"Invalid input data"]);
+            HttpResp::bad_request($this->errorsCatalog["input"]["invalid_input_data"]);
         }
         if(!isset($data["name"])) {
-            HttpResp::bad_request(["error"=>"No API name provided"]);
+            HttpResp::bad_request($this->errorsCatalog["config"]["db_name_not_provided"]);
         }
         $apiName = $data["name"];
         if($this->api_exists($apiName,true)) {
-            HttpResp::json_out(409,["error"=>"Project  $apiName already exists"]);
+            HttpResp::json_out(409,$this->errorsCatalog["config"]["api_exists"]);
         }
 
         if($_SERVER["REQUEST_METHOD"]!=="POST") {
             HttpResp::json_out(405,["error"=>"Method not allowed"]);
         }
+
 
         $conn = [
             "dbdriver" => "mysqli",
@@ -323,17 +328,72 @@ class Config extends CI_Controller {
 
         $conn = array_merge($conn,$data["connection"]);
 
-        $path = $this->config->item("configs_dir")."/$apiName";
-
         try {
+            if(isset($data["create"]) && isset($data["create"]["sql"]) && $data["create"]["sql"]){
+                $tmpConn = $conn;
+                unset($tmpConn["database"]);
+    
+                $db = @$this->load->database($tmpConn,true);
+                $dbforge = $this->load->dbforge($db, true);
+                $this->load->dbutil($db);
+                $dbExists = $this->dbutil->database_exists($conn['database']);
+                $dropBeforeCreate = isset($data["create"]["drop_before_create"]) && $data["create"]["drop_before_create"];
+                if($dbExists){
+                    // database exists
+                    if($dropBeforeCreate){
+                        if (@$dbforge->drop_database($conn['database'])) {
+                            $dbforge->create_database($conn['database']);
+                            $db->close();
+                            $db = @$this->load->database($conn,true);
+                        }        
+                        else {
+                            throw new Exception("Could not drop database {$conn['database']}");
+                        }        
+                    }
+                    else{
+                        throw new Exception("Database already exists. Will not drop it.");
+                    }
+                
+                }
+                else {
+                    $dbforge->create_database($conn['database']);
+                    $db->close();
+                    $db = @$this->load->database($conn,true);
+                }
+                
+                
+                $createSql = preg_replace("/CREATE DATABASE.*?;/i", "", json_decode($data["create"]["sql"]));
+               
+                $db->trans_start();
+    
+                $statements = explode(';', $createSql);
+                foreach($statements as $sql) {
+                    // Unescape any escaped strings before executing query
+                    $sql =  trim($sql);
+                    if (!empty($sql)) {
+                        $db->query($sql);
+                    }
+                }
+                $db->trans_complete();
+                if ($db->trans_status() === FALSE) {
+                    $error = $db->error();
+                    
+                    HttpResp::server_error([
+                        "error" => "Could not create database {$conn['database']} ",
+                        "details" => $error['message']
+                    ]);
+                }
+            }
+            $path = $this->config->item("configs_dir")."/$apiName";
+
             $structure = $this->generate_config($data["connection"], $path);
-            if(!is_dir($path))
-                @mkdir($path);
+            if(!is_dir($path) && !@mkdir($path))
+                throw new Exception("Could not create config directory {$path}");
         }
         catch (Exception $exception){
-            set_status_header(500);
-            die(json_encode(["error"=>$exception->getMessage()]));
+            HttpResp::exception_out($exception);
         }
+        
 
         $auth = [];
         if(isset($data["authentication"]) && is_array($data["authentication"])) {
@@ -372,7 +432,7 @@ class Config extends CI_Controller {
         file_put_contents("$path/security.php",to_php_code($security,true));
         chmod("$path/auth.php",0600);
 
-        HttpResp::json_out(200,["result"=>$security["secret"]]);
+        HttpResp::json_out(201,["result"=>$security["secret"]]);
 
     }
 
@@ -506,7 +566,7 @@ class Config extends CI_Controller {
 
         $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
         // get natural structure
-        $db_struct = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+        $db_struct = DBWalk::parse($this->load->database($conn,true),$conn['database'])['structure'];
         // compute difference
         $diff = compute_struct_diff($db_struct,$new_structure);
         echo json_encode($diff);
@@ -530,7 +590,7 @@ class Config extends CI_Controller {
             HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
         }
         $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
-        $structure = DBWalk::parse_mysql($this->load->database($conn,true),$conn['database'])['structure'];
+        $structure = DBWalk::parse($this->load->database($conn,true),$conn['database'])['structure'];
         $patch = @include $this->config->item("configs_dir")."/$apiName/patch.php";
         $patch = $patch ? $patch : [];
         $newStruct = smart_array_merge_recursive($structure,$patch);
@@ -564,8 +624,23 @@ class Config extends CI_Controller {
      */
     function delete_api($apiName) {
         $this->authorize_config_update($apiName);
-
         try {
+            if($this->input->get("delete_db")=="true"){
+                $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
+                $db = $this->load->database($conn,true);
+                /**
+                 * @var CI_DB_forge $dbforge
+                 */
+                $dbforge = $this->load->dbforge($db, true);
+                if(!$dbforge->drop_database($conn['database'])) {
+                    $db->close();
+                    throw new Exception("Could not drop database {$conn['database']}");
+                }
+                else {
+                    $db->close();
+                }
+            }
+        
             remove_dir_recursive($this->config->item("configs_dir")."/$apiName");
             HttpResp::no_content();
         }
@@ -697,11 +772,11 @@ class Config extends CI_Controller {
             $db = @$this->load->database($conn,true);
 
             $error = $db->error();
-//            print_r($error);
             if($error["code"]!==0) {
                 throw new Exception($error["message"],$error["code"]);
             }
-            $structure = DBWalk::parse_mysql($db,$conn['database'])['structure'];
+
+            $structure = DBWalk::parse($db,$conn['database'])['structure'];
         }
 
         $authFilePath = $authFilePath?$authFilePath:$_SERVER['PWD'];

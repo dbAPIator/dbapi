@@ -25,3 +25,4 @@ dbs
 composer.lock
 etc/mysqldata
 etc/*.sql
+vendor/

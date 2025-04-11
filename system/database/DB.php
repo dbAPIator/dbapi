@@ -147,7 +147,7 @@ function &DB($params = '', $query_builder_override = NULL)
     $params['dbdriver'] ??= "mysqli";
 	if (!in_array($params['dbdriver'],["mysqli"]))
 	{
-		show_error('You have not selected a database type to connect to.');
+		throw new Exception('You have not selected a valid database type to connect to.');
 	}
 
 	// Load the DB classes. Note: Since the query builder class is optional

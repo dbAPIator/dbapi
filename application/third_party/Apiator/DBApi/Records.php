@@ -21,6 +21,7 @@ use JSONApi\Autoloader;
 Autoloader::register();
 
 use JSONApi\Document;
+use Softaccel\Apiator\DBApi\DBAPIRequest;
 
 //require_once(__DIR__."/../../../libraries/HttpResp.php");
 
@@ -121,9 +122,9 @@ class Records {
      * @throws \Exception
      * @todo: check filtering
      */
-    function get_records(\DBAPIRequest $request)
+    function get_records(DBAPIRequest $request,$dbg=false)
     {
-//        print_r($request);
+        //print_r($request);
         // check if it is allowed to read the resource data
         $resourceName = $request->resourceName;
         if(!$this->dm->resource_allow_read($resourceName))
@@ -145,7 +146,10 @@ class Records {
         $countSql = "SELECT count(*) cnt FROM `$request->resourceName` "
             .implode(" ",$join)
             ." WHERE $whereStr";
-//        echo $countSql."\n";
+
+        if($dbg) {
+            echo $countSql."\n";
+        }   
 
         $res = $this->dbdrv->query($countSql);
         $err=$this->dbdrv->error();

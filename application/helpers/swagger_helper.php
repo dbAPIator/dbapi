@@ -1198,15 +1198,14 @@ function get_related($resourceName, $resourceSpecification, $relationshipName)
 }
 
 /**
- * @param $hostName
- * @param $basePath
- * @param $desc
- * @param $title
- * @param $name
- * @param $email
+ * @param string $url
+ * @param string $desc
+ * @param string $title
+ * @param string $contactName
+ * @param string $contactEmail
  * @return array
  */
-function open_api_spec($hostName, $basePath,$desc,$title,$name,$email)
+function open_api_spec(string $url,string $desc,string $title,string $contactName,string $contactEmail)
 {
 
     return [
@@ -1215,17 +1214,16 @@ function open_api_spec($hostName, $basePath,$desc,$title,$name,$email)
             "description" => $desc,
             "version" => "1.0.0",
             "title" => $title,
-//            "contact" => [
-//                "name" => $name,
-//                "email" => $email
-//            ],
-//            "license" => [
-//                "name" => "GPL"
-//            ]
+            "contact" => [
+                "name" => $contactName,
+                "email" => $contactEmail
+            ],
+            "license" => [
+                "name" => "GPL"
+            ]
         ],
         "servers" => [
-            ["url"=>$basePath]
-//            ["url"=>sprintf("http://%s%s",$hostName,$basePath)]
+            ["url"=>$url]
         ],
         "paths"=>[],
         "components"=> [
@@ -1246,9 +1244,9 @@ function open_api_spec($hostName, $basePath,$desc,$title,$name,$email)
  * @param $email
  * @return array
  */
-function generate_swagger($hostName,$dataModel,$basePath,$desc,$title,$name,$email)
+function generate_swagger(string $url,array $dataModel,string $desc,string $title,string $name,string $email)
 {
-    $openApiSpec =  open_api_spec($hostName,$basePath,$desc,$title,$name,$email);
+    $openApiSpec =  open_api_spec($url,$desc,$title,$name,$email);
 
     /************************************************
      * path: /
