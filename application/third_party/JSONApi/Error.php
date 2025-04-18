@@ -14,27 +14,13 @@ class Error extends json_ready
     /**
      * @var string
      */
-    protected $title;
-    /**
-     * @var Links
-     */
-    protected $links;
-    /**
-     * @var string
-     */
-    protected $status;
+    protected $message;
+
     /**
      * @var string
      */
     protected $code;
-    /**
-     * @var string
-     */
-    protected $detail;
-    /**
-     * @var Meta
-     */
-    protected $meta;
+
 
     /**
      * @param $data
@@ -55,7 +41,7 @@ class Error extends json_ready
     {
         return new self([
             "code"=>$data["code"],
-            "title"=>$data["title"]
+            "message"=>$data["message"]
         ]);
     }
 
@@ -65,7 +51,7 @@ class Error extends json_ready
      */
     static function from_exception($e)
     {
-        return new self(["title"=>$e->getMessage(),"code"=>$e->getCode()]);
+        return new self(["message"=>$e->getMessage(),"code"=>$e->getCode()]);
     }
 
     private function __construct ($data)
@@ -79,56 +65,22 @@ class Error extends json_ready
     /**
      * @return mixed
      */
-    public function getTitle ()
+    public function getMessage ()
     {
-        return $this->title;
+        return $this->message;
     }
 
     /**
-     * @param mixed $title
+     * @param mixed $message
      * @return Error
      */
-    public function &setTitle ($title)
+    public function &setMessage ($message)
     {
-        $this->title = $title;
+        $this->message = $message;
         return $this;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getLinks ()
-    {
-        return $this->links;
-    }
 
-    /**
-     * @param mixed $links
-     * @return Error
-     */
-    public function &setLinks (Links $links)
-    {
-        $this->links = $links;
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getStatus ()
-    {
-        return $this->status;
-    }
-
-    /**
-     * @param mixed $status
-     * @return Error
-     */
-    public function &setStatus ($status)
-    {
-        $this->status = $status;
-        return $this;
-    }
 
     /**
      * @return mixed
@@ -148,40 +100,5 @@ class Error extends json_ready
         return $this;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getDetail ()
-    {
-        return $this->detail;
-    }
-
-    /**
-     * @param mixed $detail
-     * @return Error
-     */
-    public function &setDetail ($detail)
-    {
-        $this->detail = $detail;
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getMeta ()
-    {
-        return $this->meta;
-    }
-
-    /**
-     * @param mixed $meta
-     * @return Error
-     */
-    public function &setMeta (Meta $meta)
-    {
-        $this->meta = $meta;
-        return $this;
-    }
 
 }

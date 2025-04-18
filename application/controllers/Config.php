@@ -683,13 +683,13 @@ class Config extends CI_Controller {
         $authFilePath = $this->config->item("configs_dir")."/$apiName";
         $structure = require "$authFilePath/structure.php";
         $openApiSpec = generate_swagger(
-            $_SERVER["SERVER_NAME"],
+            "http://".$_SERVER["SERVER_NAME"]."/dbapi/apis/$apiName/data",
             $structure,
             "/$apiName",
             "$apiName Spec",
             "$apiName spec",
-            "$apiName",
-            "test@user.com");
+            "test@user.com",
+            );
         HttpResp::json_out(200,$openApiSpec);
     }
 

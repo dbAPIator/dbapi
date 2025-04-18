@@ -5,80 +5,6 @@
  * Date: 9/11/19
  * Time: 9:03 AM
  */
-global $_schemas;
-$_schemas = [
-    "onUpdatePara"=>[
-        "enum"=>["update","ignore","abort"],
-        "maxItems"=>1,
-        "default"=>"ignore"
-    ],
-    "GenericResourceObject"=> [
-        "type"=> "object",
-        "required"=> [
-            "id",
-            "type"
-        ],
-        "properties"=> [
-            "id"=> [
-                "type"=> "string"
-            ],
-            "type"=> [
-                "type"=> "string"
-            ],
-            "attributes"=> [
-                "type"=> "object"
-            ],
-            "relationships"=> [
-                "type"=> "object"
-            ],
-            "meta"=> [
-                "type"=> "object"
-            ],
-            "links"=> [
-                "type"=> "object"
-            ]
-        ],
-    ],
-    "GenericErrorObject"=> [
-        "type"=> "object",
-        "properties"=> [
-            "id"=> [
-                "type"=> "string"
-            ],
-            "status"=> [
-                "type"=> "string"
-            ],
-            "code"=> [
-                "type"=> "string"
-            ],
-            "title"=> [
-                "type"=> "string"
-            ],
-            "detail"=> [
-                "type"=> "string"
-            ],
-            "source"=> [
-                "type"=> "string"
-            ],
-            "meta"=> [
-                "type"=> "object"
-            ]
-        ]
-    ],
-    "GenericResourceIdentifierObject"=>[
-        "type"=>"object",
-        "properties"=>[
-            "id"=>[
-                "type"=>"string"
-            ],
-            "type"=>[
-                "type"=>"string"
-            ]
-        ],
-        "required"=>["id","type"]
-    ]
-];
-
 $recursionLevel = 10;
 
 /********************************
@@ -133,7 +59,7 @@ function search_recursive($resName,$resSpec,$path,&$fields,&$includes,&$dm,$recu
 /**
  * @return array
  */
-function create_multiple_records()
+function bulk_create_mixed_records()
 {
     // todo
     return  [
@@ -148,7 +74,7 @@ function create_multiple_records()
                 "required"=>true,
                 "schema"=>[
                     "type"=>"string",
-                    "default"=>"application/vnd.api+json"
+                    "default"=>"application/json"
                 ]
             ],
             [
@@ -263,7 +189,7 @@ function update_multiple_records()
                 "required"=>true,
                 "schema"=>[
                     "type"=>"string",
-                    "default"=>"application/vnd.api+json"
+                    "default"=>"application/json"
                 ]
             ],
 
@@ -323,121 +249,90 @@ function delete_multiple_records()
  * - resourceObject - specifies the structure of a JSONAPI Resource Object (https://jsonapi.org/format/#document-resource-objects) as when originating on the server
  * - newResourceObject - specifies the structure of a JSONAPI Resource Object as when originating from client (eg: in case of create). In this case the field ID is not required
  * - resourceIdentifierObject - specifies the structure of a JSONAPI Resourcer Identifier Object (https://jsonapi.org/format/#document-resource-identifier-objects)
- * @param $resName
- * @param $resSpec
+ * @param $resourceName
+ * @param $resourceSpecification
+ * @return array
  */
-function add_components($resName, $resSpec)
+function add_components($resourceName, $resourceSpecification)
 {
-    global  $_schemas;
-
-    $labelResObj = "{$resName}ResourceObject";
-    $labelResIdfObj = "{$resName}ResourceIdentifierObject";
-    $labelNewResObj = "{$resName}NewResourceObject";
-
-    if(!isset($components[$labelResObj])) {
-
-        // create resourceIndicatorObject component
-        if(isset($resSpec["relations"]) && count($resSpec["relations"]))
-            $_schemas[$labelResIdfObj] = [
-                "type"=>"object",
-                "properties"=>[
-                    "id"=>[
-                        "type"=>"string"
-                    ],
-                    "type"=>[
-                        "type"=>"string",
-                        "enum"=>[$resName]
-                    ]
-                ],
-                "required"=>["id","type"]
-            ];
-
-        // extract attributes
-        $attrs = [];
-        $reqAttrs = [];
-        foreach ($resSpec["fields"] as $fldName=>$fldSpec) {
-            if(!isset($fldSpec["type"])) {
-//                echo $resName;
-//                print_r($resSpec);
-//                die();
-                continue;
-            }
-            $attrs[$fldName] = typeMap($fldSpec["type"]);
-            if($fldSpec["required"])
-                $reqAttrs[] = $fldName;
-        }
-
-        // extract relationships
-        $rels = [];
-        if(isset($resSpec["relations"])) {
-            foreach ($resSpec["relations"] as $relName=>$relSpec) {
-                // defaults to outbound relation
-
-
-                if($relSpec["type"]=="inbound")
-                    $rel = [
-                        "type"=>"array",
-                        "items"=>[
-                            "\$ref"=>"#/components/schemas/".$relSpec["table"]."ResourceIdentifierObject"
-                        ],
-                        "required"=>["id","type"]
-                    ];
-                else
-                    $rel = [
-                        "\$ref"=>"#/components/schemas/".$relSpec["table"]."ResourceIdentifierObject"
-                    ];
-
-
-                $rels[$relName] = $rel;
-            }
-        }
-
-
-        // create basic resourceObject
-        $resObj = [
-            "type" => "object",
-            "properties"=>[
-                "id"=>[
-                    "type"=>"string"
-                ],
-                "type"=>[
-                    "type"=>"string",
-                    "enum"=>[$resName]
-                ],
-                "links"=>[
-                    "type"=>"object"
-                ]
+    $baseSchema = [
+        "type"=>"object",
+        "properties"=>[
+            "id"=>[
+                "type"=>"string"
             ],
-            "required"=>["id","type"]
-        ];
+            "type"=>[
+                "type"=>"string",
+                "enum"=>[$resourceName]
+            ]
+        ],
+        "required"=>["type"]
+    ];
 
-        // add relationships of resourceObject
-        if(count($rels)) {
-            $resObj["properties"]["relationships"] = [
-                "type"=>"object",
-                "properties"=>$rels
-            ];
-        }
 
-        // set attributes of resourceObject
-        if(count($attrs)) {
-            $resObj["properties"]["attributes"] = [
-                "type" => "object",
-                "properties" => $attrs
-            ];
-        }
+    if(!empty($resourceSpecification["keyFld"]))
+        $baseSchema["required"][] = "id";
+    $resourceSchema = $baseSchema;
+    $resourceSchema["properties"]["attributes"] = [
+        "type"=>"object",
+        "properties"=>[]
+    ];
+    $resourceSchema["required"][] = "attributes";
 
-        // duplicate resourceObject to newResourceObject
-        $newResObj = $resObj;
-
-        if(count($reqAttrs))
-            $newResObj["properties"]["attributes"]["required"] = $reqAttrs;
-
-        $newResObj["required"] = ["type","attributes"];
-
-        $_schemas[$labelNewResObj] = $newResObj;
-        $_schemas[$labelResObj] = $resObj;
+    // extract attributes
+    $reqAttrs = [];
+    foreach ($resourceSpecification["fields"] as $fldName=>$fldSpec) {
+        $resourceSchema["properties"]["attributes"]["properties"][$fldName] = typeMap($fldSpec["type"]);
+        $attrs[$fldName] = typeMap($fldSpec["type"]);
+        if($fldSpec["required"])
+            $reqAttrs[] = $fldName;
     }
+    if(count($reqAttrs))
+        $resourceSchema["properties"]["attributes"]["required"] = $reqAttrs;
+
+    // extract relationships
+    if(isset($resourceSpecification["relations"])) {
+        $resourceSchema["required"][] = "relationships";
+        $resourceSchema["properties"]["relationships"] = [
+            "type"=>"object",
+            "properties"=>[]
+        ];
+        foreach ($resourceSpecification["relations"] as $relName=>$relSpec) {
+            if($relSpec["type"]=="inbound")
+                $resourceSchema["properties"]["relationships"]["properties"][$relName] = [
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            "type"=>"array",
+                            "items"=>[
+                                "\$ref"=>"#/components/schemas/".$relSpec["table"]."_ResourceIdentifierObject"
+                            ]
+                        ]
+                    ],
+                    "required"=>["data"]
+                ];
+            else
+                $resourceSchema["properties"]["relationships"]["properties"][$relName] = [
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            "\$ref"=>"#/components/schemas/".$relSpec["table"]."_ResourceIdentifierObject"
+                        ]
+                    ],
+                    "required"=>["data"]
+                ];
+
+        }
+    }
+
+    $createResourceSchema = $resourceSchema;
+    unset($createResourceSchema["required"]);
+    return [
+        "{$resourceName}_ResourceIdentifierObject"=>$baseSchema,
+        "{$resourceName}_ResourceObject"=>$resourceSchema,
+        "{$resourceName}_ResourceObjectCreate"=>$createResourceSchema,
+    ];
+
 }
 
 /********************************
@@ -449,7 +344,7 @@ function add_components($resName, $resSpec)
  * @param $dataModel
  * @return array
  */
-function get_multiple_records($resourceName,$resourceSpecifications,$dataModel)
+function get_records($tags,$resourceName, $resourceSpecifications, $dataModel,$overwrites=[])
 {
     // todo
     $data = [
@@ -457,181 +352,39 @@ function get_multiple_records($resourceName,$resourceSpecifications,$dataModel)
         "description" => "",
         "operationId" => $resourceName."_get_multiple_records",
         "parameters" => [],
-        "tags"=>[$resourceName],
+        "tags"=>$tags,
         "responses"=> [
-
+            "200"=>['$ref'=>"#/components/responses/{$resourceName}_GetRecords"],
+            "400"=>['$ref'=>"#/components/responses/BadRequest"],
+            "401"=>['$ref'=>"#/components/responses/NotAuthorized"],
+            "403"=>['$ref'=>"#/components/responses/Forbidden"],
+            "404"=>['$ref'=>"#/components/responses/NotFound"],
+            "500"=>['$ref'=>"#/components/responses/ServerError"],
         ]
     ];
 
-    add_components($resourceName,$resourceSpecifications);
     //add_component_new_resource_object($resourceName,$resourceSpecifications);
 
 
-    $data["responses"]["200"]= [
-        "description"=> "Return records list of type $resourceName",
-        "content"=>[
-            "application/json"=>[
-                "schema"=> [
-                    "type"=> "object",
-                    "properties"=> [
-                        "data"=> [
-                            "type"=>"array",
-                            "items"=>[
-                                "\$ref"=>"#/components/schemas/{$resourceName}ResourceObject"
-                            ]
-                        ],
-                        "meta"=> [
-                            "required"=> [
-                                "total"
-                            ],
-                            "type"=> "object",
-                            "properties"=> [
-                                "offset"=> [
-                                    "type"=> "integer",
-                                    "default"=>0
-                                ],
-                                "total"=> [
-                                    "type"=> "integer"
-                                ]
-                            ]
-                        ],
-                        "includes"=> [
-                            "type"=> "array",
-                            "items"=> [
-                                "\$ref"=>"#/components/schemas/GenericResourceObject",
-                                //"\$ref"=>"#/components/schemas/ResourceObject",
-                            ]
-                        ],
-                    ],
-                    "required"=>["data"]
-                ]
-            ]
-        ]
-    ];
-
-    $data["parameters"][] = [
-        "name" => "filter",
-        "in" => "query",
-        "required" => false,
-        "explode"=>false,
-        "schema"=>[
-            "type"=>"string"
-        ],
-        "description" => "Comma separated list of filter criteria. 
-        A filtering criteria is expressed as follows: fieldName [operator] value, where operator can be:
-        - ! negates the operator which follows. Not to be used alone\n- = equals\n- ~= begins with
-        - =~ ends with\n- ~=~ contains\n- &lt; smaller then\n- &lt;= equal or smaller then\n- &gt; bigger then\n- &gt;= equal or bigger then\n- &gt;&lt; in list. In this case the value should be a list of semicolon separated values\n\nPossible values for fieldName: id, title, content, creation_date, author, category, public",
-        "example" => ""
-    ];
-
-    $data["parameters"][] = [
-        "name" => "page[offset]",
-        "in" => "query",
-        "required" => false,
-        "schema"=>[
-            "type"=>"integer"
-        ],
-        "description" => "Page offset",
-        "example" => "10"
+    $data["parameters"] = [
+        ['$ref'=>"#/components/parameters/{$resourceName}_filter"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_include"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_fields"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_limit"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_offset"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_sort"]
     ];
 
 
-    $data["parameters"][] = [
-        "name" => "page[limit]",
-        "in" => "query",
-        "required" => false,
-        "schema"=>[
-            "type"=>"integer"
-        ],
-        "description" => "Maximum number of records to include",
-        "example" => "10"
-    ];
-
-
-
-    $fields =[];
-    $includes = [];
-    global $recursionLevel;
-    search_recursive($resourceName,$resourceSpecifications,[],$fields,$includes,$dataModel,$recursionLevel);
-
-
-    //print_r($fields);
-
-    if(count($fields)) {
-        foreach ($fields as $fieldsResName=>$fieldsNames) {
-            $fields[$fieldsResName] = array_values(array_unique($fieldsNames));
-            $sss = [
-                "name" => "fields[$fieldsResName]",
-                "in" => "query",
-                "required" => false,
-                "explode"=>false,
-                "schema"=>[
-                    "type"=>"array",
-                    "items"=>[
-                        "type"=>"string",
-                        "enum"=>array_values(array_unique($fields[$fieldsResName]))
-                    ]
-                ],
-                "description" => "Comma separated list of '$resourceName' field names when 'include' parameter contains a relation of type '$resourceName'",
-                //"example" => join(",",$values)
-            ];
-            //print_r($sss);
-            $data["parameters"][] = $sss;
-        }
-    }
-
-
-    if(count($includes)) {
-        $data["parameters"][] = [
-            "name" => "include",
-            "in" => "query",
-            "required" => false,
-            "explode"=>false,
-            "schema"=>[
-                "type"=>"array",
-                "items"=>[
-                    "type"=>"string",
-                    "enum"=>$includes
-                ]
-            ],
-            "description" => "Comma separated list of relationships to include. See example for list of valid values",
-            //"example" => implode(", ",$includes)
-        ];
-    }
-
-
-    $data["parameters"][] = [
-        "name" => "sort",
-        "in" => "query",
-        "required" => false,
-        "explode"=>false,
-        "schema"=>[
-            "type"=>"array",
-            "items"=>[
-                "type"=>"string",
-                "enum"=>array_merge(
-                    $fields[$resourceName],
-                    array_map(
-                        function($item){
-                            return "-".$item;
-                        },
-                        $fields[$resourceName]
-                    )
-                )
-            ]
-        ],
-        "description" => "Comma separated list of relationships to include. See example for list of valid values",
-        //"example" => implode(", ",$includes)
-    ];
-    return $data;
+    return mergeRecursive($data,$overwrites);
 }
 
 /**
- * @param $type
+ * @param $typeSpec
  * @return array
  */
 
-function typeMap($type)
+function typeMap($typeSpec)
 {
     $mysqlTypes = [
         "int"=>[
@@ -682,78 +435,53 @@ function typeMap($type)
         "bit"=>[
             "type"=>"string"
         ]
+
     ];
-    $res = isset($mysqlTypes[$type["proto"]]) ? $mysqlTypes[$type["proto"]] : ["type"=>"random_".$type["proto"]];
-    if(in_array($type["proto"],["enum","set"])) {
-        $res["enum"] = $type["vals"];
+    $res = isset($mysqlTypes[$typeSpec["proto"]]) ? $mysqlTypes[$typeSpec["proto"]] : ["type"=>"random_".$typeSpec["proto"]];
+    if(in_array($typeSpec["proto"],["enum","set"])) {
+        $res["enum"] = $typeSpec["vals"];
     }
     return $res;
 }
+
 
 /**
  * @param $resourceName
  * @param $resourceSpecifications
  * @return array
  */
-function create_single_record($resourceName,$resourceSpecifications)
+function create_records($tags,$resourceName, $resourceSpecifications,$datamodel,$overwrites=[])
 {
-    // todo
+    $relNamesList = implode("|",array_keys($resourceSpecifications["relations"]));
+
+    $parameters = [
+        ['$ref'=>"#/components/parameters/onduplicate"],
+        ['$ref'=>"#/components/parameters/contentTypeJson"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_update"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_include"]
+    ];
     $data = [
-        "summary" => "Create single record of type $resourceName",
-        "description" => "",
-        "operationId" => $resourceName."_create_single_record",
-        "parameters" => [
-            [
-                "name"=>"Content-type",
-                "in"=>"header",
-                "required"=>true,
-                "schema"=>[
-                    "type"=>"string",
-                    "default"=>"application/vnd.api+json"
-                ]
-            ]
-        ],
-        "tags"=>[$resourceName],
+        "summary" => "Create records of type $resourceName",
+        "description" => "This method allows both single record creation as well as batch record creation.\n"
+            ."The create operation is enclosed in a transaction. If one of the inserts fail the entire block will fail.\n"
+            ."For handling errors causes by duplicate inserts use the **onduplicate** parameter",
+        "operationId" => $resourceName."_create_multiple_records",
+        "parameters" => $parameters,
+        "tags"=>$tags,
+        "requestBody"=>['$ref'=>"#/components/requestBodies/{$resourceName}_Create"],
         "responses"=> [
-            "200"=>[
-                "description"=>"",
-                "content"=>[
-                    "application/json"=>[
-                        "schema"=> [
-                            "type"=>"object",
-                            "properties"=>[
-                                "data"=>[
-                                    "type"=>"object",
-                                    "properties"=>[
-                                        "id"=>[
-                                            "type"=>"string",
-                                        ],
-                                        "type"=>[
-                                            "type"=>"string"
-                                        ],
-                                        "attributes"=>[
-                                            "type"=>"object",
-                                            "properties"=> new stdClass()
-                                        ]
-                                    ],
-                                    "required"=>["id","type"]
-                                ]
-                            ],
-                            "required"=>["data"]
-                        ]
-                    ]
-                ]
-            ]
+            "201"=>['$ref'=>"#/components/responses/{$resourceName}_CreateOK"],
+            "400"=>['$ref'=>"#/components/responses/BadRequest"],
+            "401"=>['$ref'=>"#/components/responses/NotAuthorized"],
+            "403"=>['$ref'=>"#/components/responses/Forbidden"],
+            "404"=>['$ref'=>"#/components/responses/NotFound"],
+            "409"=>['$ref'=>"#/components/responses/Conflict"],
+            "500"=>['$ref'=>"#/components/responses/ServerError"],
+
         ]
     ];
-    $attrs = &$data["responses"]["200"]["content"]["application/json"]["schema"]["properties"]["data"]["properties"]["attributes"]["properties"];
-    foreach ($resourceSpecifications["fields"] as $field=>$fieldSpec) {
-        if(!isset($fieldSpec["type"]))
-            continue;
-        $attrs->$field = typeMap($fieldSpec["type"]);
-    }
 
-    return $data;
+    return array_merge_recursive($data,$overwrites);
 }
 
 
@@ -767,106 +495,41 @@ function create_single_record($resourceName,$resourceSpecifications)
  * @param $dataModel
  * @return array
  */
-function get_single_record($resourceName,$resourceSpecifications,$dataModel)
+function get_record_by_id($tags,$resourceName, $resourceSpecifications, $dataModel,$overwrites=[])
 {
     // todo
     $data = [
-        "summary" => "Get '$resourceName' records list",
-        "description" => "",
-        "operationId" => $resourceName."_get_single_record",
-        "parameters" => [],
-        "tags"=>[$resourceName],
+        "summary" => "Get '$resourceName' record by ID (primary key)",
+        "description" => "get record by id",
+        "operationId" => $resourceName."_get_record_by_id",
+        "tags"=>$tags,
         "responses"=> []
     ];
 
-    $data["parameters"][] = [
-        "name"=>$resourceSpecifications["keyFld"],
-        "in"=>"path",
-        "description"=>"Field which uniquely identifies the retrieved record",
-        "required"=>true,
-        "schema"=>[
-            "type"=>"string"
-        ]
-    ];
-
-    $fields =[];
-    $includes = [];
-    global $recursionLevel;
-    search_recursive($resourceName,$resourceSpecifications,[],$fields,$includes,$dataModel,$recursionLevel);
-
-
-    //print_r($fields);
-
-    if(count($fields)) {
-        foreach ($fields as $fieldsResName=>$fieldsNames) {
-            $fields[$fieldsResName] = array_values(array_unique($fieldsNames));
-            $sss = [
-                "name" => "fields[$fieldsResName]",
-                "in" => "query",
-                "required" => false,
-                "explode"=>false,
-                "schema"=>[
-                    "type"=>"array",
-                    "items"=>[
-                        "type"=>"string",
-                        "enum"=>array_values(array_unique($fields[$fieldsResName]))
-                    ]
-                ],
-                "description" => "Comma separated list of '$resourceName' field names when 'include' parameter contains a relation of type '$resourceName'",
-                //"example" => join(",",$values)
-            ];
-            //print_r($sss);
-            $data["parameters"][] = $sss;
-        }
-    }
-
-
-    if(count($includes)) {
-        $data["parameters"][] = [
-            "name" => "include",
-            "in" => "query",
-            "required" => false,
-            "explode"=>false,
+    $data["parameters"] = [
+        [
+            "name"=>$resourceSpecifications["keyFld"],
+            "in"=>"path",
+            "description"=>"Record ID (primary key value)",
+            "required"=>true,
             "schema"=>[
-                "type"=>"array",
-                "items"=>[
-                    "type"=>"string",
-                    "enum"=>$includes
-                ]
-            ],
-            "description" => "Comma separated list of relationships to include. See example for list of valid values",
-            //"example" => implode(", ",$includes)
-        ];
-    }
-
-    global $_schemas;
-
-    add_components($resourceName,$resourceSpecifications);
-
-
-    $data["responses"]["200"]= [
-        "description"=> "Return record of type $resourceName identified by ID",
-        "content"=>[
-            "application/json"=>[
-                "schema"=> [
-                    "type"=> "object",
-                    "properties"=> [
-                        "data"=> [
-                            "\$ref"=>"#/components/schemas/{$resourceName}ResourceObject"
-                        ],
-                        "includes"=> [
-                            "type"=> "array",
-                            "items"=> [
-                                "\$ref"=>"#/components/schemas/GenericResourceObject"
-                            ]
-                        ]
-                    ],
-                    "required"=>["data"]
-                ]
+                "type"=>"string"
             ]
-        ]
+        ],
+        ['$ref'=>"#/components/parameters/{$resourceName}_fields"],
+        ['$ref'=>"#/components/parameters/{$resourceName}_include"],
     ];
-    return $data;
+
+    $data["responses"] =[
+        "200"=>[ '$ref'=>"#/components/responses/{$resourceName}_GetRecordById"],
+        "400"=>[ '$ref'=>"#/components/responses/BadRequest"],
+        "401"=>[ '$ref'=>"#/components/responses/NotAuthorized"],
+        "403"=>[ '$ref'=>"#/components/responses/Forbidden"],
+        "404"=>[ '$ref'=>"#/components/responses/NotFound"],
+        "500"=>['$ref'=>"#/components/responses/ServerError"],
+    ];
+
+    return mergeRecursive($data,$overwrites);
 }
 
 /**
@@ -875,97 +538,42 @@ function get_single_record($resourceName,$resourceSpecifications,$dataModel)
  * @param $dataModel
  * @return array
  */
-function update_single_record($resourceName,$resourceSpecifications,$dataModel)
+function update_single_record($tags,$resourceName,$resourceSpecifications,$dataModel,$overwrites=[])
 {
     // todo
     $data = [
         "summary" => "Update single record of type $resourceName",
         "description" => "",
-        "tags"=>[$resourceName],
+        "tags"=>$tags,
         "operationId" => $resourceName."_update_single_record",
     ];
     $data["parameters"]= [
-        [
-            "name"=>"Content-type",
-            "in"=>"header",
-            "required"=>true,
-            "schema"=>[
-                "type"=>"string",
-                "default"=>"application/vnd.api+json"
-            ]
-        ],
+//        ['$ref'=>"#/components/parameters/contentTypeJson"],
+        ['$ref'=>"#/components/parameters/onduplicate"],
         [
             "name"=>$resourceSpecifications["keyFld"],
             "in"=>"path",
-            "description"=>"Field which uniquely identifies the retrieved record",
+            "description"=>"Field which uniquely identifies the record to be update",
             "required"=>true,
             "schema"=>[
                 "type"=>"string"
             ]
         ],
-        [
-            "name"=>"onduplicate",
-            "in"=>"query",
-            "description"=>"Select behaviour when a duplicate key conflict occurs. Possible options:\n- update: update certain fields \n- ignore: do nothing and \n ",
-            "required"=>false,
-            "schema"=>[
-                "\$ref"=> "#/components/schemas/onUpdatePara"
-            ]
-        ],
-        [
-            "name"=>"update",
-            "in"=>"query",
-            "description"=>"Comma separated list of fields to update when parameter onduplicate=update",
-            "required"=>false,
-            "explode"=>false,
-            "schema"=>[
-                "type"=>"string"
-            ]
-        ]
+
     ];
 
-    $data["requestBody"] = [
-        "description"=> "Record to be updated",
-        "content"=> [
-            "application/json"=>[
-                "schema"=>[
-                    "type"=> "object",
-                    "properties"=>[
-                        "data"=>[
-                            "\$ref"=> "#/components/schemas/{$resourceName}ResourceObject",
-                        ]
-                    ],
-                    "required"=>["data"]
-                ]
-            ]
-        ]
+    $data["requestBody"] = ['$ref'=>"#/components/requestBodies/{$resourceName}_Update"];
+
+    $data["responses"] =[
+        "200"=>[ '$ref'=>"#/components/responses/{$resourceName}_GetRecordById"],
+        "400"=>[ '$ref'=>"#/components/responses/BadRequest"],
+        "401"=>[ '$ref'=>"#/components/responses/NotAuthorized"],
+        "403"=>[ '$ref'=>"#/components/responses/Forbidden"],
+        "404"=>[ '$ref'=>"#/components/responses/NotFound"],
+        "500"=>['$ref'=>"#/components/responses/ServerError"],
     ];
+    return mergeRecursive($data,$overwrites);
 
-    $data["responses"]["200"]= [
-        "description"=> "Return record of type $resourceName identified by ID",
-        "content"=>[
-            "application/json"=>[
-                "schema"=> [
-                    "type"=> "object",
-                    "properties"=> [
-                        "data"=> [
-                            "\$ref"=>"#/components/schemas/{$resourceName}ResourceObject"
-                        ],
-                        "includes"=> [
-                            "type"=> "array",
-                            "items"=> [
-                                "\$ref"=>"#/components/schemas/GenericResourceObject"
-                            ]
-                        ]
-                    ],
-                    "required"=>["data"]
-                ]
-            ]
-        ]
-    ];
-
-
-    return $data;
 }
 
 /**
@@ -974,23 +582,14 @@ function update_single_record($resourceName,$resourceSpecifications,$dataModel)
  * @param $dataModel
  * @return array
  */
-function delete_single_record($resourceName,$resourceSpecifications,$dataModel)
+function delete_single_record($tags,$resourceName,$resourceSpecifications,$dataModel,$overwrites=[])
 {
     // todo
     $data = [
         "summary" => "Delete single record of type $resourceName",
         "description" => "",
-        "tags"=>[$resourceName],
-        "operationId" => $resourceName."_delete_single_record",
-        "parameters" => [],
-        "responses"=> [
-            "204"=> [
-                "description"=> "Record successfully deleted"
-            ],
-            "404"=>[
-                "description"=> "Record not found"
-            ]
-        ]
+        "tags"=>$tags,
+        "operationId" => $resourceName."_delete_single_record"
     ];
 
     $data["parameters"]= [
@@ -1004,7 +603,16 @@ function delete_single_record($resourceName,$resourceSpecifications,$dataModel)
             ]
         ]
     ];
-    return $data;
+    $data["responses"] =[
+        "204"=>[ '$ref'=>"#/components/responses/NoContent"],
+        "400"=>[ '$ref'=>"#/components/responses/BadRequest"],
+        "401"=>[ '$ref'=>"#/components/responses/NotAuthorized"],
+        "403"=>[ '$ref'=>"#/components/responses/Forbidden"],
+        "404"=>[ '$ref'=>"#/components/responses/NotFound"],
+        "500"=>['$ref'=>"#/components/responses/ServerError"],
+    ];
+    return mergeRecursive($data,$overwrites);
+
 }
 
 /********************************
@@ -1024,7 +632,7 @@ function get_relationships($resourceName,$resourceSpecifications,$relationshipNa
     $rel = $resourceSpecifications["relations"][$relationshipName];
     if($rel["type"]=="outbound")
         $dataObj = [
-            "\$ref"=>"#/components/schemas/{$rel["table"]}ResourceIdentifierObject"
+            "\$ref"=>"#/components/schemas/{$rel["table"]}_ResourceIdentifierObject"
         ];
     else
         $dataObj = [
@@ -1147,13 +755,13 @@ function get_related($resourceName, $resourceSpecification, $relationshipName)
     $relSpec = $resourceSpecification["relations"][$relationshipName];
     if($relSpec["type"]=="outbound")
         $dataObj = [
-            "\$ref"=>"#/components/schemas/{$relSpec["table"]}ResourceObject"
+            "\$ref"=>"#/components/schemas/{$relSpec["table"]}_ResourceObject"
         ];
     else
         $dataObj = [
             "type"=>"array",
             "items"=>[
-                "\$ref"=>"#/components/schemas/{$relSpec["table"]}ResourceObject"
+                "\$ref"=>"#/components/schemas/{$relSpec["table"]}_ResourceObject"
             ]
         ];
 
@@ -1198,11 +806,11 @@ function get_related($resourceName, $resourceSpecification, $relationshipName)
 }
 
 /**
- * @param string $url
- * @param string $desc
- * @param string $title
- * @param string $contactName
- * @param string $contactEmail
+ * @param string $url API base URL
+ * @param string $desc API description
+ * @param string $title API title
+ * @param string $contactName Contact name
+ * @param string $contactEmail Contact email
  * @return array
  */
 function open_api_spec(string $url,string $desc,string $title,string $contactName,string $contactEmail)
@@ -1228,142 +836,640 @@ function open_api_spec(string $url,string $desc,string $title,string $contactNam
         "paths"=>[],
         "components"=> [
             "schemas"=>[
-
+                "jsonapi"=>[
+                    "type"=>"string",
+                    "enum"=>["1.0"],
+                    "default"=>"1.0"
+                ],
+                "errors"=>[
+                    "type"=>"array",
+                    "items"=>[
+                        "type"=>"object",
+                        "properties"=>[
+                            "code"=>[
+                                "type"=>"string",
+                            ],
+                            "message"=>[
+                                "type"=>"string"
+                            ]
+                        ]
+                    ]
+                ]
             ],
+            "requestBodies"=>[],
+            "responses"=>[
+                "BadRequest"=>[
+                    "description"=>"BAD REQUEST - Invalid input data",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "NotAuthorized"=>[
+                    "description"=>"NOT AUTHORIZED - the user is not authorized/authenticated",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "Forbidden"=>[
+                    "description"=>"FORBIDDEN - the user does not have access to the requested resource",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "NoContent"=>[
+                    "description"=>"OK - no body is returned",
+                ],
+
+                "NotFound"=>[
+                    "description"=>"NOT FOUND - Requested resource not found",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "ServerError"=>[
+                    "description"=>"INTERNAL SERVER ERROR - Requested resource not found",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "NoContent"=>[
+                    "description"=>"Record deleted successfully",
+                ],
+                "Conflict"=>[
+                    "description"=>"Conflict - there is a duplicate record either by the primary key field or one of the unique fields defined",
+                    "content"=>[
+                        "application/json"=>[
+                            "schema"=>[
+                                "type"=>"object",
+                                "properties"=>[
+                                    "errors"=>['$ref'=>"#/components/schemas/errors"],
+                                    "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"],
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+            ],
+            "parameters"=>[
+                "onduplicate"=>[
+                    "name"=>"onduplicate",
+                    "in"=>"query",
+                    "description"=>"Select behaviour when a duplicate key conflict occurs. Possible options:\n- update: update certain fields \n- ignore: do nothing and \n ",
+                    "required"=>false,
+                    "schema"=>[
+                        "type"=>"string",
+                        "enum"=>["ignore","update","error"],
+                        "default"=>"error"
+                    ]
+                ],
+                "contentTypeJson"=>[
+                    "name"=>"Content-type",
+                    "in"=>"header",
+                    "required"=>false,
+                    "schema"=>[
+                        "type"=>"string",
+                        "default"=>"application/json"
+                    ]
+                ],
+            ],
+            "securitySchemes"=>[]
         ]
     ];
+}
+
+function create_request_body_create($resourceName){
+    return [
+        "required"=>true,
+        "content"=>[
+            "application/json"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            "oneOf"=>[
+                                [
+                                    "type"=>"array",
+                                    "items"=>[
+                                        "\$ref"=>"#/components/schemas/{$resourceName}_ResourceObjectCreate"
+                                    ]
+                                ],
+                                [
+                                    "\$ref"=>"#/components/schemas/{$resourceName}_ResourceObjectCreate"
+                                ]
+                            ]
+                        ],
+                        "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+function create_request_body_update($resourceName){
+    return [
+        "required"=>true,
+        "content"=>[
+            "application/json"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            '$ref'=>"#/components/schemas/{$resourceName}_ResourceObject"
+                        ],
+                        "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+
+function create_response_ok_for_create($resourceName) {
+    return [
+        "description"=>"Record of type $resourceName",
+        "content"=>[
+            "application/json"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            "oneOf"=>[
+                                [
+                                    '$ref'=>"#/components/schemas/{$resourceName}_ResourceObject"
+                                ],
+                                [
+                                    "type"=>"array",
+                                    "items"=>['$ref'=>"#/components/schemas/{$resourceName}_ResourceObject"]
+                                ]
+                            ]
+                        ],
+                        "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+
+function create_reponse_ok_for_single_update($resourceName) {
+    return [
+        "application/json"=>[
+            "description"=>"Record or array of records of type $resourceName",
+            "content"=>[
+                "application/json"=>[
+                    "schema"=>[
+                        "type"=>"object",
+                        "properties"=>[
+                            "data"=>[
+                                "\$ref"=>"#/components/schemas/{$resourceName}_ResourceObjectCreate"
+                            ],
+                            "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+
+function create_response_ok_for_get_records($resourceName){
+    return [
+        "description"=>"Array of records of type $resourceName",
+        "content"=>[
+            "application/json"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>[
+                            "type"=>"array",
+                            "items"=>["\$ref"=>"#/components/schemas/{$resourceName}_ResourceObject"]
+                        ],
+                        "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+function create_response_ok_for_get_record_by_id($resourceName){
+    return [
+        "description"=>"Array of records of type $resourceName",
+        "content"=>[
+            "application/json"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "data"=>["\$ref"=>"#/components/schemas/{$resourceName}_ResourceObject"],
+                        "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
+                    ]
+                ]
+            ]
+        ]
+    ];
+}
+
+/**
+ * @param $resourceName
+ * @param $resourceSpecifications
+ * @return array
+ */
+function create_param_include($resourceName,$resourceSpecifications) {
+    $relNamesList = implode("|",array_keys($resourceSpecifications["relations"]));
+    return  [
+        "name"=>"include[{$resourceName}]",
+        "in"=>"query",
+        "description"=>"Comma separated list of relation names to include in the result",
+        "schema"=>[
+            "type"=>"string",
+            "pattern"=>sprintf("^(%s)(,(%s))*$",$relNamesList,$relNamesList)
+        ]
+    ];
+}
+
+/**
+ * @param $resourceName
+ * @param $resourceSpecifications
+ * @return array
+ */
+function create_param_filter($resourceName,$resourceSpecifications) {
+    return  [
+        "name"=>"filter[{$resourceName}]",
+        "in"=>"query",
+        "description" => "Comma separated list of filter expressions which are combined with AND.\n".
+            "Filter expression syntax: {fieldName}[operator]{value}, where operator can be:\n"
+            ."- \= : fieldName equals value\n"
+            ."- \!\= : fieldName does not equals value\n"
+            ."- \=\~ : fieldName starts with value\n"
+            ."- \~\= : fieldName ends with value\n"
+            ."- \~\=\~ : fieldName contains with value\n"
+            ."- \> : fieldName greater than value\n"
+            ."- \>\= : fieldName greater or equal than value\n"
+            ."- \< : fieldName smaller than value\n"
+            ."- \<\= : fieldName smaller or equal than value\n"
+            ."- \>\< : fieldName is one of the values in the semicolon separated list of values (eg city\>\<Rome;Paris;London \n",
+        "example" => "bdate>2000-01-01,fname=~John,city><Paris;London;Paris",
+        "schema"=>[
+            "type"=>"string"
+        ]
+    ];
+}
+
+/**
+ * @param $resourceName
+ * @param $resourceSpecifications
+ * @return array
+ */
+function create_param_fields($resourceName,$resourceSpecifications) {
+    $fieldNames = array_keys($resourceSpecifications["fields"]);
+    $fieldNamesList = implode("|",$fieldNames);
+    return  [
+        "name"=>"fields[{$resourceName}]",
+        "in"=>"query",
+        "description"=>"Comma separated list of field names to include in the response. If not specified it will return all fields",
+        "example"=>implode(",",$fieldNames),
+        "schema"=>[
+            "type"=>"string",
+            "pattern"=>sprintf("^(%s)(,(%s))*$",$fieldNamesList,$fieldNamesList)
+        ]
+    ];
+}
+
+/**
+ * @param $resourceName
+ * @param $resourceSpecifications
+ * @return array
+ */
+function create_param_sort($resourceName,$resourceSpecifications) {
+    //print_r($resourceSpecifications["fields"]);
+
+    $fieldNames = array_keys($resourceSpecifications["fields"]);
+    $fieldNamesList = implode("|",$fieldNames);
+    return  [
+        "name"=>"sort[{$resourceName}]",
+        "in"=>"query",
+        "description"=>"Comma separated list of field names order the record set.\n"
+            ."Default order direction is ascending. Placing a - (minus) in front of the field name will change the sort direction to descending for the column",
+        "example"=>$fieldNames[0].(isset($fieldNames[1]) ? ",-{$fieldNames[1]}" : ""),
+//        "example"=>$fieldNamesList,
+        "schema"=>[
+            "type"=>"string",
+            "pattern"=>sprintf("^-*(%s)(,-*(%s))*$",$fieldNamesList,$fieldNamesList)
+        ]
+    ];
+}
+
+/**
+ * @param $resourceName
+ * @param $resourceSpecifications
+ * @return array
+ */
+function create_param_pagination_offset($resourceName,$resourceSpecifications) {
+    return  [
+        "name"=>"page[{$resourceName}][offset]",
+        "in"=>"query",
+        "default"=>0,
+        "description"=>"The number of records to skip before starting to return results. Used for pagination in combination with the **limit** parameter.",
+        "example"=>"50",
+        "schema"=>[
+            "type"=>"integer"
+        ]
+    ];
+}
+function create_param_pagination_limit($resourceName,$resourceSpecifications) {
+    return  [
+        "name"=>"page[{$resourceName}][limit]",
+        "in"=>"query",
+        "default"=>100,
+        "description"=>"The maximum number of records to return in the response. Used for pagination in combination with the **offset** parameter.",
+        "example"=>"10",
+        "schema"=>[
+            "type"=>"integer"
+        ]
+    ];
+}
+
+function create_param_onduplicate_update($resourceName,$resourceSpecifications) {
+    $fieldsList = implode("|",array_keys($resourceSpecifications["fields"]));
+    return [
+        "name"=>"update",
+        "in"=>"query",
+        "description"=>"Comma separated list of fields to update when parameter **onduplicate=update**",
+        "required"=>false,
+        "explode"=>false,
+        "schema"=>[
+            "type"=>"string",
+            "pattern"=>sprintf("^(%s)(,(%s))*$",$fieldsList,$fieldsList)
+        ]
+    ];
+
+}
+
+function create_components(&$openApiSpec,$resourceName,$resourceSpecifications) {
+    //print_r(add_components($resourceName,$resourceSpecifications));
+    $openApiSpec["components"]["schemas"] = array_merge($openApiSpec["components"]["schemas"],add_components($resourceName,$resourceSpecifications));
+
+
+    // request body for create
+    $openApiSpec["components"]["requestBodies"]["{$resourceName}_Create"] = create_request_body_create($resourceName);
+    // request body for update
+    $openApiSpec["components"]["requestBodies"]["{$resourceName}_Update"] = create_request_body_update($resourceName);
+
+    // response for create
+    $openApiSpec["components"]["responses"]["{$resourceName}_CreateOK"] = create_response_ok_for_create($resourceName);
+    // response for update
+    $openApiSpec["components"]["responses"]["{$resourceName}_UpdateOK"] = create_reponse_ok_for_single_update($resourceName);
+
+    // response for get records
+    $openApiSpec["components"]["responses"]["{$resourceName}_GetRecords"] = create_response_ok_for_get_records($resourceName);
+    // response for get record by id
+    $openApiSpec["components"]["responses"]["{$resourceName}_GetRecordById"] = create_response_ok_for_get_record_by_id($resourceName);
+
+    $openApiSpec["components"]["parameters"]["{$resourceName}_include"] = create_param_include($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_filter"] = create_param_filter($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_fields"] = create_param_fields($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_sort"] = create_param_sort($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_limit"] = create_param_pagination_limit($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_offset"] = create_param_pagination_offset($resourceName,$resourceSpecifications);
+    $openApiSpec["components"]["parameters"]["{$resourceName}_update"] = create_param_onduplicate_update($resourceName,$resourceSpecifications);
+
+
 }
 
 /**
  * @param $hostName
  * @param $dataModel
  * @param $basePath
- * @param $desc
- * @param $title
- * @param $name
- * @param $email
+ * @param $apiDescription
+ * @param $apiTitle
+ * @param $contactName
+ * @param $contactEmail
  * @return array
  */
-function generate_swagger(string $url,array $dataModel,string $desc,string $title,string $name,string $email)
+function generate_swagger(string $url,array $dataModel,string $apiDescription,string $apiTitle,string $contactName,string $contactEmail)
 {
-    $openApiSpec =  open_api_spec($url,$desc,$title,$name,$email);
+    $openApiSpec =  open_api_spec($url,
+        $apiDescription,
+        $apiTitle,
+        $contactName,
+        $contactEmail);
 
     /************************************************
      * path: /
      ***********************************************/
-    $openApiSpec["paths"]["/"] = [
-        "post"=>create_multiple_records(),
-        "patch"=>update_multiple_records(),
-        "delete"=>delete_multiple_records()
-    ];
+//    $openApiSpec["paths"]["/"] = [
+//        "post"=>bulk_create_mixed_records(),
+//        "patch"=>update_multiple_records(),
+//        "delete"=>delete_multiple_records()
+//    ];
 
 
 
-    foreach ($dataModel as $resourceName=>$resourceSpecifications) {
+    $resources = array_keys($dataModel);
+    // print_r($resources);
+    foreach ($resources as $resourceName) {
+//        echo $resourceName;
+        $resourceSpecifications = $dataModel[$resourceName];
 
         /************************************************
          * path: /resourceName
          ***********************************************/
         $resourcesPath = "/$resourceName";
         $openApiSpec["paths"][$resourcesPath] = [];
+        $openApiSpec["paths"][$resourcesPath]["summary"] = "CRUD operations on table **$resourceName** and related tables";
 
+        create_components($openApiSpec, $resourceName, $resourceSpecifications);
+    }
 
-        // GET multiple records
-        if($data=get_multiple_records($resourceName,$resourceSpecifications,$dataModel)) {
-            $openApiSpec["paths"][$resourcesPath]["get"] = $data;
-        }
+    foreach ($resources as $resourceName) {
+        $resourcesPath = "/$resourceName";
+        $resourceSpecifications = $dataModel[$resourceName];
 
-        // POST (create) single record
-        if($data=create_single_record($resourceName,$resourceSpecifications)) {
-            $openApiSpec["paths"][$resourcesPath]["post"] = $data;
-        }
+        // GET records
+        $openApiSpec["paths"][$resourcesPath]["get"] = get_records([$resourceName],$resourceName,$resourceSpecifications,$dataModel);
 
-
-        if(count($openApiSpec["paths"][$resourcesPath])) {
-            $openApiSpec["paths"][$resourcesPath]["summary"] = "Bulk records manipulation options ";
-            $openApiSpec["paths"][$resourcesPath]["description"] = "End point for retrieving and creating data of type $resourceName";
-        }
-        else
-            unset($openApiSpec["paths"][$resourcesPath]);
-
+        // POST create records
+        $openApiSpec["paths"][$resourcesPath]["post"] = create_records([$resourceName],$resourceName,$resourceSpecifications,$dataModel);
 
         /************************************************
          * path: /resourceName/ID
          ***********************************************/
         if(!isset($resourceSpecifications["keyFld"]))
             continue;
-        $singleResourcePath = sprintf("%s/{%s}",$resourcesPath,$resourceSpecifications["keyFld"]);
+
+        $resIdFld = $resourceSpecifications["keyFld"];
+        $singleResourcePath = sprintf("%s/{%s}",$resourcesPath,$resIdFld);
         $openApiSpec["paths"][$singleResourcePath] = [];
 
         // GET
-        if($data=get_single_record($resourceName,$resourceSpecifications,$dataModel)) {
-            $openApiSpec["paths"][$singleResourcePath]["get"] = $data;
-        }
+        $openApiSpec["paths"][$singleResourcePath]["get"] = get_record_by_id([$resourceName],$resourceName,$resourceSpecifications,$dataModel);
 
         // UPDATE
-        if($data=update_single_record($resourceName,$resourceSpecifications,$dataModel)) {
-            $openApiSpec["paths"][$singleResourcePath]["patch"] = $data;
-        }
+        $openApiSpec["paths"][$singleResourcePath]["patch"] = update_single_record([$resourceName],$resourceName,$resourceSpecifications,$dataModel);
 
         // DELETE
-        if($data=delete_single_record($resourceName,$resourceSpecifications,$dataModel)) {
-            $openApiSpec["paths"][$singleResourcePath]["delete"] = $data;
-        }
-
-
-
+        $openApiSpec["paths"][$singleResourcePath]["delete"] = delete_single_record([$resourceName],$resourceName,$resourceSpecifications,$dataModel);
 
         if(!isset($resourceSpecifications["relations"]))
             continue;
 
         foreach ($resourceSpecifications["relations"] as $relName=>$relSpec) {
-
             /************************************************
              * relationship
              * /s/resourceName/ID/__relationships/relName
              ***********************************************/
-            $relationshipPath = "$singleResourcePath/__relationships/$relName";
+            $relationshipPath = "$singleResourcePath/$relName";
             $openApiSpec["paths"][$relationshipPath] = [];
 
-            // GET
-            if($data=get_relationships($resourceName,$resourceSpecifications,$relName)) {
-                $openApiSpec["paths"][$relationshipPath]["get"] = $data;
+            //print_r($relSpec);
+            if($relSpec['type']=="outbound") {
+
+                // GET related record
+                $openApiSpec["paths"][$relationshipPath]["get"] = get_record_by_id(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["fkfield"]}",
+                        //"{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Get related {$relSpec["fkfield"]} record of {$resourceName}/{id}"
+                    ]);
+
+                // UPDATE related record
+                $openApiSpec["paths"][$relationshipPath]["patch"] = update_single_record(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["fkfield"]}",
+//                        "{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Update related {$relSpec["fkfield"]} record of {$resourceName}/{id}"
+                    ]);
+
+                // DELETE related record
+                // UPDATE related record
+                $openApiSpec["paths"][$relationshipPath]["delete"] = delete_single_record(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["fkfield"]}",
+//                        "{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Delete related {$relSpec["fkfield"]} record of {$resourceName}/{id}"
+                    ]);
+            }
+            else {
+                // print_r($relSpec);
+                //echo $relationshipPath."\n";
+                // GET related records
+                $openApiSpec["paths"][$relationshipPath]["get"] = get_records(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["table"]}",
+//                        "{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Get related {$relSpec["table"]} records of {$resourceName}/{id}"
+                    ]);
+
+                // POST create related records
+                $openApiSpec["paths"][$relationshipPath]["post"] = create_records(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["table"]}",
+//                        "{$resourceName}"
+                    ],$resourceName,$resourceSpecifications,$dataModel,
+                    [
+                        "summary"=>"Create related {$relSpec["table"]} records of {$resourceName}/{id}"
+                    ]);
+
+                if(empty($dataModel[$relSpec["table"]]["keyFld"]))
+                    continue;
+
+                $relationshipPath = $relationshipPath."/{{$dataModel[$relSpec["table"]]["keyFld"]}}";
+                $openApiSpec["paths"][$relationshipPath] = [];
+                // GET related record
+                $openApiSpec["paths"][$relationshipPath]["get"] = get_record_by_id(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["table"]}/{{$dataModel[$relSpec["table"]]["keyFld"]}}",
+//                        "{$resourceName}"
+                    ],
+                    $relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Get related {$relSpec["table"]} record of {$resourceName}/{id}"
+                    ]);
+
+                // UPDATE related record
+                $openApiSpec["paths"][$relationshipPath]["patch"] = update_single_record(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["table"]}/{{$dataModel[$relSpec["table"]]["keyFld"]}}",
+//                        "{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Update related {$relSpec["table"]} record of {$resourceName}/{id}"
+                    ]);
+
+                // DELETE related record
+                // UPDATE related record
+                $openApiSpec["paths"][$relationshipPath]["delete"] = delete_single_record(
+                    [
+                        "{$resourceName}/{{$resIdFld}}/{$relSpec["table"]}/{{$dataModel[$relSpec["table"]]["keyFld"]}}",
+//                        "{$resourceName}"
+                    ],$relSpec["table"],$dataModel[$relSpec["table"]],$dataModel,
+                    [
+                        "summary"=>"Delete related {$relSpec["table"]} record of {$resourceName}/{id}"
+                    ]);
             }
 
-            // POST
-            if($data=create_relationships($resourceName,$resourceSpecifications,$relName)) {
-                $openApiSpec["paths"][$relationshipPath]["post"] = $data;
-            }
-
-            // PATCH
-            if($data=update_relationships($resourceName,$resourceSpecifications,$relName)) {
-                $openApiSpec["paths"][$relationshipPath]["patch"] = $data;
-            }
-
-            // DELETE
-            if($data=delete_relationships($resourceName,$resourceSpecifications,$relName)) {
-                $openApiSpec["paths"][$relationshipPath]["delete"] = $data;
-            }
-
-
-            /************************************************
-             * related
-             * /s/resourceName/ID/relName
-             ***********************************************/
-            $relatedResourcePath = "$singleResourcePath/$relName";
-            $openApiSpec["paths"][$relatedResourcePath] = [];
-
-            // GET
-            if($data=get_related($resourceName,$resourceSpecifications,$relName)) {
-                $openApiSpec["paths"][$relatedResourcePath]["get"] = $data;
-            }
         }
 
     }
 
-
-    global $_schemas;
-    $openApiSpec["components"]["schemas"]= $_schemas;
-
     return $openApiSpec;
+}
+
+
+function mergeRecursive(array $a, array $b): array {
+    foreach ($b as $key => $value) {
+        if (array_key_exists($key, $a) && is_array($a[$key]) && is_array($value)) {
+            $a[$key] = mergeRecursive($a[$key], $value);
+        } else {
+            $a[$key] = $value;
+        }
+    }
+    return $a;
 }

@@ -154,7 +154,7 @@ class Records {
         $res = $this->dbdrv->query($countSql);
         $err=$this->dbdrv->error();
         if($err["code"]){
-            throw new \Exception($err["message"]." on query: $countSql",500);
+            throw new \Exception($err["message"]." on query: $countSql",$err["code"]);
         }
         $row = $res->row();
         $totalRecs = $row->cnt*1;
@@ -177,8 +177,9 @@ class Records {
         /** @var \CI_DB_result $res */
         $res = $this->dbdrv->query($mainSql);
         $err=$this->dbdrv->error();
+
         if($err["code"]){
-            throw new \Exception($err["message"],500);
+            throw new \Exception($err["message"],$err["code"]);
         }
         //get_instance()->debug_log($mainSql);
 
@@ -540,7 +541,7 @@ class Records {
         $res = $this->dbdrv->query($insSql);
         $err=$this->dbdrv->error();
         if($err["code"]){
-            throw new \Exception($err["message"]." on query: $insSql",500);
+            throw new \Exception($err["message"]." on query: $insSql",$err["code"]);
         }
 
         //$this->dbdrv->db_debug = true;
@@ -568,7 +569,7 @@ class Records {
             $q = $this->dbdrv->query($selSql);
             $err=$this->dbdrv->error();
             if($err["code"]){
-                throw new \Exception($err["message"]." on query: $selSql",500);
+                throw new \Exception($err["message"]." on query: $selSql",$err["code"]);
             }
 
             $cnt = $q->num_rows();
@@ -690,7 +691,7 @@ class Records {
         $this->dbdrv->query($updateSql);
         $err=$this->dbdrv->error();
         if($err["code"]){
-            throw new \Exception($err["message"]." on query: $updateSql",500);
+            throw new \Exception($err["message"]." on query: $updateSql",$err["code"]);
         }
 
         // perform update
@@ -734,7 +735,7 @@ class Records {
             $res = $this->dbdrv->query($sql);
             $err=$this->dbdrv->error();
             if($err["code"]){
-                throw new \Exception($err["message"]." on query: $sql",500);
+                throw new \Exception($err["message"]." on query: $sql",$err["code"]);
             }
 
             if($res->num_rows()) {
@@ -864,7 +865,7 @@ class Records {
 
         $err=$this->dbdrv->error();
         if($err["code"]){
-            throw new \Exception($err["message"]." on delete record $tableName:$recId",500);
+            throw new \Exception($err["message"]." on delete record $tableName:$recId",$err["code"]);
         }
         if($this->dbdrv->affected_rows()) {
             return true;
@@ -906,7 +907,7 @@ class Records {
         $this->dbdrv->delete($tableName);
         $err=$this->dbdrv->error();
         if($err["code"]){
-            throw new \Exception($err["message"]." on delete by where from $tableName",500);
+            throw new \Exception($err["message"]." on delete by where from $tableName",$err["code"]);
         }
         if($this->dbdrv->affected_rows())
             return true;

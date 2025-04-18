@@ -112,7 +112,7 @@ class Document extends  json_ready
         function parseRecursive(&$errors,$exception) {
             $errors[] = Error::factory(
                     [
-                    "title"=>$exception->getMessage(),
+                    "message"=>$exception->getMessage(),
                     "code"=>$exception->getCode()
                 ]);
             if($lnk=$exception->getPrevious())
@@ -290,7 +290,7 @@ class Document extends  json_ready
     {
         return self::create($options)->addError(Error::factory(
             [
-                "title" => $title,
+                "message" => $title,
                 "code" => $code
             ]
         ));

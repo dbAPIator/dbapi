@@ -1635,7 +1635,7 @@ class Dbapi extends CI_Controller
         if(is_null($input)) {
             HttpResp::json_out(400,
                 Document::error_doc($this->JsonApiDocOptions, [
-                    \JSONApi\Error::factory(["title" => "Empty input data not allowed", "code" => 400])
+                    \JSONApi\Error::factory(["message" => "Empty input data not allowed", "code" => 400])
                 ])->json_data()
             );
         }
@@ -1645,8 +1645,8 @@ class Dbapi extends CI_Controller
         if(!in_array($onDuplicate,["update","ignore","error"])) {
             $onDuplicate = "error";
         }
-        $insertIgnore = $this->input->get("insertignore");
-        if($insertIgnore=="true") {
+        $insertIgnore = false;
+        if($onDuplicate=="ignore") {
             $insertIgnore  = true;
         }
         // configure fields to be updated when onduplicate is set to "update"
