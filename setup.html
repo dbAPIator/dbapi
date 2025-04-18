@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Setup</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Content goes here -->
+                        <form id="setupForm" class="needs-validation" novalidate>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="apiName" class="form-label">API Name</label>
+                                    <input type="text" class="form-control" id="apiName" name="apiName" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="dbdriver" class="form-label">Database Driver</label>
+                                    <select class="form-select" id="dbdriver" name="dbdriver" required>
+                                        <option value="mysqli">MySQL (mysqli)</option>
+                                        <option value="postgresql">PostgreSQL</option>
+                                        <option value="mssql">MS SQL Server</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="hostname" class="form-label">Host</label>
+                                    <input type="text" class="form-control" id="hostname" name="hostname" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="port" class="form-label">Port</label>
+                                    <input type="number" class="form-control" id="port" name="port" value="3306" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="database" class="form-label">Database</label>
+                                <input type="text" class="form-control" id="database" name="database" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="createSql" class="form-label">Create SQL</label>
+                                <textarea class="form-control" id="createSql" name="createSql" rows="3" required></textarea>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary">Create API</button>
+                            </div>
+                        </form>
+
+                        <script>
+                            document.getElementById('setupForm').addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                
+                                const formData = {
+                                    apiName: document.getElementById('apiName').value,
+                                    dbdriver: document.getElementById('dbdriver').value,
+                                    hostname: document.getElementById('hostname').value,
+                                    port: document.getElementById('port').value,
+                                    username: document.getElementById('username').value,
+                                    password: document.getElementById('password').value,
+                                    database: document.getElementById('database').value,
+                                    createSql: document.getElementById('createSql').value
+                                };
+
+                                fetch('./apis', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'x-api-key': 'myverysecuresecret'
+                                    },
+                                    body: JSON.stringify({
+                                        name: formData.apiName,
+                                        connection: {
+                                            dbdriver: formData.dbdriver,
+                                            hostname: formData.hostname,
+                                            username: formData.username,
+                                            password: formData.password,
+                                            database: formData.database
+                                        },
+                                        create: {
+                                            sql: formData.createSql,
+                                            drop_before_create: true
+                                        },
+                                        security: {
+                                            default_policy: "accept",
+                                            from: [
+                                                "0.0.0.0/0",
+                                                "1::"
+                                            ],
+                                            rules: [
+                                                [
+                                                    "/.*/i",
+                                                    "/.*/i",
+                                                    "accept"
+                                                ]
+                                            ]
+                                        }
+                                    })
+                                })
+                                .then(response => {
+                                    const contentType = response.headers.get('content-type');
+                                    const isJson = contentType && contentType.includes('application/json');
+                                    
+                                    // Store status code for later use
+                                    const statusCode = response.status;
+                                    
+                                    // Parse JSON if available, otherwise return text
+                                    if (isJson) {
+                                        return response.json().then(data => ({ 
+                                            statusCode, 
+                                            data,
+                                            ok: response.ok 
+                                        }));
+                                    } else {
+                                        return response.text().then(text => ({ 
+                                            statusCode, 
+                                            data: text,
+                                            ok: response.ok 
+                                        }));
+                                    }
+                                })
+                                .then(result => {
+                                    const { statusCode, data, ok } = result;
+                                    
+                                    // Set modal title and message based on status code
+                                    let modalTitle = ok ? 'Success' : 'Error';
+                                    let message = '';
+                                    
+                                    if (statusCode === 200 || statusCode === 201) {
+                                        modalTitle = 'Success';
+                                        message = 'API setup was successful!<br><br>API Documentation: <a href="swagger.html?api='+formData.apiName+'" target="_blank">Documentation</a>';
+                                        message += '<br><br><button class="btn btn-danger" onclick="deleteApi(\''+formData.apiName+'\',\''+data.result+'\')">Delete API</button>';
+                                    } else if (statusCode === 400) {
+                                        modalTitle = 'Bad Request';
+                                        message = 'The request was invalid. Please check your input.';
+                                    } else if (statusCode === 401) {
+                                        modalTitle = 'Unauthorized';
+                                        message = 'Authentication is required to perform this action.';
+                                    } else if (statusCode === 403) {
+                                        modalTitle = 'Forbidden';
+                                        message = 'You do not have permission to perform this action.';
+                                    } else if (statusCode === 404) {
+                                        modalTitle = 'Not Found';
+                                        message = 'The requested resource was not found.';
+                                    } else if (statusCode === 409) {
+                                        modalTitle = 'Conflict';
+                                        message = 'This API name may already exist.';
+                                    } else if (statusCode === 500) {
+                                        modalTitle = 'Server Error';
+                                        message = 'An internal server error occurred.';
+                                    } else {
+                                        modalTitle = 'Error';
+                                        message = 'An unexpected error occurred.';
+                                    }
+                                    
+                                    // Add response details if available
+                                    if (typeof data === 'object' && data !== null) {
+                                        if (data.error) {
+                                            message += '<br><br>Details: ' + data.error;
+                                        } else if (data.result) {
+                                            message += '<br><br>Details: ' + data.result;
+                                        }
+                                    }
+                                    
+                                    // Update and show modal
+                                    document.getElementById('successModalLabel').textContent = modalTitle;
+                                    document.getElementById('successMessage').innerHTML = message;
+                                    
+                                    // Change modal button color based on success/error
+                                    const modalButton = document.querySelector('#successModal .modal-footer .btn');
+                                    if (ok) {
+                                        modalButton.classList.remove('btn-danger');
+                                        modalButton.classList.add('btn-primary');
+                                    } else {
+                                        modalButton.classList.remove('btn-primary');
+                                        modalButton.classList.add('btn-danger');
+                                    }
+                                    
+                                    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                                    successModal.show();
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    
+                                    // Show error in modal
+                                    document.getElementById('successModalLabel').textContent = 'Connection Error';
+                                    document.getElementById('successMessage').textContent = 
+                                        'Failed to connect to the server. Please check your network connection.';
+                                    
+                                    // Change modal button to red for errors
+                                    const modalButton = document.querySelector('#successModal .modal-footer .btn');
+                                    modalButton.classList.remove('btn-primary');
+                                    modalButton.classList.add('btn-danger');
+                                    
+                                    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                                    successModal.show();
+                                });
+                            });
+                        </script>
+
+                        <script>
+                            function deleteApi(apiName,apiKey) {
+                                if (confirm('Are you sure you want to delete the API "' + apiName + '"?')) {
+                                    fetch('./apis/' + apiName, {
+                                        method: 'DELETE',
+                                        headers: {
+                                            'x-api-key': apiKey
+                                        }
+                                    })
+                                    .then(response => {
+                                        const contentType = response.headers.get('content-type');
+                                        const isJson = contentType && contentType.includes('application/json');
+                                        
+                                        // Store status code for later use
+                                        const statusCode = response.status;
+                                        
+                                        // Parse JSON if available, otherwise return text
+                                        if (isJson) {
+                                            return response.json().then(data => ({ 
+                                                statusCode, 
+                                                data,
+                                                ok: response.ok 
+                                            }));
+                                        } else {
+                                            return response.text().then(text => ({ 
+                                                statusCode, 
+                                                data: text,
+                                                ok: response.ok 
+                                            }));
+                                        }
+                                    })
+                                    .then(result => {
+                                        const { statusCode, data, ok } = result;
+                                        
+                                        // Set modal title and message based on status code
+                                        let modalTitle = ok ? 'Success' : 'Error';
+                                        let message = '';
+                                        
+                                        if (statusCode === 200 || statusCode === 204) {
+                                            modalTitle = 'Success';
+                                            message = 'API "' + apiName + '" was successfully deleted.';
+                                        } else if (statusCode === 401) {
+                                            modalTitle = 'Unauthorized';
+                                            message = 'Authentication is required to perform this action.';
+                                        } else if (statusCode === 403) {
+                                            modalTitle = 'Forbidden';
+                                            message = 'You do not have permission to perform this action.';
+                                        } else if (statusCode === 404) {
+                                            modalTitle = 'Not Found';
+                                            message = 'The API "' + apiName + '" was not found.';
+                                        } else if (statusCode === 500) {
+                                            modalTitle = 'Server Error';
+                                            message = 'An internal server error occurred.';
+                                        } else {
+                                            modalTitle = 'Error';
+                                            message = 'An unexpected error occurred.';
+                                        }
+                                        
+                                        // Add response details if available
+                                        if (typeof data === 'object' && data !== null) {
+                                            if (data.error) {
+                                                message += '<br><br>Details: ' + data.error;
+                                            } else if (data.message) {
+                                                message += '<br><br>Details: ' + data.message;
+                                            }
+                                        }
+                                        
+                                        // Update and show modal
+                                        document.getElementById('successModalLabel').textContent = modalTitle;
+                                        document.getElementById('successMessage').innerHTML = message;
+                                        
+                                        // Change modal button color based on success/error
+                                        const modalButton = document.querySelector('#successModal .modal-footer .btn');
+                                        if (ok) {
+                                            modalButton.classList.remove('btn-danger');
+                                            modalButton.classList.add('btn-primary');
+                                        } else {
+                                            modalButton.classList.remove('btn-primary');
+                                            modalButton.classList.add('btn-danger');
+                                        }
+                                        
+                                        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                                        successModal.show();
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        
+                                        // Show error in modal
+                                        document.getElementById('successModalLabel').textContent = 'Connection Error';
+                                        document.getElementById('successMessage').textContent = 
+                                            'Failed to connect to the server. Please check your network connection.';
+                                        
+                                        // Change modal button to red for errors
+                                        const modalButton = document.querySelector('#successModal .modal-footer .btn');
+                                        modalButton.classList.remove('btn-primary');
+                                        modalButton.classList.add('btn-danger');
+                                        
+                                        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                                        successModal.show();
+                                    });
+                                }
+                            }
+                        </script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="successModalLabel">Success</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="successMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
