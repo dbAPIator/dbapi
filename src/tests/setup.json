@@ -1,0 +1,70 @@
+{
+    "name": "dbapiator_demo",
+    "connection": {
+        "dbdriver": "mysqli",
+        "hostname": "mysql",
+        "username": "dbapiator",
+        "password": "parola123",
+        "database": "dbapiator_demo"
+    },
+    "configApi": {
+        "acls": [
+            {"ip": "172.16.0.0/12", "action": "allow"},
+            {"ip": "0.0.0.0/0", "action": "deny"}
+        ],
+        "secret": "secret"
+    },
+    "dataApi": {
+        "acls": {
+            "IP": [
+                {"ip": "172.16.0.0/12", "action": "allow"},
+                {"ip": "0.0.0.0/0", "action": "deny"}
+            ],
+            "path": [
+                {
+                    "pattern": "/*",
+                    "method": "OPTIONS",
+                    "action": "allow"
+                },
+                {
+                    "pattern": "/products",
+                    "method": "GET",
+                    "action": "allow"
+                },
+                {
+                    "pattern": "/products",
+                    "method": "*",
+                    "action": "deny"
+                },
+                {
+                    "pattern": "/customers/{{userId}}",
+                    "method": "GET",
+                    "action": "allow"
+                },
+                {
+                    "pattern": "/customers/{{userId}}",
+                    "method": "PATCH",
+                    "action": "allow"
+                },
+                {
+                    "pattern": "/customers/{{userId}}",
+                    "method": "*",
+                    "action": "deny"
+                },
+                {
+                    "pattern": "/orders",
+                    "method": "*",
+                    "action": "deny"
+                }
+            ]
+        },
+        "authentication": {
+            "validity": 172800,
+            "loginQuery": "select username unm, role from users where username='[[login]]' and pass=sha1('[[password]]');",
+            "2fa": "",
+            "resetQuery": "",
+            "updatePasswordQuery": "UPDATE users SET pass='[[newpassword]]' WHERE username='[[login]]' and pass=sha1('[[password]]',224);",
+            "allowGuest": false
+        }
+    }
+}

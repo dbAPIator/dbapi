@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  dbapi:
+    image: dbapiator/dbapi
+    ports:
+      - "8888:80"
+    volumes:
+      - ./src:/app
+      - ./data/apis:/app/apis
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_STREAM=dbapi_webhooks
+      - REDIS_GROUP=dbapi_webhooks_group
+      # - REDIS_PASSWORD=password
+      - CONFIGS_DIR=/app/apis
+      - DEFAULT_RELATIONSHIPS_PAGE_SIZE=10
+      - DEFAULT_PAGE_SIZE=100
+      - MAX_PAGE_SIZE=10000
+      - CONFIG_API_SECRET=myverysecuresecret
+      - CONFIG_API_ALLOWED_IPS=["0.0.0.0/0"]
+      
+  mysql:
+    image: mariadb:latest
+    environment:
+      - MYSQL_DATABASE=myapp
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    # ports:
+    #   - "3306:3306"
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8889:8080"
+    environment:
+      - ADMINER_DESIGN=pepa-linha
+      - ADMINER_DEFAULT_SERVER=mysql
+      - ADMINER_DEFAULT_USER=root
+      - ADMINER_DEFAULT_PASSWORD=rootpassword
+    depends_on:
+      - mysql
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+

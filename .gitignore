@@ -21,8 +21,10 @@ dbconfigs/*
 connections/*
 apis/*
 ezerp/*
+src/apis/*
 dbs
 composer.lock
 etc/mysqldata
 etc/*.sql
 vendor/
+data/*

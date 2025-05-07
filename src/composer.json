@@ -1,0 +1,13 @@
+{
+
+    "require": {
+        "firebase/php-jwt": "^6.3",
+      "ext-json": "*",
+        "predis/predis": "^2.3",
+        "guzzlehttp/guzzle": "^7.9",
+      "ext-curl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    }
+}

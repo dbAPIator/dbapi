@@ -1,0 +1,33 @@
+{
+    "create": [
+        {
+            "method": "GET",
+            "url": "http:\/\/localhost\/dbapi\/consumer.php?name={name}&email={email}"
+        },
+        {
+            "body": "Name: {name} Email: {email}",
+            "method": "GET",
+            "url": "http:\/\/localhost\/dbapi\/consumer.php?name={name}&email={email}"
+        },
+        {
+            "body": "{\n\"name\": \"{name}\",\n\"email\": \"{email}\"\n}",
+            "headers": {
+                "Content-Type": "application\/json"
+            },
+            "method": "POST",
+            "url": "http:\/\/localhost\/dbapi\/consumer.php"
+        }
+    ],
+    "delete": [
+        {
+            "method": "DELETE",
+            "url": "http:\/\/localhost\/dbapi\/consumer.php?action=delete&id={id}"
+        }
+    ],
+    "update": [
+        {
+            "method": "GET",
+            "url": "http:\/\/localhost\/dbapi\/consumer.php?action=update&id={id}"
+        }
+    ]
+}

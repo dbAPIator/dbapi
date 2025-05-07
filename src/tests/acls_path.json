@@ -1,0 +1,27 @@
+[
+    {
+        "pattern": "/*",
+        "method": "OPTIONS",
+        "action": "allow"
+    },
+    {
+        "pattern": "/products",
+        "method": "GET",
+        "action": "allow"
+    },
+    {
+        "pattern": "/products",
+        "method": "*",
+        "action": "deny"
+    },
+    {
+        "pattern": "/customers/{{userId}}",
+        "method": "GET",
+        "action": "allow"
+    },
+    {
+        "pattern": "/customers/{{userId}}",
+        "method": "PATCH",
+        "action": "allow"
+    }
+]
