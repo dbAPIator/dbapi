@@ -14,10 +14,13 @@ use Firebase\JWT\Key;
  * @property CI_Input input
  */
 class Auth extends CI_Controller {
+    private $configDir;
+
     function __construct()
     {
         parent::__construct();
         $this->config->load("dbapiator");
+        $this->configDir = $this->config->item("configs_dir");
     }
 
     /**
@@ -26,14 +29,14 @@ class Auth extends CI_Controller {
      * @return mixed
      */
     private function db_connect($configName) {
-        $cfgDir = $this->config->item("configs_dir")."/$configName";
+        $cfgDir = $this->configDir."/$configName";
 
 //        print_r($_ENV);
         if(!is_dir($cfgDir)) {
             HttpResp::not_found("API not found");
         }
 
-        $auth = @include $cfgDir."/auth.php";
+        $auth = @include $cfgDir."/authentication.php";
         if(!$auth) {
             HttpResp::bad_request(["error"=>"No authentication mechanism configured"]);
         }
@@ -174,28 +177,15 @@ class Auth extends CI_Controller {
      * @param $result
      * @param $auth
      */
-    private function generate_token($result,$auth,$validity=null) {
-        if($auth["jwtFormat"]) {
-            $tmp = [];
-            foreach (array_keys($result) as $key) {
-                $tmp["[[$key]]"] = $result[$key];
-            }
-
-            $payload = strtr($auth["jwtFormat"],$tmp);
-
-            $payload = json_decode($payload,JSON_OBJECT_AS_ARRAY);
-
-            $payload["exp"] = time()+($validity?$validity:$auth["validity"]);
-        }
-        else {
-            $payload = [
-                "unm" => $result["unm"],
-                "full_name" => $result["full_name"],
-                "exp" => time() + ($validity ? $validity : $auth["validity"])
-            ];
-        }
-        $jwt = JWT::encode($payload, $auth["key"], @$auth["alg"] ? $auth["alg"] : 'HS256');
-        HttpResp::json_out(200,["jwt"=>$jwt],["Authorization"=>"Bearer $jwt","Content-type"=>"application/json"]);
+    private function generate_token($payload,$auth) {
+        $validity = $auth["validity"];
+        $payload["exp"] = time()+$validity;
+            $jwt = JWT::encode($payload, $auth["jwt_key"],  'HS256');
+        HttpResp::json_out(200,[
+            "access_token"=>$jwt,
+            "expires_in"=>$validity,
+            "token_type"=>"Bearer"
+        ]);
     }
 
     /**
@@ -233,7 +223,7 @@ class Auth extends CI_Controller {
 
         $result = $res->row_array();
 
-        if($result["mfa_enabled"])
+        if(@$result["mfa_enabled"])
             $this->mfa_session_create($auth,$result);
         else
             $this->generate_token($result,$auth);

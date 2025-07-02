@@ -95,7 +95,7 @@ function sanitize_data($data) {
         $clean = [];
         foreach ($data as $key => $value) {
             // Sanitize the key
-            $clean_key = htmlspecialchars(strip_tags($key), ENT_QUOTES, 'UTF-8');
+            $clean_key = strip_tags($key);
             // Recursively sanitize the value
             $clean[$clean_key] = sanitize_data($value);
         }
@@ -106,7 +106,7 @@ function sanitize_data($data) {
             // Remove any potential PHP tags
             $data = preg_replace('/<\?(php)?|\?>/', '', $data);
             // Convert special characters to HTML entities
-            return htmlspecialchars(strip_tags($data), ENT_QUOTES, 'UTF-8');
+            return strip_tags($data);
         }
         // Return non-string values unchanged
         return $data;

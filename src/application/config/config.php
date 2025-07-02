@@ -23,7 +23,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = @$_SERVER["REQUEST_SCHEME"].'://'.@$_SERVER["SERVER_NAME"]."/dbapi/";
+$config['base_url'] = @$_SERVER["REQUEST_SCHEME"].'://'.@$_SERVER["SERVER_NAME"]."/apis";
+$config['base_path'] = "/apis";
 
 /*
 |--------------------------------------------------------------------------

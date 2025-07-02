@@ -7,7 +7,7 @@
  */
 require_once(APPPATH."libraries/HttpResp.php");
 require_once(APPPATH."third_party/dbAPI/Autoloader.php");
-//require_once (BASEPATH."/../vendor/autoload.php");
+require_once (BASEPATH."/../vendor/autoload.php");
 
 use dbAPI\Autoloader;
 use Firebase\JWT\JWT;
@@ -73,7 +73,7 @@ class Dbapi extends CI_Controller
      */
     private $inputData;
     private $baseUrl;
-
+    private $basePath;
     private $noLinksInOutput = false;
     /**
      * @var array
@@ -108,6 +108,8 @@ class Dbapi extends CI_Controller
     private $errors;
 
     private $rateLimiter;
+    private $configFiles;
+    private $configDir;
 
     function get_max_insert_recursions()
     {
@@ -141,6 +143,8 @@ class Dbapi extends CI_Controller
     {
         parent::__construct();
         $this->config->load("dbapiator");
+        $this->configFiles = $this->config->item("files");
+        $this->configDir = $this->config->item("configs_dir");
 
         $this->deployment_type = $this->config->item("deployment_type");
 
@@ -193,7 +197,7 @@ class Dbapi extends CI_Controller
      * - check which client rules match and if req is allowed
      * - authenticate req based on JWT
      */
-    private function  security_check() {
+    private function  security_check(string $configName) {
         $this->load->library("Utilities");
 
         $headers = getallheaders();
@@ -201,15 +205,17 @@ class Dbapi extends CI_Controller
         // load default security
         $security = [];
 
-        $data = @include $this->apiConfigDir."/security.php";
+        $data = include "$this->configDir/$configName/{$this->configFiles['data_api_acls']}";
         $security = array_merge($security,$data ? $data : []);
 
 
         // check if client IP is allowed 
-        $rules = $security["dataApi"]["from"] ?? [];
+        $ipAcls = $security["IP"] ?? [];
+        $pathAcls = $security["path"] ?? [];
+        //  print_r($pathAcls);
         $allow = false;
-        foreach($rules as $rule) {
-            if($rule["action"]=="allow" && $this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$rule["ip"])) {
+        foreach($ipAcls as $rule) {
+            if($rule["allow"] && $this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$rule["ip"])) {
                 $allow = true;
                 break;
             }
@@ -217,18 +223,30 @@ class Dbapi extends CI_Controller
         if(!$allow) {
             throw new Exception("IP ".$_SERVER["REMOTE_ADDR"]." not allowed",401);
         }
+        foreach($pathAcls as $rule) {
+            
+        }
+        if(!$allow) {
+            throw new Exception("Current user does is not allowed on this endpoint",401);
+        }
+        
 
         /*
          * Authenticate request based on JWT tokens
          */
 
-        $auth = @include $this->apiConfigDir."/auth.php";
+        $auth = @include "$this->configDir/$configName/{$this->configFiles['auth']}";
 
         // extract JWT from Authorization header
+        $isAuth = false;
         try {
             preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
-            $jwt = count($matches)==2 ? $matches[1] : $this->input->get("token");
-            $payload = JWT::decode($jwt,new Key($auth["key"],$auth["alg"]));
+            $jwt = count($matches)==2 ? $matches[1] : null;
+            if(empty($jwt)) {
+                throw new Exception("No JWT token provided",401);
+            }
+            $payload = JWT::decode($jwt,new Key($auth["jwt_key"],'HS256'));
+            $isAuth = true;
         }
         catch (Exception $e) {
             $payload = null;
@@ -252,21 +270,41 @@ class Dbapi extends CI_Controller
 
 
         // check rules
-        $rules = $security["rules"] ?? [];
+        $rules = $security["path"] ?? [];
         $allow = false;
+        //echo $this->basePath."/$configName/data\n";
+        $reqPath = str_replace($this->basePath."/$configName/data","",$_SERVER["REQUEST_URI"]);
         foreach ($rules as $rule) {
-            $pattern = strtr(str_replace("/","\/",$rule["pattern"]),$currentUserData);
-            if(preg_match("/^".$rule["method"]."$/i",$_SERVER["REQUEST_METHOD"]) && preg_match($pattern,$_SERVER["REQUEST_URI"])) {
-                $allow = $rule["action"]=="allow";
-                break;
+            $methodPattern = "/^".strtoupper(str_replace("*",".*",$rule["methods"]))."$/i";
+            if(!preg_match($methodPattern,$_SERVER["REQUEST_METHOD"])) {
+                // echo "method not allowed".$_SERVER["REQUEST_METHOD"].json_encode($rule)."\n";
+                continue;
             }
+            
+            $urlPattern = "/^".strtr(str_replace(["/","*"],["\\/",".*"],$rule["pattern"]),$currentUserData)."/i";
+            // echo "url pattern: $urlPattern\n";
+            if(!preg_match($urlPattern,$reqPath)) {
+                // echo "url not allowed $reqPath".json_encode($rule)."\n";
+                continue;
+            }
+
+            $reqAuth = isset($rule["isAuthenticated"]) ? $rule["isAuthenticated"] : $allowGuest;
+            if($reqAuth && !$isAuth) {
+                // echo "auth required".$_SERVER["REQUEST_URI"].json_encode($rule)."\n";
+                continue;
+            }
+
+            $allow = $rule["allow"] ?? false;
+            break;
         }
+        
 
         if(!$allow) {
-            throw new Exception("Access denied",401);
+            throw new Exception("You are not allowed to access this resource",401);
         }
     }
 
+    
     /**
      * reads API configuration file, connects to the database and initializes the DataModel (structure)
      * initializes internal objects:
@@ -279,9 +317,10 @@ class Dbapi extends CI_Controller
         if($this->apiConfigDir)
             return;
 
-        $this->apiConfigDir = $this->config->item("configs_dir")."/$configName";
+        $this->apiConfigDir = "$this->configDir/$configName";
 
-        $this->baseUrl = $this->config->item("base_url")."/v2";
+        $this->baseUrl = $this->config->item("base_url");
+        $this->basePath = $this->config->item("base_path");
         $this->JsonApiDocOptions["baseUrl"] = $this->baseUrl;
 
         if(!is_dir($this->apiConfigDir)) {
@@ -291,7 +330,7 @@ class Dbapi extends CI_Controller
         }
 
         try{
-            $this->security_check();
+            $this->security_check($configName);
         }
         catch (Exception $e) {
             HttpResp::exception_out($e);
@@ -324,21 +363,13 @@ class Dbapi extends CI_Controller
         }
 
         $permissions = [];
-        /** @noinspection PhpIncludeInspection */
-//        $permissions = require($apiConfigDir.$profileFIle);
-//        if(!isset($permissions)) {
-//            HttpResp::server_error("Invalid API permissions");
-//        }
+
 
         // todo configure settings
         $settings = [];
-        // $settings = require($apiConfigDir."/settings.php");
-        //if(!isset($settings)) HttpResp::server_error("Invalid API settings");
+
 
         $apiCfg = array_merge_recursive($permissions,$structure);
-
-//        error_reporting(0);
-//        $dbConf["db_debug"] = FALSE;
 
         /**
          * @var CI_DB_pdo_driver db
@@ -398,7 +429,7 @@ class Dbapi extends CI_Controller
         $this->load->helper("swagger");
 
         $openApiSpec = generate_swagger(
-            $_SERVER["SERVER_NAME"].$this->baseUrl."/$configName",
+            $this->baseUrl."/$configName/data",
             $this->apiDm->get_dataModel(),
             "$configName Spec",
             "$configName spec",
@@ -409,12 +440,12 @@ class Dbapi extends CI_Controller
 
     /**
      * Parses input data depending on the Content-Type header and returns it. When invalid content type returns null
-     * @param array|null $input
+     * @param array|object|null $input
      * @param bool $no_validation
      * @return array|mixed
      * @throws Exception
      */
-    private function get_input_data(array $input=null,bool $no_validation=false)
+    private function get_input_data($input=null,bool $no_validation=false)
     {
         if(!is_null($input)) {
             return  $input;
@@ -1074,7 +1105,7 @@ class Dbapi extends CI_Controller
                 $this->out_xls($resourceName,$recId,$request,$result,$this->input->get("filename"));
                 break;
             case "json":
-                $this->out_jsonapi($result,201);
+                $this->out_jsonapi($result,200);
         }
         return null;
     }
@@ -1479,6 +1510,12 @@ class Dbapi extends CI_Controller
 
 
     }
+    function get_related_2nd($configName,$parent,$parentRecId,$parentRelName,$parentRelRecId,$relName,$relRecId=null,$internal=false) {
+        $this->_init($configName);
+        print_r(func_get_args());
+
+
+    }
 
     /**
      * fetch related resource(s)
@@ -1630,8 +1667,12 @@ class Dbapi extends CI_Controller
     {
         $this->_init($configName);
 
+        // print_r($input);
         // get input data
         try {
+            // if (is_object($input)) {
+            //     $input = json_decode(json_encode($input), true);
+            // }
             $input = $this->get_input_data($input);
         }
         catch (Exception $e) {
@@ -1671,6 +1712,7 @@ class Dbapi extends CI_Controller
         $this->apiDb->trans_begin();
 
         // prepare data
+        // print_r($input);
         $singleInsert = !is_array($input->data);
 
         $entries = $singleInsert?[$input->data]:$input->data;

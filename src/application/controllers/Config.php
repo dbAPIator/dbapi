@@ -147,9 +147,9 @@ class Config extends CI_Controller {
         // check if IP is allowed
         $allowed = false;
         foreach ($acls as $rule) {
-            if(!in_array($rule["action"],["allow","deny"])) continue;
+            if(!isset($rule["allow"])) continue;
             if($this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$rule["ip"])) {
-                if($rule["action"]=="allow"){
+                if($rule["allow"]){
                     $allowed = true;
                     break;
                 } else {
@@ -189,6 +189,7 @@ class Config extends CI_Controller {
         
         // check if IP is allowed
         $allowedIps = $this->config->item("config_api_allowed_ips");
+
         if(!is_array($allowedIps)) {
             $allowedIps = [$allowedIps];
         }
@@ -313,11 +314,11 @@ class Config extends CI_Controller {
             "acls" => [
                 [
                     "ip" => $_SERVER["REMOTE_ADDR"],
-                    "action" => "allow"
+                    "allow" => true
                 ],
                 [
                     "ip" => "0.0.0.0/0",
-                    "action" => "deny"
+                    "allow" => false
                 ],
                 
             ]
@@ -333,18 +334,18 @@ class Config extends CI_Controller {
                 "IP" => [
                     [
                         "ip" => $_SERVER["REMOTE_ADDR"],
-                        "action" => "allow"
+                        "allow" => true
                     ],
                     [
                         "ip" => "0.0.0.0/0",
-                        "action" => "deny"
+                        "allow" => false
                     ]
                 ],
                 "path" => [
                     [
                         "pattern" => "/*",
-                        "method" => "*",
-                        "action" => "deny"
+                        "methods" => "*",
+                        "allow" => false
                     ]
                 ]
             ]
@@ -371,7 +372,7 @@ class Config extends CI_Controller {
             if(@$data["create"]["sql"]){ 
                 $this->create_database($conn,$data);
             }
-            $path = $this->config->item("configs_dir")."/$apiName";
+            $path = "$this->configDir/$apiName";
 
             $structure = $this->generate_config($conn, $path);
 
@@ -402,7 +403,7 @@ class Config extends CI_Controller {
     function list_apis() {
         $this->authorize_apis_admin();
 
-        $apiConfigDir = $this->config->item("configs_dir");
+        $apiConfigDir = $this->configDir;
         $dir = @opendir($apiConfigDir);
         if(!$dir) {
             HttpResp::server_error(["error"=>"Invalid configs directory"]);
@@ -422,7 +423,7 @@ class Config extends CI_Controller {
      */
     function regen_structure($apiName) {
         $this->authorize_config_update($apiName);
-        $apiConfigDir = $this->config->item("configs_dir")."/$apiName";
+        $apiConfigDir = "$this->configDir/$apiName";
         $conn = include "$apiConfigDir/{$this->configFiles['connection']}";
 
         $oldStructure = include("$apiConfigDir/{$this->configFiles['structure']}");
@@ -449,7 +450,7 @@ class Config extends CI_Controller {
      * @param $apiName
      */
     private function get_structure($apiName) {
-        $path = $this->config->item("configs_dir")."/$apiName/{$this->configFiles['structure']}";
+        $path = "$this->configDir/$apiName/{$this->configFiles['structure']}";
         $structure = include $path;
         //echo file_get_contents($path);
         HttpResp::json_out(200,$structure);
@@ -463,7 +464,7 @@ class Config extends CI_Controller {
      */
     function get_connection($apiName) {
         $this->authorize_config_update($apiName);
-        $connection = @include $this->config->item("configs_dir")."/$apiName/connection.php";
+        $connection = @include "$this->configDir/$apiName/connection.php";
         $connection["password"]="***********";
         unset($connection["dbdriver"]);
         HttpResp::json_out(200,$connection);
@@ -487,7 +488,7 @@ class Config extends CI_Controller {
 
     function update_connection($apiName) {
         $this->authorize_config_update($apiName);
-        $connection = include $this->config->item("configs_dir")."/$apiName/connection.php";
+        $connection = include "$this->configDir/$apiName/connection.php";
         $config = $this->validate_connection_config($this->get_input_data());
         
         // Check if host is reachable before attempting database connection
@@ -538,7 +539,6 @@ class Config extends CI_Controller {
         $this->get_authentication($apiName);
     }
 
-     
     /**
      * @param $apiName
      */
@@ -575,9 +575,9 @@ class Config extends CI_Controller {
         if(!$data) {
             HttpResp::json_out(400,["error"=>"Invalid input data"]) && die();
         }
-        $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
+        $conn = @include "$this->configDir/$apiName/connection.php";
         $structure = DBWalk::parse($this->load->database($conn,true),$conn['database'])['structure'];
-        $patch = @include $this->config->item("configs_dir")."/$apiName/patch.php";
+        $patch = @include "$this->configDir/$apiName/patch.php";
         $patch = $patch ? $patch : [];
         $newStruct = smart_array_merge_recursive($structure,$patch);
         $newStruct = smart_array_merge_recursive($newStruct,$data);
@@ -586,10 +586,10 @@ class Config extends CI_Controller {
         $diff = compute_struct_diff($structure,$newStruct);
         // create patch file
         if(count($diff)) {
-            $patchFileName = $this->config->item("configs_dir")."/$apiName/patch.php";
+            $patchFileName = "$this->configDir/$apiName/patch.php";
             $this->save_config($patchFileName,$diff);
         }
-        $structFileName = $this->config->item("configs_dir")."/$apiName/structure.php";
+        $structFileName = "$this->configDir/$apiName/structure.php";
         $newStruct = smart_array_merge_recursive($structure,$diff);
         $this->save_config($structFileName,$newStruct);
         HttpResp::json_out(200,$newStruct);
@@ -622,10 +622,9 @@ class Config extends CI_Controller {
         $oldAcls = include "$this->configDir/$apiName/{$this->configFiles['data_api_acls']}";
         $oldAcls['IP'] = [];
         foreach ($acls as $acl) {
-            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['action'])
-                    || !in_array($acl['action'],['allow','deny'])
+            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['allow'])
                     || !preg_match("/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]{1,2})?$/",$acl['ip'])) {
-                HttpResp::json_out(400, ["error" => "Invalid ACL rule {$acl['ip']} {$acl['action']}"]);
+                HttpResp::json_out(400, ["error" => "Invalid ACL rule".json_encode($acl)]);
             }
             $oldAcls['IP'][] = $acl;
         }
@@ -660,8 +659,9 @@ class Config extends CI_Controller {
         $oldAcls = include "$this->configDir/$apiName/{$this->configFiles['data_api_acls']}";
         $oldAcls['path'] = [];
         foreach ($acls as $acl) {
-            if (!is_array($acl) || !isset($acl['pattern']) || !isset($acl['action'])
-                || !in_array($acl['action'],['allow','deny'])  ) {
+            if (!is_array($acl) || !isset($acl['pattern']) 
+                || !isset($acl['allow'])
+                || !isset($acl['methods'])) {
                 HttpResp::json_out(400, ["error" => "Invalid ACL rule"]);
             }
             $oldAcls['path'][] = $acl;
@@ -693,10 +693,9 @@ class Config extends CI_Controller {
             HttpResp::json_out(400,["error"=>"Invalid input data"]);
         }
         foreach($acls as $acl) {
-            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['action'])
-                    || !in_array($acl['action'],['allow','deny'])
+            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['allow'])
                     || !preg_match("/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]{1,2})?$/",$acl['ip'])) {
-                HttpResp::json_out(400, ["error" => "Invalid ACL rule {$acl['ip']} {$acl['action']}"]);
+                HttpResp::json_out(400, ["error" => "Invalid ACL rule".json_encode($acl)]);
             }
         }
         $adminConfig = include "$this->configDir/$apiName/{$this->configFiles['admin_config']}";
@@ -743,7 +742,7 @@ class Config extends CI_Controller {
      */
     private function get_hooks($apiName,$resourceName=null) {
         $this->authorize_config_update($apiName);
-        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
+        $structure = @include "$this->configDir/$apiName/structure.php";
         $hooks = [];
         if($resourceName){
             if(isset($structure[$resourceName]["hooks"])){
@@ -768,7 +767,7 @@ class Config extends CI_Controller {
      * @param $resourceName
      */
     private function update_hooks($apiName,$resourceName) {
-        $structure = require_once($this->config->item("configs_dir")."/$apiName/structure.php");
+        $structure = include "$this->configDir/$apiName/structure.php";
         $hooks = $this->get_input_data();
         if(!is_array($hooks)) {
             HttpResp::json_out(400,["error"=>"Invalid input data"]);
@@ -817,7 +816,7 @@ class Config extends CI_Controller {
         }
 
         try {
-            $this->save_config($this->config->item("configs_dir")."/$apiName/structure.php",$structure);
+            $this->save_config("$this->configDir/$apiName/structure.php",$structure);
         } catch (Exception $e) {
             HttpResp::exception_out($e);
         }
@@ -851,7 +850,7 @@ class Config extends CI_Controller {
         $this->authorize_config_update($apiName);
         try {
             if($this->input->get("delete_db")=="true"){
-                $conn = require_once($this->config->item("configs_dir")."/$apiName/connection.php");
+                $conn = include "$this->configDir/$apiName/connection.php";
                 $db = $this->load->database($conn,true);
                 /**
                  * @var CI_DB_forge $dbforge
@@ -866,7 +865,7 @@ class Config extends CI_Controller {
                 }
             }
         
-            remove_dir_recursive($this->config->item("configs_dir")."/$apiName");
+            remove_dir_recursive("$this->configDir/$apiName");
             HttpResp::no_content();
         }
         catch (Exception $exception) {

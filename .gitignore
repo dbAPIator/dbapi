@@ -5,3 +5,5 @@ src/vendor/
 **/**/test.php
 data/*
 build.sh
+src/application/logs/*
+dbconfigs
