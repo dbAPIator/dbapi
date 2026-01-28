@@ -23,8 +23,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = @$_SERVER["REQUEST_SCHEME"].'://'.@$_SERVER["SERVER_NAME"]."/apis";
-$config['base_path'] = "/apis";
+//$config['base_url'] = @$_SERVER["REQUEST_SCHEME"].'://'.@$_SERVER["SERVER_NAME"]."/apis";
+//$config['base_path'] = "/apis";
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +36,7 @@ $config['base_path'] = "/apis";
 | variable so that it is blank.
 |
 */
-$config['index_page'] = 'index.php';
+//$config['index_page'] = 'index.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -214,7 +214,7 @@ $config['directory_trigger'] = 'd';
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 4;
+$config['log_threshold'] = 2;
 
 /*
 |--------------------------------------------------------------------------

@@ -1,14 +1,19 @@
 [
     {
         "ip": "172.16.0.0/12",
-        "action": "allow"
+        "allow": true
     },
     {
+        "ip": "172.21.0.0/12",
+        "allow": true
+    },
+    
+    {
         "ip": "192.168.0.0/12",
-        "action": "allow"
+        "allow": true
     },
     {
         "ip": "0.0.0.0/0",
-        "action": "deny"
+        "allow": false
     }
 ]

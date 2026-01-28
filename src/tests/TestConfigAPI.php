@@ -18,26 +18,74 @@ class TestConfigAPI extends TestCase
         ]);
     }
 
-    private function assert_response($response) {
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertJson($response->getBody());
-        $data = json_decode($response->getBody(), true);
+    /**
+     * Enhanced response assertion with full error details
+     */
+    private function assert_response($response, $expectedStatus = 200) {
+        $statusCode = $response->getStatusCode();
+        $body = $response->getBody()->getContents();
+        
+        // If status code doesn't match expected, show full error details
+        if ($statusCode !== $expectedStatus) {
+            $this->fail(sprintf(
+                "Expected status code %d, got %d\nFull response body:\n%s",
+                $expectedStatus,
+                $statusCode,
+                $body
+            ));
+        }
+        
+        // Try to decode JSON and show full response if it fails
+        $data = json_decode($body, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->fail(sprintf(
+                "Invalid JSON response. JSON error: %s\nFull response body:\n%s",
+                json_last_error_msg(),
+                $body
+            ));
+        }
+        
         $this->assertIsArray($data);
         return $data;
     }
 
+    /**
+     * Helper method to handle exceptions and show full error details
+     */
+    private function makeRequest($method, $uri, $options = []) {
+        try {
+            return $this->client->request($method, $uri, $options);
+        } catch (RequestException $e) {
+            $response = $e->getResponse();
+            if ($response) {
+                $statusCode = $response->getStatusCode();
+                $body = $response->getBody()->getContents();
+                $headers = $response->getHeaders();
+                
+                $errorMessage = sprintf(
+                    "Request failed with status %d\nFull response body:\n%s\nResponse headers:\n%s",
+                    $statusCode,
+                    $body,
+                    json_encode($headers, JSON_PRETTY_PRINT)
+                );
+                
+                $this->fail($errorMessage);
+            } else {
+                $this->fail("Request failed: " . $e->getMessage());
+            }
+        }
+    }
+
     public function testCreateApi()
     {
-        $response = $this->client->request('POST', 'apis', [
+        $response = $this->makeRequest('POST', 'apis', [
             'headers' => [
                 'X-Api-Key' => $this->apiToken
             ],
             'json' => json_decode(file_get_contents(__DIR__ . '/setup.json'))
         ]);
 
-        $this->assertEquals(200, $response->getStatusCode());
-
-        $data = json_decode($response->getBody(), true);
+        $data = $this->assert_response($response);
         return $data['apiKey'];
     }
 
@@ -55,19 +103,31 @@ class TestConfigAPI extends TestCase
             ]);
         } catch (RequestException $e) {
             $response = $e->getResponse();
+            if ($response) {
+                $statusCode = $response->getStatusCode();
+                $body = $response->getBody()->getContents();
+                
+                // Show full error details for debugging
+                if ($statusCode !== 409) {
+                    $this->fail(sprintf(
+                        "Expected status code 409, got %d\nFull response body:\n%s",
+                        $statusCode,
+                        $body
+                    ));
+                }
+            }
         }
 
         $this->assertEquals(409, $response->getStatusCode());
         return $apiKey;
     }
 
-    
     /**
      * @depends testCreateApi
      */
     public function testGetStructure(string $apiKey)
     {
-        $response = $this->client->request('GET', "apis/{$this->apiName}/config/structure", [
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/config/structure", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
         
@@ -84,7 +144,7 @@ class TestConfigAPI extends TestCase
         $structure = $data[1];
         $apiKey = $data[0];
         $structure["Orders"]["fields"]["order_date"]["required"] = true;
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/structure", [
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/structure", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => $structure
         ]);
@@ -105,7 +165,7 @@ class TestConfigAPI extends TestCase
             "Orders" => $structure["Orders"]
         ];
         $data["Orders"]["fields"]["order_date"]["read"] = true;
-        $response = $this->client->request('PATCH', "apis/{$this->apiName}/config/structure", [
+        $response = $this->makeRequest('PATCH', "apis/{$this->apiName}/config/structure", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => $data
         ]);
@@ -121,7 +181,7 @@ class TestConfigAPI extends TestCase
     public function testRegenApi(array $data)
     {
         $apiKey = $data[0];
-        $response = $this->client->request('POST', "apis/{$this->apiName}/config/structure/regen", [
+        $response = $this->makeRequest('POST', "apis/{$this->apiName}/config/structure/regen", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
 
@@ -136,6 +196,7 @@ class TestConfigAPI extends TestCase
         $this->assertEquals(3, count($data));
         return $data;
     }
+    
     /**
      * @depends testRegenApi
      */
@@ -143,7 +204,7 @@ class TestConfigAPI extends TestCase
     {
         $apiKey = $data[0];
         $data = json_decode(file_get_contents(__DIR__ . '/hooks.json'));
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/hooks/Customers", [
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/hooks/Customers", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => $data
         ]);
@@ -153,14 +214,13 @@ class TestConfigAPI extends TestCase
         return [$apiKey, $data];
     }
 
-    
     /**
      * @depends testSetHooks
      */
     public function testGetHooks(array $data)
     {
         $apiKey = $data[0];
-        $response = $this->client->request('GET', "apis/{$this->apiName}/config/hooks/Customers", [
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/config/hooks/Customers", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
 
@@ -174,7 +234,7 @@ class TestConfigAPI extends TestCase
      */
     public function testSetAuth(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/auth", [
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/auth", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => json_decode(file_get_contents(__DIR__ . '/auth.json'))
         ]);
@@ -189,7 +249,7 @@ class TestConfigAPI extends TestCase
      */
     public function testPatchAuth(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('PATCH', "apis/{$this->apiName}/config/auth", [
+        $response = $this->makeRequest('PATCH', "apis/{$this->apiName}/config/auth", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => [
                 "allowGuest" => true
@@ -206,27 +266,28 @@ class TestConfigAPI extends TestCase
      */
     public function testGetAclsIp(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('GET', "apis/{$this->apiName}/config/acls/ip", [
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/config/acls/ip", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
 
         $data = $this->assert_response($response);
-        $this->assertEquals(2, count($data));
+        $this->assertEquals(4, count($data));
         return [$apiKey, $data];
     }
+    
     /**
      * @depends testGetAclsIp
      */
     public function testSetAclsIp(array $data) {
-        // return $data; 
+        $acls = json_decode(file_get_contents(__DIR__ . '/acls_ip.json'));
         $apiKey = $data[0];
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/acls/ip", [
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/acls/ip", [
             'headers' => ['X-Api-Key' => $apiKey],
-            'json' => json_decode(file_get_contents(__DIR__ . '/acls_ip.json'))
+            'json' => $acls
         ]);
         
         $data = $this->assert_response($response);
-        $this->assertEquals(3, count($data));
+        $this->assertEquals(count($acls), count($data));
         return [$apiKey, $data];
     }
 
@@ -235,7 +296,7 @@ class TestConfigAPI extends TestCase
      */
     public function testGetAclsPath(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('GET', "apis/{$this->apiName}/config/acls/path", [
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/config/acls/path", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
         
@@ -249,7 +310,7 @@ class TestConfigAPI extends TestCase
      */
     public function testSetAclsPath(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/acls/path", [
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/acls/path", [
             'headers' => ['X-Api-Key' => $apiKey],
             'json' => json_decode(file_get_contents(__DIR__ . '/acls_path.json'))
         ]);
@@ -264,12 +325,12 @@ class TestConfigAPI extends TestCase
      */
     public function testGetAdminAclsIp(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('GET', "apis/{$this->apiName}/config/admin/acls", [
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/config/admin/acls", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
         
         $data = $this->assert_response($response);
-        $this->assertEquals(2, count($data));
+        $this->assertEquals(3, count($data));
         return [$apiKey, $data];
     }
 
@@ -278,28 +339,26 @@ class TestConfigAPI extends TestCase
      */
     public function testSetAdminAclsIp(array $data) {
         $apiKey = $data[0];
-        $response = $this->client->request('PUT', "apis/{$this->apiName}/config/admin/acls", [
+        $acls = json_decode(file_get_contents(__DIR__ . '/acls_ip.json'));
+        $response = $this->makeRequest('PUT', "apis/{$this->apiName}/config/admin/acls", [
             'headers' => ['X-Api-Key' => $apiKey],
-            'json' => json_decode(file_get_contents(__DIR__ . '/acls_ip.json'))
+            'json' => $acls
         ]);
 
         $data = $this->assert_response($response);
-        $this->assertEquals(3, count($data));
+        $this->assertEquals(count($acls), count($data));
         return [$apiKey, $data];
     }
-
 
     /**
      * @depends testSetAdminAclsIp
      */
     public function testAdminResetSecret() {
-        $response = $this->client->request('POST', "apis/{$this->apiName}/config/admin/secret/reset", [
+        $response = $this->makeRequest('POST', "apis/{$this->apiName}/config/admin/secret/reset", [
             'headers' => ['X-Api-Key' => $this->apiToken]
         ]);
         
         $data = $this->assert_response($response);
-        
-        $data = json_decode($response->getBody(), true);
         return $data['apiKey'];
     }
 
@@ -307,9 +366,10 @@ class TestConfigAPI extends TestCase
      * @depends testAdminResetSecret
      */
     public function testDeleteApi($apiKey) {
-        $response = $this->client->request('DELETE', "apis/{$this->apiName}", [
+        $response = $this->makeRequest('DELETE', "apis/{$this->apiName}", [
             'headers' => ['X-Api-Key' => $apiKey]
         ]);
+        
         $this->assertEquals(204, $response->getStatusCode());
         return $apiKey;
     }

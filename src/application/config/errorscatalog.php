@@ -25,7 +25,7 @@ $errorsCatalog["input"] = [
 $errorsCatalog["access"] = [
     "ip_not_authorized"=>[
         "code"=>"4001",
-        "message"=>"IP not authorized"
+        "message"=>"IP not authorized ".$_SERVER["REMOTE_ADDR"]
     ],
     "secret_not_authorized"=>[
         "code"=>"4002",
@@ -48,6 +48,10 @@ $errorsCatalog["config"] = [
     "db_name_not_provided"=>[
         "code"=>"3003",
         "message"=>"Database name not provided"
+    ],
+    "security_not_found"=>[
+        "code"=>"3004",
+        "message"=>"Security not found"
     ]
 
 ];

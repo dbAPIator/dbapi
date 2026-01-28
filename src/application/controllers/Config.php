@@ -50,7 +50,7 @@ class Config extends CI_Controller {
      */
     private function api_exists($apiName, $return=false) {
         $apiDir = "$this->configDir/$apiName";
-        //echo "apiDir: $apiDir\n";
+        
         if(!is_dir($apiDir)) {
             if(!$return) {
                 HttpResp::not_found($this->errorsCatalog["config"]["api_not_found"]);
@@ -140,43 +140,27 @@ class Config extends CI_Controller {
 
     }
 
-
-  
-
-    private function IP_is_allowed($acls) {
-        // check if IP is allowed
-        $allowed = false;
-        foreach ($acls as $rule) {
-            if(!isset($rule["allow"])) continue;
-            if($this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$rule["ip"])) {
-                if($rule["allow"]){
-                    $allowed = true;
-                    break;
-                } else {
-                    HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
-                }
-            }
-        }
-
-        if(!$allowed) {
-            HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
-        }
-    }
-
+    /**
+     * Authorizes the configuration update
+     * @param $apiName
+     */
     private function authorize_config_update($apiName) {
+        error_log("authorize_config_update: $apiName\n");
         $this->api_exists($apiName);
 
         $apiConfigDir = "$this->configDir/$apiName";
         $security = @include "$apiConfigDir/{$this->configFiles['admin_config']}";
+        
+        // check if IP is allowed
+        if(!$this->utilities->IP_is_allowed($security["acls"])) {
+            HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
+        }
 
         // check secret
         $secret = $this->headers["x-api-key"] ?? $this->headers["X-Api-Key"] ?? $this->input->get("xApiKey") ?? null;
         if(!$secret || $secret!==$security["secret"]) {
             HttpResp::not_authorized($this->errorsCatalog["access"]["api_config_secret_not_authorized"]);
         }
-
-        $this->IP_is_allowed($security["acls"]);
-
     }
 
     private function authorize_apis_admin() {
@@ -188,18 +172,11 @@ class Config extends CI_Controller {
         }
         
         // check if IP is allowed
-        $allowedIps = $this->config->item("config_api_allowed_ips");
-
-        if(!is_array($allowedIps)) {
-            $allowedIps = [$allowedIps];
+        $ipsAcl = $this->config->item("config_api_ips_acls");
+        error_log("ipsAcl: ".json_encode($ipsAcl)."\n");
+        if(!$this->utilities->IP_is_allowed($ipsAcl)) {
+            HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
         }
-        foreach($allowedIps as $allowedIp) {
-            if($this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$allowedIp)) {
-                return;
-            }
-        }
-        HttpResp::not_authorized($this->errorsCatalog["access"]["ip_not_authorized"]);
-        
     }
 
     /**
@@ -323,8 +300,8 @@ class Config extends CI_Controller {
                 
             ]
         ];  
-        if(isset($data["adminConfig"])) {
-            $adminConfig = array_merge($adminConfig,$data["adminConfig"]);
+        if(isset($data["configApi"])) {
+            $adminConfig = array_merge($adminConfig,$data["configApi"]);
         }
         $adminConfig["secret"] = bin2hex(openssl_random_pseudo_bytes(32));
 
@@ -350,6 +327,7 @@ class Config extends CI_Controller {
                 ]
             ]
         ];
+
         if(isset($data["dataApi"])) {
             $dataApi = array_merge($dataApi,$data["dataApi"]);
             if(isset($dataApi["authentication"])) {
@@ -393,6 +371,7 @@ class Config extends CI_Controller {
         $this->save_config("$path/{$this->configFiles['auth']}",$dataApi["authentication"] ?? [],$accessRights);
         $this->save_config("$path/{$this->configFiles['data_api_acls']}",$dataApi["acls"] ?? [],$accessRights);
         $this->save_config("$path/{$this->configFiles['admin_config']}",$adminConfig,$accessRights);
+        error_log("adminConfig: ".json_encode($adminConfig)."\n");
         
         $this->get_admin_secret($apiName);
     }
@@ -417,11 +396,12 @@ class Config extends CI_Controller {
     }
 
     /**
-     * triggers the regeneration of the 
+     * Regeneration of the structure
      * @param $apiName
+     * @param $option
      * @throws Exception
      */
-    function regen_structure($apiName) {
+    function regen_structure($apiName,$option=null) {
         $this->authorize_config_update($apiName);
         $apiConfigDir = "$this->configDir/$apiName";
         $conn = include "$apiConfigDir/{$this->configFiles['connection']}";
@@ -432,7 +412,6 @@ class Config extends CI_Controller {
         } catch (Exception $exception) {
             HttpResp::exception_out($exception);
         }
-
 
         foreach(array_keys($newStructure) as $resourceName){
             // copy hooks from old structure to new structure
@@ -540,9 +519,11 @@ class Config extends CI_Controller {
     }
 
     /**
+     * It will replace the entire config with the config provided in the input
      * @param $apiName
      */
     private function replace_structure($apiName) {
+        error_log("replace_structure: $apiName\n");
         $this->authorize_config_update($apiName);
 
         $new_structure = $this->get_input_data();
@@ -568,6 +549,11 @@ class Config extends CI_Controller {
         HttpResp::json_out(200,$new_structure);
     }
 
+    /**
+     * It will patch the current config with latest config retrieved from DB
+     * @param $apiName
+     * @throws Exception
+     */
     function patch_structure($apiName) {
         $this->authorize_config_update($apiName);
 
@@ -613,6 +599,19 @@ class Config extends CI_Controller {
         HttpResp::json_out(200,$acls['IP'] ?? []);
     }
 
+    private function validate_ip_acl($acl) {
+        if(!isset($acl['ip'])) {
+            HttpResp::json_out(400, ["error" => "Invalid ACL rule: missing ip ".json_encode($acl)]);
+        }
+        if(!isset($acl['allow'])) {
+            HttpResp::json_out(400, ["error" => "Invalid ACL rule: missing allow ".json_encode($acl)]);
+        }
+        if(!preg_match("/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]{1,2})?$/",$acl['ip'])) {
+            HttpResp::json_out(400, ["error" => "Invalid ACL rule: invalid ip ".json_encode($acl)]);
+        }
+        return $acl;
+    }
+
     private function update_acls_ip($apiName) {
         $acls = $this->get_input_data();
         if(!is_array($acls)) {
@@ -622,11 +621,7 @@ class Config extends CI_Controller {
         $oldAcls = include "$this->configDir/$apiName/{$this->configFiles['data_api_acls']}";
         $oldAcls['IP'] = [];
         foreach ($acls as $acl) {
-            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['allow'])
-                    || !preg_match("/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]{1,2})?$/",$acl['ip'])) {
-                HttpResp::json_out(400, ["error" => "Invalid ACL rule".json_encode($acl)]);
-            }
-            $oldAcls['IP'][] = $acl;
+            $oldAcls['IP'][] = $this->validate_ip_acl($acl);
         }
         
         $this->save_config("$this->configDir/$apiName/{$this->configFiles['data_api_acls']}",$oldAcls);
@@ -651,6 +646,19 @@ class Config extends CI_Controller {
         HttpResp::json_out(200,$acls['path'] ?? []);
     }
 
+    private function validate_path_acl($acl) {
+        if (!isset($acl['pattern']) ) {
+            HttpResp::json_out(400, ["error" => "Invalid path ACL: missing pattern","acl"=>$acl]);
+        }
+        if(!isset($acl['allow'])) {
+            HttpResp::json_out(400, ["error" => "Invalid path ACL: missing allow","acl"=>$acl]);
+        }
+        if(!isset($acl['method'])) {
+            HttpResp::json_out(400, ["error" => "Invalid path ACL: missing methods","acl"=>$acl]);
+        } 
+        return $acl;
+    }
+
     private function update_acls_path($apiName) {
         $acls = $this->get_input_data();
         if(!is_array($acls)) {
@@ -659,12 +667,7 @@ class Config extends CI_Controller {
         $oldAcls = include "$this->configDir/$apiName/{$this->configFiles['data_api_acls']}";
         $oldAcls['path'] = [];
         foreach ($acls as $acl) {
-            if (!is_array($acl) || !isset($acl['pattern']) 
-                || !isset($acl['allow'])
-                || !isset($acl['methods'])) {
-                HttpResp::json_out(400, ["error" => "Invalid ACL rule"]);
-            }
-            $oldAcls['path'][] = $acl;
+            $oldAcls['path'][] = $this->validate_path_acl($acl);
         }
         $this->save_config("$this->configDir/$apiName/{$this->configFiles['data_api_acls']}",$oldAcls);
         $this->get_acls_path($apiName);
@@ -693,10 +696,7 @@ class Config extends CI_Controller {
             HttpResp::json_out(400,["error"=>"Invalid input data"]);
         }
         foreach($acls as $acl) {
-            if(!is_array($acl) || !isset($acl['ip']) || !isset($acl['allow'])
-                    || !preg_match("/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]{1,2})?$/",$acl['ip'])) {
-                HttpResp::json_out(400, ["error" => "Invalid ACL rule".json_encode($acl)]);
-            }
+            $this->validate_ip_acl($acl);
         }
         $adminConfig = include "$this->configDir/$apiName/{$this->configFiles['admin_config']}";
         $adminConfig["acls"] = $acls;
@@ -872,13 +872,11 @@ class Config extends CI_Controller {
             HttpResp::exception_out($exception);
         }
 
-
-
-
     }
 
     function not_found() {
         HttpResp::not_found(["error"=>"Resource not found"]);
+        
     }
 
     function home() {
@@ -959,20 +957,20 @@ class Config extends CI_Controller {
         HttpResp::json_out(200,$resp);
     }
 
-    function structure($apiName) {
+    function structure($apiName,$option=null) {
         $this->api_exists($apiName);
         switch($_SERVER["REQUEST_METHOD"]) {
             case "GET":
-                $this->get_structure($apiName);
+                $this->get_structure($apiName,$option);
                 break;
             case "POST":
-                $this->regen_structure($apiName);
+                $this->regen_structure($apiName,$option);
                 break;
             case "PATCH":
-                $this->patch_structure($apiName);
+                $this->patch_structure($apiName,$option);
                 break;
             case "PUT":
-                $this->replace_structure($apiName);
+                $this->replace_structure($apiName,$option);
                 break;
         }
     }

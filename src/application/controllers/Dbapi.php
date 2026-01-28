@@ -116,29 +116,7 @@ class Dbapi extends CI_Controller
         return $this->insertMaxRecursionLevel;
     }
 
-    function dummy()
-    {
-        try {
-            $this->createMultipleRecords();
-//            $this->updateMultipleRecords();
-//            $this->deleteMultipleRecords();
-            $this->getMultipleRecords();
-            $this->getSingleRecord();
-            $this->create_records();
-//            $this->updateSingleRecord();
-//            $this->deleteSingleRecord();
-            $this->getRelationship();
-//            $this->getRelated();
-            $this->create_relationship();
-            $this->update_relationship();
-            $this->delete_relationship();
-        }
-        catch (Exception $e) {
-
-        }
-    }
-
-
+  
     function __construct ()
     {
         parent::__construct();
@@ -157,13 +135,19 @@ class Dbapi extends CI_Controller
         //header("Access-Control-Allow-Origin: *");
 
 
-        //$this->_init();
-//        $this->rateLimiter = new RateLimiter();
+        // $this->_init();
+        // $this->rateLimiter = new RateLimiter();
         
         // Optional: Configure different limits
         // $this->rateLimiter->setLimit(100, 60); // 100 requests per minute
     }
 
+    /**
+     * Remap method to handle API requests
+     * @param string $method
+     * @param array $params
+     * @return void
+     */
     public function remap($method, $params = array()) {
         // Rate limiting check
         $clientIp = $this->input->ip_address();
@@ -201,6 +185,7 @@ class Dbapi extends CI_Controller
         $this->load->library("Utilities");
 
         $headers = getallheaders();
+       
 
         // load default security
         $security = [];
@@ -208,10 +193,10 @@ class Dbapi extends CI_Controller
         $data = include "$this->configDir/$configName/{$this->configFiles['data_api_acls']}";
         $security = array_merge($security,$data ? $data : []);
 
-
         // check if client IP is allowed 
         $ipAcls = $security["IP"] ?? [];
         $pathAcls = $security["path"] ?? [];
+
         //  print_r($pathAcls);
         $allow = false;
         foreach($ipAcls as $rule) {
@@ -242,6 +227,7 @@ class Dbapi extends CI_Controller
         try {
             preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
             $jwt = count($matches)==2 ? $matches[1] : null;
+            //echo $jwt."- ".$auth["jwt_key"]."\n";
             if(empty($jwt)) {
                 throw new Exception("No JWT token provided",401);
             }
@@ -249,10 +235,8 @@ class Dbapi extends CI_Controller
             $isAuth = true;
         }
         catch (Exception $e) {
-            $payload = null;
+            $payload = new stdClass();
         }
-
-        $currentUserData = [];
 
         $allowGuest = $auth["allowGuest"] ?? false;
         // if auth is enabled and guest access is not allowed, check JWT
@@ -265,51 +249,68 @@ class Dbapi extends CI_Controller
                 throw new Exception("Token expired",401);
             }
 
-            $currentUserData = $payload;
+        }
+        $userData = [];
+        foreach(get_object_vars($payload) as $key => $value) {
+            $userData['{{'.$key.'}}'] = $value;
         }
 
 
         // check rules
         $rules = $security["path"] ?? [];
         $allow = false;
-        //echo $this->basePath."/$configName/data\n";
+
+        if($this->input->get("dbg")) {
+            print_r($payload);
+        }
+
+        
         $reqPath = str_replace($this->basePath."/$configName/data","",$_SERVER["REQUEST_URI"]);
+        print_r($rules);
         foreach ($rules as $rule) {
-            $methodPattern = "/^".strtoupper(str_replace("*",".*",$rule["methods"]))."$/i";
-            if(!preg_match($methodPattern,$_SERVER["REQUEST_METHOD"])) {
-                // echo "method not allowed".$_SERVER["REQUEST_METHOD"].json_encode($rule)."\n";
-                continue;
-            }
+            $urlPattern = "/^".strtr(str_replace(["/","*"],["\\/",".*"],$rule["pattern"]),$userData)."$/i";
             
-            $urlPattern = "/^".strtr(str_replace(["/","*"],["\\/",".*"],$rule["pattern"]),$currentUserData)."/i";
-            // echo "url pattern: $urlPattern\n";
             if(!preg_match($urlPattern,$reqPath)) {
                 // echo "url not allowed $reqPath".json_encode($rule)."\n";
                 continue;
             }
 
-            $reqAuth = isset($rule["isAuthenticated"]) ? $rule["isAuthenticated"] : $allowGuest;
-            if($reqAuth && !$isAuth) {
-                // echo "auth required".$_SERVER["REQUEST_URI"].json_encode($rule)."\n";
-                continue;
+            if(isset($rule["method"]) && $rule["method"]) {
+                $methodPattern = "/^".strtoupper(str_replace("*",".*",$rule["method"]))."$/i";
+                print_r([$methodPattern,$_SERVER["REQUEST_METHOD"]]);
+                if(!preg_match($methodPattern,$_SERVER["REQUEST_METHOD"])) {
+                    // echo "method not allowed".$_SERVER["REQUEST_METHOD"].json_encode($rule)."\n";
+                    continue;
+                }
             }
-
+           
+            if($this->input->get("dbg")) {
+                echo "urlPattern: $urlPattern\n";
+                echo "reqPath: $reqPath\n";
+            }
             $allow = $rule["allow"] ?? false;
             break;
         }
         
+        if($this->input->get("dbg")) {
+            echo "allow: $allow\n";
+        }
 
         if(!$allow) {
-            throw new Exception("You are not allowed to access this resource",401);
+            throw new Exception("You are not allowed to access this resource $_SERVER[REQUEST_URI]",401);
         }
     }
 
     
     /**
-     * reads API configuration file, connects to the database and initializes the DataModel (structure)
-     * initializes internal objects:
-     * - apiDm: DataModel
-     * - apiDb: database connection
+     * Initializes the API: 
+     * - reads API configuration file
+     * - connects to the database
+     * - initializes the DataModel (structure)
+     * - initializes internal objects:
+     *   - apiDm: DataModel
+     *   - apiDb: database connection
+     * 
      * @param string $configName
      */
     private function _init(string $configName)
@@ -537,7 +538,7 @@ class Dbapi extends CI_Controller
     }
 
     /**
-     * Update multiple records of different types with a single call
+     * Update multiple records of different types with a single call based on filter
      * @param string $configName
      * @param string $resourceName
      * @param array|null $inputData
@@ -1026,7 +1027,7 @@ class Dbapi extends CI_Controller
         // init DB connection & load config
         $this->_init($configName);
         // parse input paramas into request
-
+        error_log("get_records: $resourceName afterCreate: $afterCreate\n");
         try {
             if(is_null($request))
                 $request = $this->get_dbapi_request($resourceName);
@@ -1041,6 +1042,7 @@ class Dbapi extends CI_Controller
         if(!is_null($recId)) {
             $request->offset = 0;
         }
+        
 
         // validation
         try {
@@ -1068,7 +1070,6 @@ class Dbapi extends CI_Controller
                 HttpResp::json_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
-//        print_r($request);
         // fetch records
         try {
             $result = $this->recs->get_records($request);
@@ -1090,13 +1091,13 @@ class Dbapi extends CI_Controller
             }
             $result = $result->records[0];
         }
+        
 
         if($internal)
             return $result;
 
         $outputFormat = $this->input->get("format");
         $outputFormat = $outputFormat && in_array($outputFormat,["csv","xls","json"]) ? $outputFormat : "json";
-
         switch ($outputFormat) {
             case "csv":
                 $this->out_csv($resourceName,$recId,$request,$result,$this->input->get("filename"));
@@ -1105,10 +1106,12 @@ class Dbapi extends CI_Controller
                 $this->out_xls($resourceName,$recId,$request,$result,$this->input->get("filename"));
                 break;
             case "json":
-                $this->out_jsonapi($result,200);
+                error_log("get_records asdasd: $resourceName afterCreate: $afterCreate\n");
+                $this->out_jsonapi($result,$afterCreate ? 201 : 200);
         }
         return null;
     }
+
     static  private function record2csv($record,$fieldsNames,$relationsNames) {
             $rec = [];
             foreach ($fieldsNames as $fldName) {
@@ -1364,7 +1367,7 @@ class Dbapi extends CI_Controller
      * @param $relationName
      * @param $relRecId
      */
-    function deleteRelated($configName,$resourceName, $recId, $relationName, $relRecId)
+    function delete_related($configName,$resourceName, $recId, $relationName, $relRecId)
     {
 
         $this->_init($configName);
@@ -1829,7 +1832,7 @@ class Dbapi extends CI_Controller
      * @param $resourceName
      * @param $recId
      */
-    function deleteSingleRecord($configName, $resourceName, $recId)
+    function delete_single_record($configName, $resourceName, $recId)
     {
         $this->_init($configName);
         try {

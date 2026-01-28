@@ -10,6 +10,7 @@ class Config
     private $configDir;
     private $errorsCatalog;
     private $input;
+    
     function __construct($apiName,$configDir,$errorsCatalog,$input)
     {
         $this->apiName = $apiName;
@@ -41,7 +42,7 @@ class Config
      */
     function update_auth($apiName)
     {
-
+        $this->authorize_config_update($apiName);
         $authFilePath = "$this->configDir/auth.php";
 
         $authData = $this->sanitize_auth_config($this->get_input_data());
@@ -235,10 +236,18 @@ class Config
             throw \dbAPI\API\Exception::from_error_catalog($this->errorsCatalog["access"]["ip_not_authorized"]);
     }
 
+    /**
+     * Authorizes the configuration update
+     * @param $apiName
+     */
     private function authorize_config_update($apiName)
     {
 
-        $security = require "$this->configDir/security.php";
+        $this->api_exists($apiName);
+        $security = @include "$this->configDir/security.php";
+        if(!$security) {
+            throw \dbAPI\API\Exception::from_error_catalog($this->errorsCatalog["config"]["security_not_found"]);
+        }
 
         // check secret
         $secret = $this->headers["x-api-key"] ?? $this->headers["X-Api-Key"] ?? $this->input->get("xApiKey") ?? null;
@@ -250,7 +259,12 @@ class Config
 
     }
 
-    private function authorize_dbapi_config()
+    /**
+     * Used only by the owner of DBAPI to create a new api or list apis. 
+     * Secret is configured in the config.php file.
+     * @param $apiName
+     */
+    private function authorize_dbapi_config($apiName)
     {
         $secret = $this->headers["x-api-key"] ?? $this->headers["X-Api-Key"] ?? $this->input->get("xApiKey") ?? null;
 
@@ -258,10 +272,10 @@ class Config
         if (!$secret || $secret !== $this->config->item("config_api_secret")) {
             throw \dbAPI\API\Exception::from_error_catalog($this->errorsCatalog["access"]["secret_not_authorized"]);
         }
-
     }
 
     /**
+     * Get the input data from the request
      * @return mixed
      */
     private function get_input_data()
@@ -279,10 +293,14 @@ class Config
         }
     }
 
+    /**
+     * Checks if the api exists
+     * @param $apiName
+     * @return bool
+     */
     private function api_exists($apiName)
     {
-        $path = "$this->configDir/$apiName";
-        return is_dir($path);
+        return is_dir("$this->configDir/$apiName");
     }
 
     /**
@@ -667,6 +685,38 @@ class Config
         HttpResp::json_out(200, $newStruct);
     }
 
+    /**
+     * Hooks structure
+     * {
+     *  "create": [
+     *      {
+     *          "url": "https://example.com/create",
+     *          "method": "POST",
+     *          "headers": {
+     *              "Content-Type": "application/json"
+     *          }
+     *      }
+     *  ]
+     *  "update": [
+     *      {
+     *          "url": "https://example.com/update",
+     *          "method": "POST",
+     *          "headers": {
+     *              "Content-Type": "application/json"
+     *          }
+     *      }
+     *  ]
+     *  "delete": [
+     *      {
+     *          "url": "https://example.com/delete",
+     *          "method": "POST",
+     *          "headers": {
+     *              "Content-Type": "application/json"
+     *          }
+     *      }
+     *  ]
+     * }
+     */
     function get_hooks($apiName, $resourceName = null)
     {
         $this->authorize_config_update($apiName);
@@ -678,17 +728,19 @@ class Config
             } else {
                 HttpResp::json_out(200, []);
             }
-        } else {
-            foreach ($structure as $resourceName => $resource) {
-                if (isset($resource["hooks"])) {
-                    $hooks[$resourceName] = $resource["hooks"];
-                }
-            }
-            HttpResp::json_out(200, $hooks);
+            die();
         }
+
+        foreach ($structure as $resourceName => $resource) {
+            if (isset($resource["hooks"])) {
+                $hooks[$resourceName] = $resource["hooks"];
+            }
+        }
+        HttpResp::json_out(200, $hooks);
+        
     }
 
-    function update_hooks($apiName, $resourceName, $hookName)
+    function update_hooks($apiName, $resourceName)
     {
         $this->authorize_config_update($apiName);
         $structure = require_once($this->config->item("configs_dir") . "/$apiName/structure.php");

@@ -5,66 +5,93 @@
         "hostname": "mysql",
         "username": "dbapiator",
         "password": "parola123",
-        "database": "dbapiator_demo"
+        "database": "book_management"
     },
     "configApi": {
         "acls": [
-            {"ip": "172.16.0.0/12", "action": "allow"},
-            {"ip": "0.0.0.0/0", "action": "deny"}
+            {"ip": "172.16.0.0/12", "allow": true},
+            {"ip": "172.21.0.0/12", "allow": true},
+            {"ip": "0.0.0.0/0", "allow": false}
         ],
         "secret": "secret"
     },
     "dataApi": {
         "acls": {
             "IP": [
-                {"ip": "172.16.0.0/12", "action": "allow"},
-                {"ip": "0.0.0.0/0", "action": "deny"}
+                {
+                    "ip": "172.16.0.0/12",
+                    "allow": true
+                },
+                {
+                    "ip": "172.21.0.0/12",
+                    "allow": true
+                },
+                
+                {
+                    "ip": "192.168.0.0/12",
+                    "allow": true
+                },
+                {
+                    "ip": "0.0.0.0/0",
+                    "allow": false
+                }
             ],
             "path": [
                 {
                     "pattern": "/*",
                     "method": "OPTIONS",
-                    "action": "allow"
+                    "allow": true
                 },
                 {
                     "pattern": "/products",
                     "method": "GET",
-                    "action": "allow"
+                    "allow": true
                 },
                 {
                     "pattern": "/products",
                     "method": "*",
-                    "action": "deny"
+                    "allow": false
                 },
                 {
-                    "pattern": "/customers/{{userId}}",
+                    "pattern": "/customers/{{userId}}/*",
                     "method": "GET",
-                    "action": "allow"
+                    "allow": true
                 },
                 {
-                    "pattern": "/customers/{{userId}}",
+                    "pattern": "/customers/{{userId}}/*",
                     "method": "PATCH",
-                    "action": "allow"
+                    "allow": true
                 },
                 {
-                    "pattern": "/customers/{{userId}}",
+                    "pattern": "/customers/{{userId}}/*",
                     "method": "*",
-                    "action": "deny"
+                    "allow": false
                 },
                 {
-                    "pattern": "/orders",
+                    "pattern": "/orders/*",
                     "method": "*",
-                    "action": "deny"
+                    "allow": false
+                },
+                {
+                    "pattern": "/Users/*",
+                    "method": "POST",
+                    "allow": true
+                },
+                {
+                    "pattern": "/Users/{{unm}}/*",
+                    "method": "*",
+                    "allow": true
                 }
+                
             ]
         },
         "authentication": {
             "validity": 172800,
-            "loginQuery": "select username unm, role from users where username='[[login]]' and pass=sha1('[[password]]');",
+            "loginQuery": "select username unm, role from Users where username='[[login]]' and password_hash=('[[password]]');",
             "2fa": "",
             "resetQuery": "",
-            "updatePasswordQuery": "UPDATE users SET pass='[[newpassword]]' WHERE username='[[login]]' and pass=sha1('[[password]]',224);",
-            "allowGuest": false
+            "updatePasswordQuery": "UPDATE Users SET pass='[[newpassword]]' WHERE username='[[login]]' and password_hash=('[[password]]',224);",
+            "allowGuest": true
         }
     }
 }

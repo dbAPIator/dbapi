@@ -2,26 +2,26 @@
     {
         "pattern": "/*",
         "method": "OPTIONS",
-        "action": "allow"
+        "allow": true
     },
     {
         "pattern": "/products",
         "method": "GET",
-        "action": "allow"
+        "allow": true
     },
     {
         "pattern": "/products",
         "method": "*",
-        "action": "deny"
+        "allow": false
     },
     {
         "pattern": "/customers/{{userId}}",
         "method": "GET",
-        "action": "allow"
+        "allow": true
     },
     {
         "pattern": "/customers/{{userId}}",
         "method": "PATCH",
-        "action": "allow"
+        "allow": true
     }
 ]

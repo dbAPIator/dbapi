@@ -150,6 +150,7 @@ class Records {
         if($dbg) {
             echo $countSql."\n";
         }   
+        // echo $countSql."\n";
 
         $res = $this->dbdrv->query($countSql);
         $err=$this->dbdrv->error();

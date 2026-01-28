@@ -1,1 +1,3 @@
 src/apis
+.docker_data/
+.idea

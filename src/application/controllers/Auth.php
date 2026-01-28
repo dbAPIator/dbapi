@@ -180,7 +180,7 @@ class Auth extends CI_Controller {
     private function generate_token($payload,$auth) {
         $validity = $auth["validity"];
         $payload["exp"] = time()+$validity;
-            $jwt = JWT::encode($payload, $auth["jwt_key"],  'HS256');
+        $jwt = JWT::encode($payload, $auth["jwt_key"],  'HS256');
         HttpResp::json_out(200,[
             "access_token"=>$jwt,
             "expires_in"=>$validity,
@@ -194,12 +194,12 @@ class Auth extends CI_Controller {
      */
     private function fetch_user($configName) {
         $auth = $this->db_connect($configName);
+        // print_r($auth);
 
         $uname = $this->input->post("login");
         $upass = $this->input->post("password");
 
         $sql = strtr($auth["loginQuery"],["[[login]]"=>$uname,"[[password]]"=>$upass]);
-
         /**
          * @var CI_DB_result
          */

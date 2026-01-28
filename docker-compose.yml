@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   dbapi:
-    image: dbapiator/dbapi
+    build: ./
     ports:
       - "8888:80"
     volumes:
       - ./src:/app
-      - ./data/apis:/app/apis
+      - ./dbconfigs:/app/apis
     depends_on:
       - mysql
       - redis
@@ -22,7 +20,7 @@ services:
       - DEFAULT_PAGE_SIZE=100
       - MAX_PAGE_SIZE=10000
       - CONFIG_API_SECRET=myverysecuresecret
-      - CONFIG_API_ALLOWED_IPS=["0.0.0.0/0"]
+      - CONFIG_API_IPS_ACLS=[{"allow":true,"ip":"0.0.0.0/0"}]
       
   mysql:
     image: mariadb:latest
@@ -32,9 +30,7 @@ services:
       - MYSQL_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=rootpassword
     volumes:
-      - ./data/mysql:/var/lib/mysql
-    # ports:
-    #   - "3306:3306"
+      - ./.docker_data/mysql:/var/lib/mysql
 
   adminer:
     image: adminer:latest
@@ -53,5 +49,5 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ./data/redis:/data
+      - ./.docker_data/redis:/data
 

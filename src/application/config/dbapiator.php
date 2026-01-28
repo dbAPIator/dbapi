@@ -40,7 +40,7 @@ $config["max_page_size"] = $_ENV["MAX_PAGE_SIZE"] ?? 10000;
 // configuration API secret; pass it in header as x-api-key or as an URL parameter
 $config["config_api_secret"] = $_ENV["CONFIG_API_SECRET"] ?? "myverysecuresecret";
 // restrict access to configuration API based on IPs
-$config["config_api_allowed_ips"] = isset($_ENV["CONFIG_API_ALLOWED_IPS"]) ? json_decode($_ENV["CONFIG_API_ALLOWED_IPS"]) : ["0.0.0.0/0"];
+$config["config_api_ips_acls"] = isset($_ENV["CONFIG_API_IPS_ACLS"]) ? json_decode($_ENV["CONFIG_API_IPS_ACLS"],true) : [["allow"=>true,"ip"=>"0.0.0.0/0"]];
 
 $config["redis_host"] = $_ENV["REDIS_HOST"] ?? null;
 $config["redis_port"] = $_ENV["REDIS_PORT"] ?? 6379;

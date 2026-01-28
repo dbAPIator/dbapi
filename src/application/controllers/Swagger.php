@@ -1,15 +1,67 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: vsergiu
- * Date: 9/11/19
- * Time: 9:03 AM
- */
-$recursionLevel = 10;
+require_once(APPPATH."libraries/HttpResp.php");
+require_once(APPPATH."third_party/dbAPI/Autoloader.php");
+require_once (BASEPATH."/../vendor/autoload.php");
 
-/********************************
- * path: /
- ********************************/
+use dbAPI\Autoloader;
+use dbAPI\API\Datamodel;
+
+Autoloader::register();
+
+/**
+ * Class Swagger
+ * @property CI_Loader load
+ * @property CI_Config config
+ * @property CI_Input input
+ * @property CI_DBUtil dbutil
+ * @property CI_DB_pdo_driver db
+ * @property CI_DB_forge dbforge
+ * @property CI_DB_result result
+ * @property CI_DB_result_object result_object
+ * @property CI_DB_result_array result_array
+ * @property CI_DB_result_object result_object
+ * @property CI_DB_result_array result_array
+ */
+class Swagger extends CI_Controller {
+
+    public function __construct() {
+        parent::__construct();
+        $this->load->config("dbapiator");
+    }
+
+    public function index($configName) {
+        $configDir = $this->config->item("configs_dir");
+        $apiConfigDir = "$configDir/$configName";
+        $baseUrl = $this->config->item("base_url");
+
+        if(!is_dir($apiConfigDir)) {
+            // API Not found
+            // TODO: log to applog (API not found)
+            HttpResp::exception_out(new Exception("Invalid API config dir $apiConfigDir",500));
+        }
+
+        // load structure
+        $structure = @include($apiConfigDir."/structure.php");
+        if(!$structure) {
+            // Invalid API config
+            // TODO: log error: wrong api config
+            HttpResp::exception_out(new Exception("Invalid API configuration",404));
+        }
+
+        $dm = Datamodel::init($structure);
+
+        $openApiSpec = generate_swagger(
+            $baseUrl."apis/$configName/data",
+            $dm->get_dataModel(),
+            "$configName Spec",
+            "$configName spec",
+            "$configName",
+            "test@user.com");
+        
+        HttpResp::json_out(200,$openApiSpec);
+    }
+    
+}
 
 
 /**
@@ -1278,7 +1330,7 @@ function create_components(&$openApiSpec,$resourceName,$resourceSpecifications) 
 /**
  * @param $hostName
  * @param $dataModel
- * @param $apiDescription
+  * @param $apiDescription
  * @param $apiTitle
  * @param $contactName
  * @param $contactEmail

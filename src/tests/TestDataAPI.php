@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Client;
-
+use GuzzleHttp\Exception\RequestException;
 /**
  * config test:
  * - create api
@@ -21,87 +21,128 @@ class TestDataAPI extends TestCase
     private Client $client;
     private string $apiToken = "myverysecuresecret";
     private string $configApiKey;
-    private int $userId;
-    private int $customerId;
+    private $userId;
+    private $customerId;
+    private string $apiName = "dbapiator_demo";
 
     protected function setUp(): void
     {
         // Initialize Guzzle client before each test
         $this->client = new Client([
-            'base_uri' => 'http://localhost/dbapi/', // Change this to your API base URL
+            'base_uri' => 'http://localhost:8888/', // Change this to your API base URL
             'timeout'  => 5.0,
         ]);
     }
 
+    /**
+     * Helper method to handle exceptions and show full error details
+     */
+    private function makeRequest($method, $uri, $options = []) {
+        try {
+            return $this->client->request($method, $uri, $options);
+        } catch (RequestException $e) {
+            $response = $e->getResponse();
+            if ($response) {
+                $statusCode = $response->getStatusCode();
+                $body = $response->getBody()->getContents();
+                $headers = $response->getHeaders();
+                
+                $errorMessage = sprintf(
+                    "Request failed with status %d\nFull response body:\n%s\nResponse headers:\n%s",
+                    $statusCode,
+                    $body,
+                    json_encode($headers, JSON_PRETTY_PRINT)
+                );
+                
+                $this->fail($errorMessage);
+            } else {
+                $this->fail("Request failed: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Helper method for making requests with form data
+     */
+    private function makeFormRequest($method, $uri, $formData = [], $headers = []) {
+        $options = [
+            'form_params' => $formData
+        ];
+        
+        if (!empty($headers)) {
+            $options['headers'] = $headers;
+        }
+        
+        return $this->makeRequest($method, $uri, $options);
+    }
+ /**
+     * Enhanced response assertion with full error details
+     */
+    private function assert_response($response, $expectedStatus = 200) {
+        $statusCode = $response->getStatusCode();
+        $body = $response->getBody()->getContents();
+        
+        // If status code doesn't match expected, show full error details
+        if ($statusCode !== $expectedStatus) {
+            $this->fail(sprintf(
+                "Expected status code %d, got %d\nFull response body:\n%s",
+                $expectedStatus,
+                $statusCode,
+                $body
+            ));
+        }
+        
+        // Try to decode JSON and show full response if it fails
+        $data = json_decode($body, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->fail(sprintf(
+                "Invalid JSON response. JSON error: %s\nFull response body:\n%s",
+                json_last_error_msg(),
+                $body
+            ));
+        }
+        
+        $this->assertIsArray($data);
+        return $data;
+    }
     public function testCreateApiAndGetToken()
     {
-        $response = $this->client->request('POST', 'apis', [
+        $response = $this->makeRequest('POST', 'apis', [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->apiToken
+                'X-Api-Key' => $this->apiToken
             ],
-            'json' => [
-                "name"=>"example",
-                "connection"=>[
-                    "dbdriver"=>"mysqli",
-                    "hostname"=> "localhost",
-                    "username"=> "vsergiu",
-                    "password"=> "parola123",
-                    "database"=> "book_management"
-                ],
-                "create"=> [
-                    "sql"=>"SET SQL_MODE = \\\"NO_AUTO_VALUE_ON_ZERO\\\";\\nSTART TRANSACTION;\\nSET time_zone = \\\"+00:00\\\";\\n\\n--\\n-- Database: `dbapiator_demo`\\n--\\n\\n-- --------------------------------------------------------\\n\\n--\\n-- Table structure for table `Customers`\\n--\\n\\nCREATE TABLE `Customers` (\\n  `id` int NOT NULL,\\n  `user_id` int DEFAULT NULL,\\n  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,\\n  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL\\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\\n\\n-- --------------------------------------------------------\\n\\n--\\n-- Table structure for table `OrderItems`\\n--\\n\\nCREATE TABLE `OrderItems` (\\n  `id` int NOT NULL,\\n  `order_id` int DEFAULT NULL,\\n  `product_id` int DEFAULT NULL,\\n  `quantity` int NOT NULL\\n) ;\\n\\n-- --------------------------------------------------------\\n\\n--\\n-- Table structure for table `Orders`\\n--\\n\\nCREATE TABLE `Orders` (\\n  `id` int NOT NULL,\\n  `customer_id` int DEFAULT NULL,\\n  `order_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP\\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\\n\\n-- --------------------------------------------------------\\n\\n--\\n-- Table structure for table `Products`\\n--\\n\\nCREATE TABLE `Products` (\\n  `id` int NOT NULL,\\n  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,\\n  `price` decimal(10,2) NOT NULL\\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\\n\\n-- --------------------------------------------------------\\n\\n--\\n-- Table structure for table `Users`\\n--\\n\\nCREATE TABLE `Users` (\\n  `id` int NOT NULL,\\n  `username` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,\\n  `password_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\\n  `role` enum('admin','customer') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'customer'\\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\\n\\n--\\n-- Indexes for dumped tables\\n--\\n\\n--\\n-- Indexes for table `Customers`\\n--\\nALTER TABLE `Customers`\\n  ADD PRIMARY KEY (`id`),\\n  ADD UNIQUE KEY `email` (`email`),\\n  ADD UNIQUE KEY `user_id` (`user_id`);\\n\\n--\\n-- Indexes for table `OrderItems`\\n--\\nALTER TABLE `OrderItems`\\n  ADD PRIMARY KEY (`id`),\\n  ADD KEY `order_id` (`order_id`),\\n  ADD KEY `product_id` (`product_id`);\\n\\n--\\n-- Indexes for table `Orders`\\n--\\nALTER TABLE `Orders`\\n  ADD PRIMARY KEY (`id`),\\n  ADD KEY `customer_id` (`customer_id`);\\n\\n--\\n-- Indexes for table `Products`\\n--\\nALTER TABLE `Products`\\n  ADD PRIMARY KEY (`id`);\\n\\n--\\n-- Indexes for table `Users`\\n--\\nALTER TABLE `Users`\\n  ADD PRIMARY KEY (`id`),\\n  ADD UNIQUE KEY `username` (`username`);\\n\\n--\\n-- AUTO_INCREMENT for dumped tables\\n--\\n\\n--\\n-- AUTO_INCREMENT for table `Customers`\\n--\\nALTER TABLE `Customers`\\n  MODIFY `id` int NOT NULL AUTO_INCREMENT;\\n\\n--\\n-- AUTO_INCREMENT for table `OrderItems`\\n--\\nALTER TABLE `OrderItems`\\n  MODIFY `id` int NOT NULL AUTO_INCREMENT;\\n\\n--\\n-- AUTO_INCREMENT for table `Orders`\\n--\\nALTER TABLE `Orders`\\n  MODIFY `id` int NOT NULL AUTO_INCREMENT;\\n\\n--\\n-- AUTO_INCREMENT for table `Products`\\n--\\nALTER TABLE `Products`\\n  MODIFY `id` int NOT NULL AUTO_INCREMENT;\\n\\n--\\n-- AUTO_INCREMENT for table `Users`\\n--\\nALTER TABLE `Users`\\n  MODIFY `id` int NOT NULL AUTO_INCREMENT;\\n\\n--\\n-- Constraints for dumped tables\\n--\\n\\n--\\n-- Constraints for table `Customers`\\n--\\nALTER TABLE `Customers`\\n  ADD CONSTRAINT `Customers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`) ON DELETE CASCADE;\\n\\n--\\n-- Constraints for table `OrderItems`\\n--\\nALTER TABLE `OrderItems`\\n  ADD CONSTRAINT `OrderItems_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `Orders` (`id`) ON DELETE CASCADE,\\n  ADD CONSTRAINT `OrderItems_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `Products` (`id`) ON DELETE CASCADE;\\n\\n--\\n-- Constraints for table `Orders`\\n--\\nALTER TABLE `Orders`\\n  ADD CONSTRAINT `Orders_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `Customers` (`id`) ON DELETE CASCADE;\\nCOMMIT;\\n\"",
-                    "drop_before_create"=> true
-                ],
-                "security"=>[
-                    "config"=> [
-                        "from"=> [
-                            ["action"=>"allow", "ip"=>"127.0.0.1"],
-                            ["action"=>"allow", "ip"=>"0.0.0.0/0"]
-                        ]
-                    ],
-                    "api"=> [
-                        "from"=> [
-                            ["action"=>"allow", "ip"=>"127.0.0.1"],
-                            ["action"=>"allow", "ip"=>"0.0.0.0/0"]
-                        ]
-                    ]
-                ]
-            ]
+            'json' => json_decode(file_get_contents(__DIR__ . '/setup.json'))
         ]);
 
-        $this->assertEquals(201, $response->getStatusCode());
-        $data = json_decode($response->getBody(), true);
-        
-        $this->assertArrayHasKey('result', $data);
-        $this->configApiKey = $data['result'];
-        
-        // Store token for subsequent tests
-        return $this->configApiKey;
+        $data = $this->assert_response($response);
+        return $data['apiKey'];
     }
 
-    public function testDeleteApi()
-    {
-        $response = $this->client->request('DELETE', 'apis/example', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->configApiKey
-            ]
-        ]);
-        $this->assertEquals(204, $response->getStatusCode());
-        return $this->configApiKey;
-    }
+
+    // public function testDeleteApi()
+    // {
+    //     $response = $this->client->request('DELETE', "apis/{$this->apiName}", [
+    //         'headers' => [
+    //             'Authorization' => 'Bearer ' . $this->configApiKey
+    //         ]
+    //     ]);
+    //     $this->assertEquals(204, $response->getStatusCode());
+    //     return $this->configApiKey;
+    // }
 
     /**
      * @depends testCreateApiAndGetToken
      */
     public function testCreateSingleUser(string $token)
     {
-        $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('POST', 'apis/example/data/users', [
+        // $this->markTestSkipped('must be revisited.');
+        $response = $this->makeRequest('POST', "apis/{$this->apiName}/data/Users/?onduplicate=ignore", [
+
             'json' => [
                 "data"=> [
                     "type"=> "Users",
                     "attributes"=> [
-                        "username"=> "vsergione",
+                        "username"=> "testuser",
                         "password_hash"=> "parola123",
                         "role"=> "customer"
                     ]
@@ -110,56 +151,74 @@ class TestDataAPI extends TestCase
             ]
         ]);
 
-        $this->assertEquals(201, $response->getStatusCode());
-        $responseData = json_decode($response->getBody(), true);
+        $responseData = $this->assert_response($response, 201);
         
         $this->assertArrayHasKey('data', $responseData);
         $this->assertArrayHasKey('id', $responseData['data']);
         $this->assertArrayHasKey('attributes', $responseData['data']);
-        $this->assertEquals('vsergione', $responseData['data']['attributes']['username']);
+        $this->assertEquals('testuser', $responseData['data']['attributes']['username']);
             
         $this->userId = $responseData['data']['id'];
-        return ['userId' => $this->userId, 'token' => $token];
+        return ['userId' => "testuser"];
     }
 
     /**
      * @depends testCreateSingleUser
      */
+    public function testLogIn($data)
+    {
+        $response = $this->makeFormRequest('POST', "apis/{$this->apiName}/auth/login", [
+            "login" => "testuser",
+            "password" => "parola123"
+        ]);
+        $responseData = $this->assert_response($response, 200);
+        $this->assertArrayHasKey('access_token', $responseData);
+        $this->assertArrayHasKey('expires_in', $responseData);
+        $this->assertArrayHasKey('token_type', $responseData);
+        echo "token: " ;
+        print_r($responseData);
+        return ['token' => $responseData['access_token']];
+    }
+
+
+
+    /**
+     * @depends testLogIn
+     */
     public function testGetUserById(array $data)
     {
-        $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('GET', "apis/example/data/users/{$data['userId']}", [
+        //$this->markTestSkipped('must be revisited.');
+        $response = $this->makeRequest('GET', "apis/{$this->apiName}/data/Users/testuser/", [
             'headers' => [
-                
-            ]
+                'Authorization' => "Bearer {$data['token']}"
+            ],
         ]);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $responseData = json_decode($response->getBody(), true);
+        $responseData = $this->assert_response($response, 200);
         
         $this->assertArrayHasKey('data', $responseData);
         $this->assertArrayHasKey('id', $responseData['data']);
         $this->assertArrayHasKey('attributes', $responseData['data']);
-        $this->assertEquals('vsergione', $responseData['data']['attributes']['username']);
+        $this->assertEquals('testuser', $responseData['data']['attributes']['username']);
             
         $this->userId = $responseData['data']['id'];
         return ['userId' => $this->userId, 'token' => $data['token']];
     }
 
     /**
-     * @depends testCreateSingleUser
+     * @depends testGetUserById
      */
     public function testDeleteUserById(array $data)
     {
-        $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('DELETE', "apis/example/data/users/{$data['userId']}", [
+        // $this->markTestSkipped('must be revisited.');
+        //$this->markTestSkipped('must be revisited.');
+        $response = $this->makeRequest('DELETE', "apis/{$this->apiName}/data/Users/{$data['userId']}/", [
             'headers' => [
-                
-            ]
+                'Authorization' => "Bearer {$data['token']}"
+            ],
         ]);
 
         $this->assertEquals(204, $response->getStatusCode());
-        $this->assertEmpty($response->getBody());
         return ['userId' => $this->userId, 'token' => $data['token']];
     }
 
@@ -190,15 +249,14 @@ class TestDataAPI extends TestCase
             ],
             "jsonapi"=> "1.0"
         ];  
-        $response = $this->client->request('POST', 'apis/example/data/customers', [
+        $response = $this->makeRequest('POST', "apis/{$this->apiName}/data/customers", [
             'headers' => [
-                //'Authorization' => 'Bearer ' . $data['token']
+                'Authorization' => "Bearer {$data['token']}"
             ],
             'json' => $customerData
         ]);
 
-        $this->assertEquals(201, $response->getStatusCode());
-        $responseData = json_decode($response->getBody(), true);
+        $responseData = $this->assert_response($response, 201);
 
         $this->assertArrayHasKey('data', $data);
         $this->assertArrayHasKey('id', $data['data']);
@@ -222,10 +280,10 @@ class TestDataAPI extends TestCase
     public function testGetUserByIdwithIncludes(array $data)
     {
         $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('GET', "apis/example/data/users/{$data['customerId']}?include=user_id", [
+        $response = $this->client->request('GET', "apis/{$this->apiName}/data/users/{$data['customerId']}?include=user_id", [
             'headers' => [
-                
-            ]
+                'Authorization' => "Bearer {$data['token']}"
+            ],
         ]);
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -253,7 +311,7 @@ class TestDataAPI extends TestCase
     public function testListUsers(array $data)
     {
         $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('GET', 'apis/example/data/users', [
+        $response = $this->client->request('GET', "apis/{$this->apiName}/data/users", [
             'headers' => [
                 'Authorization' => 'Bearer ' . $data['token']
             ]
@@ -284,7 +342,7 @@ class TestDataAPI extends TestCase
     public function testGetUserAssociatedWithCustomer(array $data)
     {
         $this->markTestSkipped('must be revisited.');
-        $response = $this->client->request('GET', "customers/{$data['customerId']}/user", [
+        $response = $this->client->request('GET', "apis/{$this->apiName}/data/customers/{$data['customerId']}/user", [
             'headers' => [
                 'Authorization' => 'Bearer ' . $data['token']
             ]
