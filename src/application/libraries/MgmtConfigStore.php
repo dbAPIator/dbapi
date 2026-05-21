@@ -296,6 +296,19 @@ class MgmtConfigStore
                 ['ip' => '0.0.0.0/0', 'allow' => ($policy['defaultAction'] ?? 'deny') === 'allow'],
             ];
         }
+        if (!empty($policy['path']) && is_array($policy['path'])) {
+            $acls['path'] = [];
+            foreach ($policy['path'] as $rule) {
+                if (!is_array($rule)) {
+                    continue;
+                }
+                $acls['path'][] = [
+                    'pattern' => $rule['pattern'] ?? '/*',
+                    'methods' => $rule['methods'] ?? '*',
+                    'allow' => !empty($rule['allow']),
+                ];
+            }
+        }
         return $acls;
     }
 

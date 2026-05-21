@@ -575,6 +575,15 @@ components:
             properties:
               cidr: { type: string }
               action: { type: string, enum: [allow, deny] }
+        path:
+          type: array
+          description: Data API path/method ACLs (stored in data_api_acls.php path rules)
+          items:
+            type: object
+            properties:
+              pattern: { type: string }
+              methods: { type: string, description: HTTP method or * for all }
+              allow: { type: boolean }
 
     AuthPolicy:
       type: object

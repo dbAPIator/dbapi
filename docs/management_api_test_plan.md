@@ -8,7 +8,8 @@ Auth:
 - Instance: `X-Management-Key` (aliases: `X-Admin-API-Key`, `X-Api-Key`, `x-api-key` query)
 - Per-API: `X-Api-Config-Key` (aliases: `x-api-config-key`, `x-api-key`; returned once on create)
 
-Test database (`dbapi_test`):
+Test database (`dbapi_test` — control plane only; see [data_plane_test_plan.md](data_plane_test_plan.md) for `dbapi_dataplane`):
+
 
 | Setting  | Value        |
 |----------|--------------|
@@ -46,19 +47,10 @@ OpenAPI: `src/public/management-openapi.yaml`
 
 ## Run automated tests
 
-### Bash e2e (stepped happy path)
-
-```bash
-chmod +x src/test_management_api.sh
-./src/test_management_api.sh
-```
-
-Uses `src/tests/connection.json` by default. Override via `src/tests/test.env` (see `test.env.example`).
-
-### PHPUnit
-
 ```bash
 cd src
 composer install
 ./vendor/bin/phpunit tests/TestManagementAPI.php
 ```
+
+Uses `src/tests/connection.json` by default. Override via `src/tests/test.env` (loaded by `tests/bootstrap.php`; see `test.env.example`).

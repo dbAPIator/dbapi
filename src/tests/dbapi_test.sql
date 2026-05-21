@@ -1,4 +1,8 @@
 -- dbAPI automated test database (MySQL 8+ / MariaDB 10.5+)
+-- Lightweight schema for Management API (control plane) e2e tests.
+-- For full data-plane coverage (filters, negatives, extra tables), use:
+--   src/tests/dbapi_dataplane.sql
+--
 -- Usage:
 --   mysql -u root -p < src/tests/dbapi_test.sql
 -- Connection for tests:

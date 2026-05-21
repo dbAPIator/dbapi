@@ -378,21 +378,36 @@ trait DbapiWriteTrait
         }
         $def = $this->apiDm->get_config($resourceName);
 
-        if($singleInsert) {
+        $pk = $this->apiDm->get_primary_key($resourceName);
+
+        if ($singleInsert) {
             $recId = array_pop($newRecIds);
-            if(isset($def["hooks"]["create"])) {
-                $this->publishWebhookEvent($configName,$resourceName,$def["hooks"]["create"],[
-                    "event"=>"create",
-                    "recId" => $recId
-                ]); 
+            if (isset($def['hooks']['create'])) {
+                $this->publishWebhookEvent($configName, $resourceName, $def['hooks']['create'], [
+                    'event' => 'create',
+                    'recId' => $recId,
+                ]);
             }
-            $this->get_records($configName,$resourceName,$recId,null,false,true);
-            return ;
+            if ($pk) {
+                $this->get_records($configName, $resourceName, $recId, null, false, true);
+            } else {
+                $entry = $entries[0];
+                $attrs = isset($entry->attributes) ? (array) $entry->attributes : [];
+                foreach ($attrs as $fld => $val) {
+                    if ($val !== null && $val !== '') {
+                        $request->add_filter_condition($fld, '=', $val);
+                    }
+                }
+                $this->get_records($configName, $resourceName, null, $request, false, true);
+            }
+            return;
         }
 
-        $request->add_filter($this->apiDm->get_primary_key($resourceName)."><".implode(";",$newRecIds));
+        if ($pk) {
+            $request->add_filter($pk . '><' . implode(';', $newRecIds));
+        }
 
-        $this->get_records($configName,$resourceName,null,$request,false,true);
+        $this->get_records($configName, $resourceName, null, $request, false, true);
     }
 
     function delete_single_record($configName, $resourceName, $recId)

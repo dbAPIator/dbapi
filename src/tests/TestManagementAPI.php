@@ -1,172 +1,148 @@
 <?php
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Management API (/mgmt/v1) integration tests.
  *
+ * Replaces src/test_management_api.sh
+ *
  * Requires:
- * - dbAPI running at http://localhost/dbapi/src/ (or BASE_URL env)
+ * - dbAPI at BASE_URL (default http://localhost/dbapi/src/)
  * - MySQL dbapi_test loaded (src/tests/dbapi_test.sql)
- * - Credentials in src/tests/connection.json
+ * - src/tests/connection.json (or test.env / CONNECTION_JSON)
  */
-class TestManagementAPI extends TestCase
+class TestManagementAPI extends IntegrationTestCase
 {
     private Client $client;
-    private string $mgmtKey;
     private string $apiName;
     private ?string $apiConfigKey = null;
     private array $connection;
 
     protected function setUp(): void
     {
-        $base = getenv('BASE_URL') ?: 'http://localhost/dbapi/src/';
-        $this->client = new Client(['base_uri' => rtrim($base, '/') . '/', 'timeout' => 30.0]);
-        $this->mgmtKey = getenv('MGMT_KEY') ?: 'myverysecuresecret';
+        parent::setUp();
+        $this->client = self::createHttpClient();
         $this->apiName = 'phpunit-mgmt-' . bin2hex(random_bytes(4));
-        $connFile = __DIR__ . '/connection.json';
-        $this->assertFileExists($connFile, 'Missing tests/connection.json');
-        $this->connection = json_decode(file_get_contents($connFile), true);
+        $this->connection = self::loadConnection();
     }
 
     protected function tearDown(): void
     {
-        if ($this->apiName) {
-            try {
-                $this->client->delete("mgmt/v1/apis/{$this->apiName}", [
-                    'headers' => $this->mgmtHeaders(),
-                    'query' => ['force' => 'true'],
-                    'http_errors' => false,
-                ]);
-            } catch (\Throwable $e) {
-                // ignore cleanup errors
-            }
+        if (isset($this->apiName) && $this->apiName !== '') {
+            $this->deleteApi($this->client, $this->apiName, $this->apiConfigKey);
         }
-    }
-
-    private function mgmtHeaders(): array
-    {
-        return ['X-Management-Key' => $this->mgmtKey, 'Content-Type' => 'application/json'];
+        parent::tearDown();
     }
 
     private function apiHeaders(): array
     {
-        $h = $this->mgmtHeaders();
-        if ($this->apiConfigKey) {
-            $h['X-Api-Config-Key'] = $this->apiConfigKey;
-        }
-        return $h;
+        return self::managementHeaders($this->apiConfigKey);
     }
 
-    private function decode($response): array
-    {
-        $body = (string) $response->getBody();
-        $data = json_decode($body, true);
-        $this->assertIsArray($data, "Invalid JSON: {$body}");
-        return $data;
-    }
-
+    /**
+     * Full stepped lifecycle from test_management_api.sh (steps 1–8).
+     */
     public function testSteppedLifecycleAndDataApi(): void
     {
-        $create = $this->client->post('mgmt/v1/apis', [
-            'headers' => $this->mgmtHeaders(),
+        $create = $this->httpRequest($this->client, 'POST', 'mgmt/v1/apis', [
+            'headers' => self::managementHeaders(),
             'json' => ['name' => $this->apiName, 'description' => 'PHPUnit e2e'],
         ]);
-        $this->assertEquals(201, $create->getStatusCode());
-        $created = $this->decode($create);
+        $created = $this->assertHttpStatus($create, 201, 'create draft');
         $this->assertArrayHasKey('managementCredential', $created);
         $this->apiConfigKey = $created['managementCredential']['secret'];
         $this->assertEquals('draft', $created['api']['status']);
 
-        $conn = $this->client->put("mgmt/v1/apis/{$this->apiName}/connection", [
+        $conn = $this->httpRequest($this->client, 'PUT', "mgmt/v1/apis/{$this->apiName}/connection", [
             'headers' => $this->apiHeaders(),
             'json' => $this->connection,
         ]);
-        $this->assertEquals(200, $conn->getStatusCode());
+        $this->assertHttpStatus($conn, 200, 'put connection');
 
-        $test = $this->client->post("mgmt/v1/apis/{$this->apiName}/connection:test", [
+        $test = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/connection:test", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $test->getStatusCode());
-        $testBody = $this->decode($test);
+        $testBody = $this->assertHttpStatus($test, 200, 'connection:test');
         $this->assertEquals('ok', $testBody['status']);
 
-        $intro = $this->client->post("mgmt/v1/apis/{$this->apiName}/schema:introspect", [
+        $intro = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/schema:introspect", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $intro->getStatusCode());
+        $this->assertHttpStatus($intro, 200, 'schema introspect');
 
-        $rebuild = $this->client->post("mgmt/v1/apis/{$this->apiName}/schema:rebuild", [
+        $rebuild = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/schema:rebuild", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $rebuild->getStatusCode());
+        $this->assertHttpStatus($rebuild, 200, 'schema rebuild');
 
-        $auth = $this->client->put("mgmt/v1/apis/{$this->apiName}/policies/auth", [
+        $auth = $this->httpRequest($this->client, 'PUT', "mgmt/v1/apis/{$this->apiName}/policies/auth", [
             'headers' => $this->apiHeaders(),
             'json' => ['mode' => 'none'],
         ]);
-        $this->assertEquals(200, $auth->getStatusCode());
+        $this->assertHttpStatus($auth, 200, 'put auth policy');
 
-        $validate = $this->client->post("mgmt/v1/apis/{$this->apiName}:validate", [
+        $dataNet = $this->httpRequest($this->client, 'PUT', "mgmt/v1/apis/{$this->apiName}/policies/data-network", [
+            'headers' => $this->apiHeaders(),
+            'json' => self::allowAllIpDataNetworkPolicy(),
+        ]);
+        $this->assertHttpStatus($dataNet, 200, 'put data-network policy');
+
+        $validate = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}:validate", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $validate->getStatusCode());
-        $valBody = $this->decode($validate);
+        $valBody = $this->assertHttpStatus($validate, 200, 'validate');
         $this->assertTrue($valBody['ready'], json_encode($valBody['checks'] ?? []));
 
-        $activate = $this->client->post("mgmt/v1/apis/{$this->apiName}:activate", [
+        $activate = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}:activate", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $activate->getStatusCode());
-        $api = $this->decode($activate);
+        $api = $this->assertHttpStatus($activate, 200, 'activate');
         $this->assertEquals('active', $api['status']);
 
-        $customers = $this->client->get("v1/apis/{$this->apiName}/data/customers", [
-            'headers' => $this->mgmtHeaders(),
-            'http_errors' => false,
+        $customers = $this->httpRequest($this->client, 'GET', "v1/apis/{$this->apiName}/data/customers", [
+            'headers' => self::managementHeaders(),
         ]);
-        $this->assertEquals(200, $customers->getStatusCode());
-        $custBody = $this->decode($customers);
+        $custBody = $this->assertHttpStatus($customers, 200, 'data api customers');
         $this->assertArrayHasKey('data', $custBody);
 
-        $deactivate = $this->client->post("mgmt/v1/apis/{$this->apiName}:deactivate", [
+        $deactivate = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}:deactivate", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertEquals(200, $deactivate->getStatusCode());
+        $this->assertHttpStatus($deactivate, 200, 'deactivate');
 
-        $blocked = $this->client->get("v1/apis/{$this->apiName}/data/customers", [
-            'headers' => $this->mgmtHeaders(),
-            'http_errors' => false,
+        $blocked = $this->httpRequest($this->client, 'GET', "v1/apis/{$this->apiName}/data/customers", [
+            'headers' => self::managementHeaders(),
         ]);
-        $this->assertEquals(409, $blocked->getStatusCode());
+        $this->assertHttpStatus($blocked, 409, 'data api blocked when inactive');
+
+        $delete = $this->httpRequest($this->client, 'DELETE', "mgmt/v1/apis/{$this->apiName}", [
+            'headers' => self::managementHeaders(),
+            'query' => ['force' => 'true'],
+        ]);
+        $this->assertHttpStatus($delete, 204, 'delete api');
+        $this->apiName = '';
     }
 
     public function testQuickCreateImmediate(): void
     {
         $name = 'phpunit-quick-' . bin2hex(random_bytes(4));
         try {
-            $response = $this->client->post('mgmt/v1/apis', [
-                'headers' => $this->mgmtHeaders(),
+            $response = $this->httpRequest($this->client, 'POST', 'mgmt/v1/apis', [
+                'headers' => self::managementHeaders(),
                 'query' => ['provision' => 'immediate'],
                 'json' => [
                     'name' => $name,
                     'connection' => $this->connection,
                 ],
-                'http_errors' => false,
             ]);
             $this->assertContains($response->getStatusCode(), [201, 422]);
             if ($response->getStatusCode() === 201) {
-                $body = $this->decode($response);
+                $body = $this->decodeResponse($response);
                 $this->assertEquals('active', $body['api']['status'] ?? '');
             }
         } finally {
-            $this->client->delete("mgmt/v1/apis/{$name}", [
-                'headers' => $this->mgmtHeaders(),
-                'query' => ['force' => 'true'],
-                'http_errors' => false,
-            ]);
+            $this->deleteApi($this->client, $name);
         }
     }
 }

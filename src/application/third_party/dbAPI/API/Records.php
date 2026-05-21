@@ -286,10 +286,14 @@ class Records {
                     $rec->add_one2many_relation($relName);
                     continue;
                 }
-//                echo "Process included 1:n $relName of $request->resourceName\n";
+
+                if (!$request->primaryKey) {
+                    $rec->add_one2many_relation($relName);
+                    continue;
+                }
+
                 $request->include[$relName]->remove_filters_on_field($relSpec["field"]);
                 $request->include[$relName]->add_filter_condition($relSpec["field"], "=", $recId);
-
 
                 $recordSet = $this->get_records($request->include[$relName]);
                 $rec->add_one2many_relation($relName,$recordSet);
@@ -376,7 +380,7 @@ class Records {
         $idFld = $this->dm->get_primary_key($table);
 
         $insertData = [];
-        if(isset($data->id)) {
+        if ($idFld && isset($data->id)) {
             $insertData[$idFld] = $data->id;
         }
 
@@ -553,11 +557,11 @@ class Records {
 
         }
 
-        if(!$newRecId && $this->dbdrv->affected_rows()===1 && is_scalar($insertData[$idFld])) {
+        if (!$newRecId && $this->dbdrv->affected_rows() === 1 && $idFld && isset($insertData[$idFld]) && is_scalar($insertData[$idFld])) {
             $newRecId = $insertData[$idFld];
         }
 
-        if(!$newRecId) {
+        if (!$newRecId && $idFld) {
             $selSql = $this->dbdrv
                 ->where($insertData)
                 ->get_compiled_select($table);
@@ -712,6 +716,9 @@ class Records {
     private function update_attributes_by_id($table, $id, $attributes)
     {
         $priKey = $this->dm->get_primary_key($table);
+        if (!$priKey) {
+            throw new \Exception("Update by ID not allowed: table '$table' has no primary key", 400);
+        }
 
         $keyFields = $this->dm->get_key_flds($table);
 
@@ -857,6 +864,9 @@ class Records {
             throw new \Exception("Not authorized to delete from $tableName",401);
 
         $idFld = $this->dm->get_primary_key($tableName);
+        if (!$idFld) {
+            throw new \Exception("Delete by ID not supported: resource '$tableName' has no primary key", 400);
+        }
 
         $this->dbdrv->where("$idFld in ('$recId')");
         $this->dbdrv->delete($tableName);
@@ -878,6 +888,9 @@ class Records {
      */
     function delete_record_by_id($tableName,$recId) {
         $idFld = $this->dm->get_primary_key($tableName);
+        if (!$idFld) {
+            throw new \Exception("Delete by ID not supported: resource '$tableName' has no primary key", 400);
+        }
         $this->dbdrv->where($idFld, $recId)->delete($tableName);
         return $this->dbdrv->affected_rows();
     }
@@ -951,6 +964,9 @@ function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlia
 {
     $req->selectFieldsOffset = $offset;
     foreach ($req->fields as $fld) {
+        if ($fld === null || $fld === '') {
+            continue;
+        }
         $fields[] = "`$tableAlias`.`$fld`";
     }
 

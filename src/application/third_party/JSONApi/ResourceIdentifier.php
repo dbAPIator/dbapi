@@ -62,6 +62,10 @@ class ResourceIdentifier extends json_ready
         if(property_exists($this,"meta") && empty($this->meta))
             unset($this->meta);
 
-        return parent::json_data();
+        $data = parent::json_data();
+        if (!isset($this->id) || $this->id === null || $this->id === '') {
+            unset($data['id']);
+        }
+        return $data;
     }
 }

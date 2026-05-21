@@ -447,22 +447,14 @@ Environment variables (optional):
 
 **Test database:** load [`src/tests/dbapi_test.sql`](../src/tests/dbapi_test.sql), then use [`src/tests/connection.json`](../src/tests/connection.json).
 
-**Automated e2e:**
-
-```bash
-cd src
-chmod +x test_management_api.sh
-./test_management_api.sh
-```
-
-Config: copy [`src/tests/test.env.example`](../src/tests/test.env.example) to `src/tests/test.env`.
-
-**PHPUnit:**
+**Automated tests (PHPUnit + Guzzle):**
 
 ```bash
 cd src && composer install
 ./vendor/bin/phpunit tests/TestManagementAPI.php
 ```
+
+Config: copy [`src/tests/test.env.example`](../src/tests/test.env.example) to `src/tests/test.env` (loaded by `tests/bootstrap.php`).
 
 Detailed scenarios: [management_api_test_plan.md](management_api_test_plan.md).
 

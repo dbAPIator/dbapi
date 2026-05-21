@@ -168,6 +168,15 @@ class Datamodel {
         return $keyFld;
     }
 
+    /**
+     * Whether the resource has a database primary key or unique key column (keyFld).
+     */
+    function has_primary_key($resName): bool
+    {
+        $key = $this->get_primary_key($resName);
+        return is_string($key) && $key !== '';
+    }
+
 
 
     /**

@@ -116,9 +116,21 @@ Create and manage data APIs via the **Management API** at `/mgmt/v1/apis`.
 | Instance auth | Header `X-Management-Key` (`config_api_secret`) |
 | Per-API auth | Header `X-Api-Config-Key` (returned once on create) |
 | Data API (after activate) | `/v1/apis/{apiId}/data/...` |
-| E2E tests | `./test_management_api.sh` |
+| Integration tests | `cd src && ./vendor/bin/phpunit` |
 
 Typical flow: create draft → connection → schema introspect/rebuild → policies → validate → activate.
+
+### Data plane tests
+
+Full JSON:API data tests use database **`dbapi_dataplane`** ([`src/tests/dbapi_dataplane.sql`](tests/dbapi_dataplane.sql)) — commerce model plus filter fixtures, varied types, views, and constraint cases.
+
+```bash
+mysql -u root -p < src/tests/dbapi_dataplane.sql
+cp src/tests/connection.dataplane.example.json src/tests/connection.json
+cd src && composer install && ./vendor/bin/phpunit
+```
+
+See **[docs/data_plane_test_plan.md](../docs/data_plane_test_plan.md)**.
 
 ## Generate an API for an existing database
 

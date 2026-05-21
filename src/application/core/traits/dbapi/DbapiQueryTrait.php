@@ -153,12 +153,20 @@ trait DbapiQueryTrait
 
 
         $request->primaryKey = $this->apiDm->get_primary_key($request->resourceName);
-        // add primary key fld if not already present in fields list
-        if(!in_array($request->primaryKey,$request->fields)) {
-            $request->fields[] = $request->primaryKey;
+        if ($this->apiDm->has_primary_key($request->resourceName)) {
+            if (!in_array($request->primaryKey, $request->fields, true)) {
+                $request->fields[] = $request->primaryKey;
+            }
         }
 
-        foreach ($request->fields as $idx=>$fldName) {
+        $request->fields = array_values(array_filter(
+            $request->fields,
+            static function ($fld) {
+                return $fld !== null && $fld !== '';
+            }
+        ));
+
+        foreach ($request->fields as $idx => $fldName) {
             $request->fieldsIndexes[$fldName] = $idx;
         }
 

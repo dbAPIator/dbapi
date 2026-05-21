@@ -40,9 +40,13 @@ trait DbapiReadTrait
                 throw new Exception("Resource 1 s $resourceName not found",404);
 
             if(!is_null($recId)) {
+                if (!$this->apiDm->has_primary_key($resourceName)) {
+                    throw new Exception(
+                        "GET by id is not supported for '$resourceName' (no primary key). Use list with filter instead.",
+                        404
+                    );
+                }
                 $keyFld = $this->apiDm->get_primary_key($resourceName);
-                if(is_null($keyFld))
-                    throw new Exception("Request not supported. $resourceName does not have a primary key defined", 404);
 
                 $request->resourceId = $recId;
                 $request->add_filter_condition($keyFld, "=", $recId);
