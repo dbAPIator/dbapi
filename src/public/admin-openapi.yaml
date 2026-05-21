@@ -1,0 +1,1527 @@
+openapi: 3.1.0
+info:
+  title: dbAPI Admin API
+  version: "1.0.0"
+  description: >
+    Control-plane API for managing dbAPI instance resources: per-DB API definitions,
+    DB connections, network policies, schema introspection/overrides/effective schema,
+    hooks, and lifecycle operations (validate/activate/deactivate).
+
+servers:
+  - url: http://{host}
+    variables:
+      host:
+        default: localhost:8888
+
+tags:
+  - name: APIs
+  - name: Connection
+  - name: Policies
+  - name: Schema
+  - name: Hooks
+  - name: Lifecycle
+
+security:
+  - bearerAuth: []
+  - adminApiKey: []
+
+paths:
+  /admin/apis:
+    post:
+      tags: [APIs]
+      operationId: createApi
+      summary: Create a new API (draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiCreateRequest"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: URL of the created API resource
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [APIs]
+      operationId: listApis
+      summary: List APIs
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/apis/clone/{apiId}:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [APIs]
+      operationId: cloneApi
+      summary: Clone API
+      responses:
+        "200":
+          description: Cloned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/apis/{apiId}:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [APIs]
+      operationId: getApi
+      summary: Get API details
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [APIs]
+      operationId: updateApi
+      summary: Update API metadata (name/description/contact)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [APIs]
+      operationId: deleteApi
+      summary: Delete API
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/connection:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    put:
+      tags: [Connection]
+      operationId: setConnection
+      summary: Set/replace DB connection config (password is write-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionConfig"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionInfo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      tags: [Connection]
+      operationId: getConnection
+      summary: Get connection status and non-secret fields (never returns password)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/connection:test:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Connection]
+      operationId: testConnection
+      summary: Test DB connection (no state change besides lastTest metadata)
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionTestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/policies/config-network:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    put:
+      tags: [Policies]
+      operationId: setConfigNetworkPolicy
+      summary: Set network policy for Config/Admin endpoints of this API (control plane per API)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetworkPolicy"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkPolicy"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      tags: [Policies]
+      operationId: getConfigNetworkPolicy
+      summary: Get network policy for Config/Admin endpoints
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkPolicy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/policies/data-network:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    put:
+      tags: [Policies]
+      operationId: setDataNetworkPolicy
+      summary: Set network policy for Data API endpoints (data plane)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetworkPolicy"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkPolicy"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      tags: [Policies]
+      operationId: getDataNetworkPolicy
+      summary: Get network policy for Data API endpoints
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkPolicy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/schema:introspect:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Schema]
+      operationId: introspectSchema
+      summary: Scan DB structure and regenerate the introspected schema snapshot
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchemaIntrospectRequest"
+      responses:
+        "200":
+          description: Introspection done (sync). Returns the new introspected snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaSnapshot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/schema/introspected:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [Schema]
+      operationId: getIntrospectedSchema
+      summary: Get the last introspected schema snapshot (read-only)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaSnapshot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/schema/overrides:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [Schema]
+      operationId: getSchemaOverrides
+      summary: Get schema overrides (editable layer)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaOverrides"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Schema]
+      operationId: replaceSchemaOverrides
+      summary: Replace schema overrides (complete replace)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchemaOverrides"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaOverrides"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    patch:
+      tags: [Schema]
+      operationId: patchSchemaOverrides
+      summary: Patch schema overrides (JSON Merge Patch)
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/SchemaOverrides"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaOverrides"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/schema/effective:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [Schema]
+      operationId: getEffectiveSchema
+      summary: Get effective schema after merge(introspected, overrides) (read-only)
+      parameters:
+        - in: query
+          name: includeWarnings
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectiveSchemaResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/schema:rebuild:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Schema]
+      operationId: rebuildSchemaArtifacts
+      summary: Rebuild cached artifacts/routes from effective schema
+      responses:
+        "200":
+          description: Rebuilt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RebuildResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/schema:preview:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Schema]
+      operationId: previewEffectiveSchema
+      summary: Preview effective schema using provided overrides without persisting them
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchemaOverrides"
+      responses:
+        "200":
+          description: Preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectiveSchemaResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/hooks:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [Hooks]
+      operationId: listHooks
+      summary: List hook configurations (all entities)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HooksListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Hooks]
+      operationId: replaceHooks
+      summary: Replace all hook configurations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HooksReplaceRequest"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HooksListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}/hooks/{entityName}:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+      - in: path
+        name: entityName
+        required: true
+        schema: { type: string, minLength: 1 }
+    put:
+      tags: [Hooks]
+      operationId: upsertEntityHooks
+      summary: Upsert hooks for an entity (table/view)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityHooks"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityHooks"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Hooks]
+      operationId: deleteEntityHooks
+      summary: Delete hooks for an entity
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}:validate:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Lifecycle]
+      operationId: validateApi
+      summary: Validate whether the API can be activated (connection, policies, schema readiness)
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/apis/{apiId}:activate:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Lifecycle]
+      operationId: activateApi
+      summary: Activate API (requires validate ready=true)
+      responses:
+        "200":
+          description: Activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}:deactivate:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Lifecycle]
+      operationId: deactivateApi
+      summary: Deactivate API (implementation may keep config intact)
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Api"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/policies/auth:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    get:
+      tags: [Policies]
+      operationId: getAuthPolicy
+      summary: Get authentication policy for the Data API
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPolicy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Policies]
+      operationId: setAuthPolicy
+      summary: Set authentication policy for the Data API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthPolicy"
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPolicy"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/apis/{apiId}/policies/auth:test:
+    parameters:
+      - $ref: "#/components/parameters/ApiId"
+    post:
+      tags: [Policies]
+      operationId: testAuthPolicy
+      summary: Test authentication policy wiring (DB proc exists, returns expected shape, etc.)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthPolicyTestRequest"
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPolicyTestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    adminApiKey:
+      type: apiKey
+      in: header
+      name: X-Admin-API-Key
+
+  parameters:
+    ApiId:
+      in: path
+      name: apiId
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Internal API identifier (stable, not the display name)
+      example: "testapi"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict (invalid state, name already exists, not ready, etc.)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ApiStatus:
+      type: string
+      enum: [draft, active, inactive]
+
+    ApiCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      example:
+        name: "testapi"
+        description: "My API description"
+        contact:
+          name: "My Name"
+          email: "my@email.com"
+          phone: "1234567890"
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Display name (may be unique; implementation-defined)
+        description:
+          type: string
+          maxLength: 2000
+        contact:
+          $ref: "#/components/schemas/Contact"
+
+    ApiUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 2000
+        contact:
+          $ref: "#/components/schemas/Contact"
+
+    Contact:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 200 }
+        email:
+          type: string
+          format: email
+        phone: { type: string, maxLength: 50 }
+
+    Api:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        contact:
+          $ref: "#/components/schemas/Contact"
+        status:
+          $ref: "#/components/schemas/ApiStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        connection:
+          type: object
+          additionalProperties: false
+          properties:
+            configured: { type: boolean }
+            lastTest:
+              $ref: "#/components/schemas/ConnectionTestMeta"
+        policies:
+          type: object
+          additionalProperties: false
+          properties:
+            configNetworkConfigured: { type: boolean }
+            dataNetworkConfigured: { type: boolean }
+        schema:
+          type: object
+          additionalProperties: false
+          properties:
+            introspectedAt:
+              type: string
+              format: date-time
+            effectiveVersion:
+              type: string
+
+    ApiListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Api"
+        nextCursor:
+          type: string
+
+    ConnectionConfig:
+      type: object
+      additionalProperties: false
+      required: [driver, host, database, username, password]
+      properties:
+        driver:
+          type: string
+          enum: [mysql]
+          default: mysql
+        host:
+          type: string
+          minLength: 1
+          example: "192.168.8.114"
+          pattern: '^((([0-9]{1,3}\.){3}[0-9]{1,3})|(([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}))$'
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          default: 3306
+          example: 3306
+        database:
+          type: string
+          minLength: 1
+          example: "test"
+          pattern: '^[a-zA-Z0-9_]+$'
+        username:
+          type: string
+          minLength: 1
+          example: "vsergiu"
+          pattern: '^[a-zA-Z0-9_]+$'
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+          example: "parola123"
+        ssl:
+          $ref: "#/components/schemas/DbSsl"
+
+    DbSsl:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum: [disable, preferred, required, verify_ca, verify_full]
+          default: preferred
+        caPem:
+          type: string
+          description: Optional CA certificate PEM
+        clientCertPem:
+          type: string
+          description: Optional client certificate PEM
+        clientKeyPem:
+          type: string
+          description: Optional client key PEM
+
+    ConnectionInfo:
+      type: object
+      additionalProperties: false
+      required: [configured]
+      properties:
+        configured: { type: boolean }
+        driver: { type: string, enum: [mysql] }
+        host: { type: string }
+        port: { type: integer }
+        database: { type: string }
+        username: { type: string }
+        ssl:
+          $ref: "#/components/schemas/DbSsl"
+        lastTest:
+          $ref: "#/components/schemas/ConnectionTestMeta"
+
+    ConnectionTestMeta:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ok, failed]
+        at:
+          type: string
+          format: date-time
+        latencyMs:
+          type: integer
+          minimum: 0
+        errorCode:
+          type: string
+          description: Present when status=failed
+
+    ConnectionTestResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, failed]
+        latencyMs:
+          type: integer
+          minimum: 0
+        db:
+          type: object
+          additionalProperties: false
+          properties:
+            version: { type: string }
+            serverTime:
+              type: string
+              format: date-time
+        error:
+          $ref: "#/components/schemas/Error"
+
+    NetworkPolicy:
+      type: object
+      additionalProperties: false
+      required: [defaultAction, rules]
+      properties:
+        defaultAction:
+          type: string
+          enum: [allow, deny]
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkRule"
+          maxItems: 500
+
+    NetworkRule:
+      type: object
+      additionalProperties: false
+      required: [action, cidr]
+      properties:
+        action:
+          type: string
+          enum: [allow, deny]
+        cidr:
+          type: string
+          description: IPv4/IPv6 CIDR (e.g., 10.0.0.0/8, 2001:db8::/32)
+          pattern: '^((([0-9]{1,3}\.){3}[0-9]{1,3})\/([0-9]|[1-2][0-9]|3[0-2]))|(([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))$'
+        description:
+          type: string
+          maxLength: 300
+
+    SchemaIntrospectRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum: [full]
+          default: full
+        includeViews:
+          type: boolean
+          default: true
+
+    SchemaSnapshot:
+      type: object
+      additionalProperties: false
+      required: [capturedAt, entities]
+      properties:
+        capturedAt:
+          type: string
+          format: date-time
+        dbFingerprint:
+          type: string
+          description: Optional hash/fingerprint of DB structure for change detection
+        entities:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EntitySchema"
+
+    EntitySchema:
+      type: object
+      additionalProperties: false
+      required: [type, fields]
+      properties:
+        type:
+          type: string
+          enum: [table, view]
+        keyFld:
+          type: string
+          nullable: true
+        fields:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/FieldSchema"
+        relations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/RelationSchema"
+
+    FieldSchema:
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          $ref: "#/components/schemas/DbType"
+        iskey: { type: boolean, default: false }
+        required: { type: boolean, default: false }
+        default:
+          nullable: true
+        foreignKey:
+          deprecated: true
+          description: >
+            Legacy; introspection no longer writes this. Use outbound relations on the entity.
+            Still accepted in patch overrides until migrated.
+          $ref: "#/components/schemas/ForeignKey"
+
+    DbType:
+      type: object
+      additionalProperties: false
+      required: [proto]
+      properties:
+        proto:
+          type: string
+          description: DB type proto (e.g., int, varchar, uuid)
+        length:
+          type: string
+          nullable: true
+
+    ForeignKey:
+      type: object
+      additionalProperties: false
+      required: [table, field]
+      properties:
+        table: { type: string }
+        field: { type: string }
+
+    RelationSchema:
+      type: object
+      additionalProperties: false
+      required: [table, field, type]
+      properties:
+        table: { type: string }
+        field: { type: string }
+        type:
+          type: string
+          enum: [outbound, inbound]
+
+    SchemaOverrides:
+      type: object
+      additionalProperties: false
+      properties:
+        hiddenEntities:
+          type: array
+          items: { type: string }
+          default: []
+        hiddenFields:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+          default: {}
+        renames:
+          $ref: "#/components/schemas/Renames"
+        manualRelations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualRelation"
+          default: []
+        hooks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EntityHooks"
+          default: {}
+
+    Renames:
+      type: object
+      additionalProperties: false
+      properties:
+        entities:
+          type: object
+          additionalProperties: { type: string }
+          default: {}
+        fields:
+          type: object
+          additionalProperties: { type: string }
+          description: >
+            Map of "entity.field" -> "newName"
+          default: {}
+
+    ManualRelation:
+      type: object
+      additionalProperties: false
+      required: [from, to, type, name]
+      properties:
+        name:
+          type: string
+          description: Relation name as exposed by effective schema / API expansions
+        type:
+          type: string
+          enum: [outbound, inbound]
+        cardinality:
+          type: string
+          enum: [one-to-one, one-to-many, many-to-one, many-to-many]
+          default: many-to-one
+        from:
+          $ref: "#/components/schemas/RelationEndpoint"
+        to:
+          $ref: "#/components/schemas/RelationEndpoint"
+
+    RelationEndpoint:
+      type: object
+      additionalProperties: false
+      required: [entity, field]
+      properties:
+        entity: { type: string }
+        field: { type: string }
+
+    EffectiveSchemaResponse:
+      type: object
+      additionalProperties: false
+      required: [schema, version]
+      properties:
+        version:
+          type: string
+          description: Version/hash of the effective schema (for caching/ETag)
+        schema:
+          $ref: "#/components/schemas/SchemaSnapshot"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SchemaWarning"
+          default: []
+
+    SchemaWarning:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - ORPHAN_OVERRIDE
+            - MISSING_ENTITY
+            - MISSING_FIELD
+            - CONFLICT_RENAME
+            - QUALIFIED_RELATION_NAME
+            - ORPHAN_RELATION
+            - CONFLICT_RELATION_NAME
+        message:
+          type: string
+        details:
+          nullable: true
+
+    RebuildResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        rebuiltAt:
+          type: string
+          format: date-time
+        effectiveVersion:
+          type: string
+
+    HooksListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityHooks"
+
+    HooksReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityHooks"
+
+    EntityHooks:
+      type: object
+      additionalProperties: false
+      required: [entity]
+      properties:
+        entity:
+          type: string
+        create:
+          type: array
+          items:
+            $ref: "#/components/schemas/HookAction"
+          default: []
+        update:
+          type: array
+          items:
+            $ref: "#/components/schemas/HookAction"
+          default: []
+        delete:
+          type: array
+          items:
+            $ref: "#/components/schemas/HookAction"
+          default: []
+
+    HookAction:
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [http, queue]
+        url:
+          type: string
+          format: uri
+          description: Required when type=http
+        method:
+          type: string
+          enum: [POST, PUT, PATCH]
+          default: POST
+        headers:
+          type: object
+          additionalProperties: { type: string }
+          default: {}
+        timeoutMs:
+          type: integer
+          minimum: 100
+          maximum: 60000
+          default: 2000
+        retries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 0
+        stream:
+          type: string
+          description: Required when type=queue (e.g., redis stream)
+        payloadTemplate:
+          type: string
+          description: Optional template for hook payload (implementation-specific)
+
+    ValidateResult:
+      type: object
+      additionalProperties: false
+      required: [ready, checks]
+      properties:
+        ready: { type: boolean }
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationCheck"
+
+    ValidationCheck:
+      type: object
+      additionalProperties: false
+      required: [name, ok]
+      properties:
+        name:
+          type: string
+          enum:
+            - connectionConfigured
+            - connectionTestOk
+            - configNetworkPolicyConfigured
+            - dataNetworkPolicyConfigured
+            - schemaIntrospected
+            - schemaEffectiveBuilt
+        ok: { type: boolean }
+        errorCode: { type: string }
+        message: { type: string }
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code
+        message:
+          type: string
+        details:
+          nullable: true
+        requestId:
+          type: string
+          description: Correlation ID for server logs
+    AuthPolicy:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [none, apiKey, jwt, dbAuth, oidc]
+        apiKey:
+          $ref: "#/components/schemas/ApiKeyAuthConfig"
+        jwt:
+          $ref: "#/components/schemas/JwtAuthConfig"
+        dbAuth:
+          $ref: "#/components/schemas/DbAuthConfig"
+        oidc:
+          $ref: "#/components/schemas/OidcAuthConfig"
+
+    ApiKeyAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [headerName]
+      properties:
+        headerName:
+          type: string
+          default: X-API-Key
+        allowQueryParam:
+          type: boolean
+          default: false
+
+    JwtAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [issuer, audience]
+      properties:
+        issuer: { type: string }
+        audience: { type: string }
+        accessTokenTtlSeconds:
+          type: integer
+          minimum: 60
+          default: 900
+        refreshTokenTtlSeconds:
+          type: integer
+          minimum: 300
+          default: 2592000
+        signing:
+          type: object
+          additionalProperties: false
+          required: [alg]
+          properties:
+            alg:
+              type: string
+              enum: [HS256, RS256]
+            # If HS256: secret is stored server-side, not returned.
+            # If RS256: you store private key server-side; expose public key via Data API JWKS if you want.
+            keyId:
+              type: string
+
+    DbAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [contract, login]
+      properties:
+        contract:
+          type: string
+          enum: [procedure, view, sqlTemplate]
+          description: Prefer procedure/view; sqlTemplate is advanced/unsafe.
+        login:
+          $ref: "#/components/schemas/DbAuthLoginContract"
+        twoFactor:
+          $ref: "#/components/schemas/TwoFactorConfig"
+        passwordUpdate:
+          $ref: "#/components/schemas/PasswordUpdateConfig"
+        rateLimit:
+          $ref: "#/components/schemas/AuthRateLimit"
+
+    DbAuthLoginContract:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Procedure/view name OR SQL template identifier
+        input:
+          type: object
+          additionalProperties: false
+          required: [usernameField, passwordField]
+          properties:
+            usernameField: { type: string, default: "username" }
+            passwordField: { type: string, default: "password" }
+        output:
+          type: object
+          additionalProperties: false
+          required: [userIdField]
+          properties:
+            userIdField: { type: string, default: "user_id" }
+            claimsField:
+              type: string
+              description: Field containing JSON claims/roles
+              default: "claims_json"
+            totpRequiredField:
+              type: string
+              default: "totp_required"
+
+    TwoFactorConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        method:
+          type: string
+          enum: [totp]
+          default: totp
+        issuerLabel:
+          type: string
+          description: Label used in authenticator apps
+
+    PasswordUpdateConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        contractName:
+          type: string
+          description: Procedure/view name for password update, if using DB-side update
+
+    AuthRateLimit:
+      type: object
+      additionalProperties: false
+      properties:
+        perIpPerMinute:
+          type: integer
+          minimum: 1
+          default: 30
+        perUsernamePerMinute:
+          type: integer
+          minimum: 1
+          default: 10
+
+    OidcAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [issuerUrl, clientId]
+      properties:
+        issuerUrl:
+          type: string
+          format: uri
+        clientId:
+          type: string
+        audience:
+          type: string
+        jwksCacheSeconds:
+          type: integer
+          default: 3600
+
+    AuthPolicyTestRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sampleUsername:
+          type: string
+        samplePassword:
+          type: string
+
+    AuthPolicyTestResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, failed]
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationCheck"
+        error:
+          $ref: "#/components/schemas/Error"

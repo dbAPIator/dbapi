@@ -1,6 +1,20 @@
 <?php
 
 require_once(__DIR__."/../libraries/Response.php");
+
+/**
+ * Generate a short UUID (cryptographically random, URL-safe).
+ * Uses 8 random bytes and base64url encoding → 11 characters.
+ *
+ * @param int $bytes Number of random bytes (default 8 → 11 chars). Use 9 for 12 chars.
+ * @return string
+ */
+function short_uuid(int $bytes = 8): string
+{
+    $raw = random_bytes($bytes);
+    $b64 = base64_encode($raw);
+    return rtrim(strtr($b64, '+/', '-_'), '=');
+}
 //
 ///**
 // * @param int $httpCode
@@ -247,32 +261,18 @@ function get_filter($filters, $defaultTable)
 
     $parsedFilters = [];
     foreach ($filters as $table=>$filter) {
-        $parsedFilters[$table] = [];
-        // split string by comma and process each segment
-        foreach(explode(",",$filter) as $idx=>$item) {
-            $where = null;
-            // regexp search to identify
-            preg_match("/([\w\-\$]+)(\.([\w\-\$]+))?(\!?[\=\<\>\~]+)(.*)/",$item,$m);
-
-
-            if(!empty($m)) {
-                $alias = empty($m[3]) ? $table : $m[1];
-                $fieldName = empty($m[3]) ? $m[1] : $m[3];
-                $parsedFilters[$table][$alias.".".$fieldName.rand(0,1000)] = (object) [
-                    "left"=>(object) [
-                        "alias"=>$alias,
-                        "field"=>$fieldName
-                    ],
-                    "op"=>$m[4],
-                    "right"=>$m[5]
-                ];
-            }
+        if (!is_string($filter) || trim($filter) === '') {
+            continue;
+        }
+        try {
+            $parsedFilters[$table] = \dbAPI\API\FilterParser::parse($filter);
+        } catch (\dbAPI\API\Exception $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new \dbAPI\API\Exception('Invalid filter for '.$table.': '.$e->getMessage(), 400);
         }
     }
 
-
-//    print_r($filters);
-//    if($_GET['dbg']) print_r($filters);
     return $parsedFilters;
 }
 

@@ -494,24 +494,29 @@ class Config
         $authFilePath = $this->config->item("configs_dir") . "/$apiName";
         $conn = require "$authFilePath/connection.php";
 
-        $oldStructure = require_once("$authFilePath/structure.php");
+        $oldStructure = @include("$authFilePath/structure.php");
+        if (!is_array($oldStructure)) {
+            $oldStructure = [];
+        }
+
+        require_once APPPATH . 'helpers/config_util_helper.php';
         try {
-            $newStructure = $this->generate_config($conn, $authFilePath);
+            $db = @$this->load->database($conn, true);
+            $patchFile = "$authFilePath/patch.php";
+            $patch = is_file($patchFile) ? @include $patchFile : null;
+            $built = structure_build_from_database($db, $conn['database'], $oldStructure, is_array($patch) ? $patch : null);
+            $newStructure = $built['structure'];
+            structure_copy_hooks_from_old($oldStructure, $newStructure);
         } catch (Exception $exception) {
             HttpResp::exception_out($exception);
         }
 
-
-        foreach (array_keys($newStructure) as $resourceName) {
-            // copy hooks from old structure to new structure
-            if (isset($oldStructure[$resourceName]) && isset($oldStructure[$resourceName]["hooks"])) {
-                $newStructure[$resourceName]["hooks"] = $oldStructure[$resourceName]["hooks"];
-            }
-        }
-
         $this->save_config("$authFilePath/structure.php", $newStructure);
 
-        $this->get_structure($apiName);
+        HttpResp::json_out(200, [
+            'entities' => $newStructure,
+            'warnings' => $built['warnings'] ?? [],
+        ]);
     }
 
     /**

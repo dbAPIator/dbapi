@@ -13,3 +13,4 @@ $route[$basePath."/.*"]["options"] = "dbapi/options";
 // Swagger documentation
 $route[$basePath."/(:any)/swagger"]["get"] = "swagger/index/$1";
 
+$route['404_override'] = 'errors/error_404';

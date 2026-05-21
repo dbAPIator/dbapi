@@ -72,12 +72,7 @@ class Records {
      */
     private function generate_where_sql($filters,$alias)
     {
-        // todo: correct filtering.... after allowing searching by fields beloning to joined tables...
-        $whereArr = [];
-        foreach ($filters as $filter) {
-            $whereArr[] = generate_where_condition((object) $filter,$alias);
-        }
-        return count($whereArr) ? implode(" AND ", $whereArr) : 1;
+        return FilterParser::compile($filters, $alias);
     }
 
 
@@ -135,9 +130,18 @@ class Records {
             $whereStr = 1;
         }
 
-        // if filter advanced is set, then append it to the current where
-        if($request->filter_advanced) {
-            $whereStr .= " AND ".$request->filter_advanced;
+        if ($request->filter_advanced) {
+            try {
+                $adv = is_string($request->filter_advanced)
+                    ? FilterParser::parse($request->filter_advanced)
+                    : FilterParser::normalize($request->filter_advanced);
+                $whereStr = FilterParser::compile(
+                    FilterParser::andNodes(FilterParser::normalize($request->filter), $adv),
+                    $request->resourceName
+                );
+            } catch (Exception $e) {
+                throw new Exception('Invalid filter_advanced: '.$e->getMessage(), 400);
+            }
         }
 
         list($select,$join) = $this->generate_select_sql_parts($request);
@@ -283,17 +287,8 @@ class Records {
                     continue;
                 }
 //                echo "Process included 1:n $relName of $request->resourceName\n";
-                // add "parent" condition to filter recs who "point" to the parent
-                for($i=count($request->include[$relName]->filter)-1;$i>=0;$i--) {
-                    if($request->include[$relName]->filter[$i]["left"]==$relSpec["field"]) {
-                        array_splice($request->include[$relName]->filter,$i,1);
-                    }
-                }
-                $request->include[$relName]->filter[] = [
-                    "left" => $relSpec["field"],
-                    "op" => "=",
-                    "right" => $recId
-                ];
+                $request->include[$relName]->remove_filters_on_field($relSpec["field"]);
+                $request->include[$relName]->add_filter_condition($relSpec["field"], "=", $recId);
 
 
                 $recordSet = $this->get_records($request->include[$relName]);
@@ -653,8 +648,10 @@ class Records {
     {
         if(array_key_exists("custom_where",$paras))
             $where = $paras["custom_where"];
-        else
-            $where = $this->generate_where_sql($paras["filter"]);
+        else {
+            $filter = $paras["filter"][$table] ?? $paras["filter"];
+            $where = $this->generate_where_sql($filter, $table);
+        }
 
         return $this->update_attributes($table,$attributes,$where);
     }
@@ -941,67 +938,13 @@ class Records {
 }
 
 function generate_where_condition($where, $alias) {
-    // if element is not an object or left property of OBJ is not a field -> ignore -> return TRUE
-    if(!is_object($where) || !property_exists($where,"left")){
-        log_message("debug","invalid filter entry");
-        return "FALSE";
+    if (!is_object($where) || !property_exists($where, 'left')) {
+        if (function_exists('log_message')) {
+            log_message('debug', 'invalid filter entry');
+        }
+        return 'FALSE';
     }
-
-
-    $validOps = ["!=","=","<","<=",">",">=","><","~=","!~=","=~","!=~","<>","!><"];
-
-    $where->right = $where->right=="NULL"?null:$where->right;
-
-    switch($where->op) {
-        case "><":
-            $str = sprintf("`%s`.`%s` IN ('%s')",$alias,$where->left,str_replace(";","','",$where->right));
-            break;
-        case "!><":
-            $str = sprintf("`%s`.`%s` NOT IN ('%s')",$alias,$where->left,str_replace(";","','",$where->right));
-            break;
-        case "~=":
-            $str = sprintf("`%s`.`%s` LIKE ('%%%s')",$alias,$where->left,$where->right);
-            break;
-        case "!~=":
-            $str = sprintf("`%s`.`%s` NOT LIKE ('%%%s')",$alias,$where->left,$where->right);
-            break;
-        case "=~":
-            $str = sprintf("`%s`.`%s` LIKE ('%s%%')",$alias,$where->left,$where->right);
-            break;
-        case "!=~":
-            $str = sprintf("`%s`.`%s` NOT LIKE ('%s%%')",$alias,$where->left,$where->right);
-            break;
-        case "~=~":
-            $str = sprintf("`%s`.`%s` LIKE ('%%%s%%')",$alias,$where->left,$where->right);
-            break;
-        case "!~=~":
-            $str = sprintf("`%s`.`%s` NOT LIKE ('%%%s%%')",$alias,$where->left,$where->right);
-            break;
-        case "=":
-            if($where->right==="__NULL__") {
-                $str = sprintf("`%s`.`%s` IS NULL",$alias,$where->left);
-            }
-            else {
-                $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
-            }
-            break;
-        case "!=":
-            if($where->right==="__NULL__") {
-                $str = sprintf("`%s`.`%s` IS NOT NULL",$alias,$where->left);
-            }
-            else {
-                $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
-            }
-            break;
-
-        default:
-            if(in_array($where->op,$validOps))
-                $str = sprintf("`%s`.`%s` %s %s",$alias,$where->left,$where->op,($where->right!==""?"'".$where->right."'":"NULL"));
-            else
-                $str = "TRUE";
-    }
-
-    return $str;
+    return FilterParser::compileCompareObject($where, $alias);
 }
 
 function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlias, $parentTableAlias="",$offset=0)
@@ -1015,9 +958,9 @@ function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlia
 //    echo "reqqqq....\n";
 //    print_r($req);
     if($req->relSpec && $req->relSpec["type"]=="outbound") {
-//        echo "join....\n";
+        $localColumn = dbapi_outbound_local_column($req->relName ?? '', $req->relSpec);
         $join[] = "LEFT JOIN `$req->resourceName` AS `$tableAlias` ".
-            "ON `$tableAlias`.`{$req->relSpec['field']}`=`$parentTableAlias`.`{$req->relSpec['fkfield']}`";
+            "ON `$tableAlias`.`{$req->relSpec['field']}`=`$parentTableAlias`.`{$localColumn}`";
     }
 
     foreach ($req->sort as $idx=>$sort) {

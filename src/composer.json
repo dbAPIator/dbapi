@@ -5,9 +5,15 @@
       "ext-json": "*",
         "predis/predis": "^2.3",
         "guzzlehttp/guzzle": "^7.9",
-      "ext-curl": "*"
+      "ext-curl": "*",
+        "opis/json-schema": "^2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "*"
+    },
+    "config": {
+        "platform": {
+            "php": "7.4.33"
+        }
     }
 }

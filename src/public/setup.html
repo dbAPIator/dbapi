@@ -157,7 +157,7 @@
                                     
                                     if (statusCode === 200 || statusCode === 201) {
                                         modalTitle = 'Success';
-                                        message = 'API setup was successful!<br><br>API Documentation: <a href="swagger.html?api='+formData.apiName+'" target="_blank">Documentation</a>';
+                                        message = 'API setup was successful!<br><br>API Documentation: <a href="swagger.html?url=apis/'+formData.apiName+'/swagger" target="_blank">Documentation</a>';
                                         message += '<br><br><button class="btn btn-danger" onclick="deleteApi(\''+formData.apiName+'\',\''+data.result+'\')">Delete API</button>';
                                     } else if (statusCode === 400) {
                                         modalTitle = 'Bad Request';

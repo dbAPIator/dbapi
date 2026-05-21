@@ -2,84 +2,20 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 $basePrefix = "^apis/(:any)";
-$configApiPrefix = "$basePrefix/config";
+$configApiPrefix = "^admin/apis/(:any)";
 
-/**
- * Configuration API endpoints
- * - apis/apiName/config/status
- * - apis/apiName/config/structure
- *      - GET   get structure
- *      - POST  regenerate structure
- *      - PATCH
- *      - PUT
- * - apis/apiName/config/hooks
- *      - GET   get hooks
- *      - PUT   update hook
- * - apis/apiName/config/auth
- *      - GET   get authentication
- *      - PUT   update authentication
- * - apis/apiName/config/acls/ip
- *      - GET   get IP ACLs
- *      - PUT   update IP ACLs
- * - apis/apiName/config/acls/path
- *      - GET   get path ACLs
- *      - PUT   update path ACLs
- * - apis/apiName/config/admin/acls
- *      - GET   get admin ACLs
- *      - PUT   update admin ACLs
- * - apis/apiName/config/admin/secret/reset
- *      - POST  reset admin secret
- */
+$route[$configApiPrefix."/connection"]["get"] = "admin/connection/get/$1";
+$route[$configApiPrefix."/connection"]["put"] = "admin/connection/update/$1";
+$route[$configApiPrefix."/connection:test"]["post"] = "admin/connection/test/$1";
 
 
-// api status
-// apis/apiName/config/status
-$route[$basePrefix."/status"]["get"] = "config/status/$1";
+$route[$configApiPrefix."/policies/config-network"]["get"] = "admin/policies/network/get/$1";
+$route[$configApiPrefix."/policies/config-network"]["put"] = "admin/policies/network/update/$1";
+$route[$configApiPrefix."/policies/data-network"]["get"] = "admin/policies/data/get/$1";
+$route[$configApiPrefix."/policies/data-network"]["put"] = "admin/policies/data/update/$1";
+$route[$configApiPrefix."/policies/auth"]["get"] = "admin/policies/auth/get/$1";
+$route[$configApiPrefix."/policies/auth"]["put"] = "admin/policies/auth/update/$1";
+$route[$configApiPrefix."/policies/auth:test"]["post"] = "admin/policies/auth/test/$1";
 
-// ADMIN endpoints
-// list
-$route["^apis$"]["get"] = "config/list_apis";
-// create
-$route["^apis/?$"]["post"] = "config/create_api";
-// delete
-$route["^apis/([\w\-\.\_\%]+)$"]["delete"] = "config/delete_api/$1";
-
-
-// STRUCTURE configuration endpoints
-// apis/apiName/config/structure - GET API structure
-$route[$configApiPrefix."/structure"]["get"] = "config/structure/$1";
-// apis/apiName/config/structure - replace API structure with the one provided in the request
-$route[$configApiPrefix."/structure"]["put"] = "config/structure/$1";
-// apis/apiName/config/structure - patch API structure with the one provided in the request
-$route[$configApiPrefix."/structure"]["patch"] = "config/structure/$1";
-// apis/apiName/config/structure - regenerate API structure
-$route[$configApiPrefix."/structure"]["post"] = "config/structure/$1";
-
-// HOOKS configuration endpoints
-// apis/apiName/config/hooks - GET hooks
-$route[$configApiPrefix."/hooks"]["get"] = "config/get_hooks/$1";
-// apis/apiName/config/hooks/resourceName - GET hooks by resource name
-$route[$configApiPrefix."/hooks/([\w\-\.\_\%]+)"]["get"] = "config/get_hooks/$1/$2";
-// apis/apiName/config/hooks/resourceName - Attach hooks to resource by resource name
-$route[$configApiPrefix."/hooks/([\w\-\.\_\%]+)"]["put"] = "config/update_hooks/$1/$2";
-
-// AUTHENTICATION configuration endpoints
-$route[$configApiPrefix."/auth"]["get"] = "config/authentication/$1";
-$route[$configApiPrefix."/auth"]["put"] = "config/authentication/$1";
-$route[$configApiPrefix."/auth"]["patch"] = "config/authentication/$1";
-
-// DATA API IP ACLS configuration endpoints
-$route[$configApiPrefix."/acls/ip"]["get"] = "config/acls_ip/$1";
-$route[$configApiPrefix."/acls/ip"]["put"] = "config/acls_ip/$1";
-
-// DATA API PATH ACLS configuration endpoints
-$route[$configApiPrefix."/acls/path"]["get"] = "config/acls_path/$1";
-$route[$configApiPrefix."/acls/path"]["put"] = "config/acls_path/$1";
-
-// ADMIN  ACLS configuration endpoints
-$route[$configApiPrefix."/admin/acls"]["get"] = "config/admin_acls/$1";
-$route[$configApiPrefix."/admin/acls"]["put"] = "config/admin_acls/$1";
-
-// reset config API secret
-$route[$configApiPrefix."/admin/secret/reset"]["post"] = "config/admin_secret_reset/$1";
-
+// Remaining admin routes (schema, hooks, CRUD) live in mgmt/v1 — see routes_mgmt.php.
+// Include this file from routes.php if you still expose /admin/apis/... for connection/policies only.

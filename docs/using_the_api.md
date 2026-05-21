@@ -3,9 +3,13 @@ Once you have created an API, you can use it to read, create, update and delete 
 
 The main API endpoint is ```http(s)://hostname/installation_path/api_name/data/```.
 
-API specification is automatically generated in OpenAPI format and can be accessed by performing a GET request to ```http(s)://hostname/installation_path/config/api_name/swagger```.
+The OpenAPI specification is generated when the API schema is built or rebuilt (stored as `openapi.json` in the API config directory). It is served without re-running the generator on each request:
 
-You can also use Swagger UI which is bundled within the installation and can be accessed at ```http(s)://hostname/installation_path/swagger.html?api=api_name```.
+```http(s)://hostname/installation_path/apis/api_name/swagger```
+
+If that URL returns 404, run **schema rebuild** for the API (Management API `POST /mgmt/v1/apis/{id}/schema/rebuild` or equivalent) to create `openapi.json`.
+
+You can also use Swagger UI which is bundled within the installation and can be accessed at ```http(s)://hostname/installation_path/swagger.html?url=apis/api_name/swagger```.
 
 While the Swagger UI is a great tool to explore the API, we recommend reading further to understand the API structure and how to use it.
 
@@ -60,35 +64,65 @@ Let's assume the table customers which structure is composed of the following co
 
 The request can be further customized by employing different query parameters for different purposes.
 
-#### Filtering <a id="filtering"></a>
-Records filtering is achieved by using the **`filter`** parameter and passing to it a comma separated list of comparison expressions.
+#### Request correlation
+Every response includes **`X-Request-Id`**. You may send your own id with the same header; otherwise the server generates one. JSON error payloads include `meta.request_id` when present.
 
-The syntax for the comparison expresion is **`field_name + operator + value(s)`**
+#### Safety limits
+The data API enforces configurable guardrails (defaults in `dbapiator.php`, overridable via environment variables):
+
+| Limit | Default env | Default |
+|-------|-------------|---------|
+| Page size | `MAX_PAGE_SIZE` | 1000 |
+| Filter expression length | `MAX_FILTER_EXPRESSION_LENGTH` | 4096 |
+| Filter complexity (depth / nodes) | `MAX_FILTER_AST_DEPTH`, `MAX_FILTER_AST_NODES` | 20 / 100 |
+| Bulk insert records per request | `BULK_INSERT_LIMIT` | 100 |
+| Bulk update records per request | `BULK_UPDATE_LIMIT` | 50 |
+| Request / query timeout (seconds) | `REQUEST_TIMEOUT_SECONDS` | 60 |
+| Nested `include` depth | `MAX_INCLUDE_DEPTH` | 5 |
+
+Per-API override: add `query_timeout_seconds` to `connection.php`.
+
+#### Filtering <a id="filtering"></a>
+Records filtering uses the **`filter`** parameter with a compact expression language.
+
+**Comparison syntax:** `field_name` + `operator` + `value`
 
 The supported operators are:
 - `=`  equal to (Eg. `name=John`)
 - `~=`  ends with (Eg. `filename~=.gif`)
-- `=~`  beggins with (Eg. `date=~2020-12`)
+- `=~`  begins with (Eg. `date=~2020-12`)
 - `~=~` contains  (Eg. `filename~=~error`)
 - `>` greater than (Eg. `qty>0`)
 - `>=` greater than or equal to (Eg. `date>=2025-02-02`)
 - `<` less than (Eg. `qty<10`)
 - `<=` less than or equal to (Eg. `temp<=-5`)
-- `><` one of the semicolon separated values (Eg. `wday><Mon,Tue,Fri`)
-- adding ! (exclamation mark) in front of any of the above operators will perform a negation 
+- `><` one of the semicolon separated values (Eg. `wday><Mon;Tue;Fri`)
+- adding `!` in front of any operator negates it (Eg. `city!=London`)
 
-Multiple comparison expressions can be passed as a comma separated list of expressions and they will be combined in a logical AND. 
+**Combining expressions:**
+- **`,` (comma)** — AND (binds tighter)
+- **`||`** — OR (binds looser)
+- **`( )`** — grouping
 
-For example: `filter=fname=~John,bdate<2010,city><Washington;London` will return a list of persons which first name begin with John, are born before 2010 and live in Washington or in London
+Precedence: parentheses first, then AND (comma), then OR (`||`).
 
-When including relationships, the filter parameters should be used like this: 
+Examples:
+- `filter[customers]=fname=~John,bdate<2010` — first name starts with John **and** born before 2010
+- `filter[customers]=(city=Washington||city=London),active=1` — (Washington **or** London) **and** active
+- `filter[customers]=fname=~John,bdate<2010,city><Washington;London` — same as before for city IN list
+
+Use `><` when several values share the same field and operator; use `||` and `()` when combining different fields or conditions.
+
+Values that contain `,`, `||`, or `)` can be escaped with a backslash (e.g. `note~=~line\,two`).
+
+When including relationships:
 ```shell
 curl --location 'https://localhost/dbapi/apis/api_name/data/customers?include=orders&filter[customers]=qty>100'
 ```
 
-Filtering can be applied to the linked resources by using the following syntax: `filter[main_resource_name/relationship_name]=expression`
+Filtering on linked resources: `filter[main_resource_name/relationship_name]=expression`
 
-For example: `filter[customers/orders]=100` will return a list of customers which have at least one order with a quantity greater than 100
+For example: `filter[customers/orders]=qty>100` returns customers that have at least one order with quantity greater than 100
 
 
 #### Sparse field selection <a id="sparse-field-selection"></a>
@@ -131,6 +165,26 @@ curl --location 'https://localhost/dbapi/apis/api_name/data/persons?page[persons
 
 
 
+
+### Relationship names (stable public API)
+
+Relationship names are part of the API contract. They are used in URLs, the `include` query parameter, and JSON:API `relationships` objects. **Schema rebuild does not rename existing relationships**; names are preserved per foreign-key edge unless you change them in `patch.php` or the management schema overrides.
+
+| Direction | Default name | Notes |
+|-----------|--------------|--------|
+| Outbound (many-to-one) | FK **column name** on the current resource | Example: `account_manager` on `customers` |
+| Inbound (one-to-many) | Child **table name** when unambiguous | Example: `orders` under `customers` |
+| Inbound (ambiguous) | `{childTable}_{fkColumn}` | When several FKs share the same child table or the short name is already used |
+
+Examples:
+
+- `GET .../data/customers/1/orders` — inbound relationship `orders`
+- `include=account_manager` — outbound relationship keyed by column `account_manager`
+- After regen, a removed FK may leave an **orphan** relationship (still accepted with a warning) so clients are not broken until you clean up `patch.php`.
+
+Rename relationships for clarity using schema overrides (`patch.php` / management API), not by relying on introspection order.
+
+Foreign keys are stored as **outbound relations** on each resource (relation name = FK column name). The older `fields[].foreignKey` duplicate is no longer generated; runtime derives column FK metadata from relations when needed.
 
 ### Reading data from a relationship
 

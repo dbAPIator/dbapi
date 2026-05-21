@@ -43,6 +43,9 @@ class Datamodel {
 
     function __construct($dataModel) {
          $this->dataModel = $dataModel;
+         if (!function_exists('structure_resolve_field_foreign_key')) {
+             require_once APPPATH . 'helpers/config_util_helper.php';
+         }
     }
 
     /**
@@ -373,12 +376,11 @@ class Datamodel {
         //print_r($value);
 
         if(is_object($value)) {
-            if (array_key_exists("foreignKey", $fields[$fieldName])
-                && $fields[$fieldName]["foreignKey"]["table"] == $value->data->type) {
+            $fk = $this->get_field_foreign_key($tableName, $fieldName);
+            if ($fk !== null && $fk["table"] == $value->data->type) {
                 return $value;
             }
-            else
-                throw new \Exception("Invalid object as field value for  $tableName.$fieldName",400);
+            throw new \Exception("Invalid object as field value for  $tableName.$fieldName",400);
 
         }
 
@@ -546,7 +548,20 @@ class Datamodel {
      * @return bool
      */
     function is_fk_field($resName, $field) {
-        return array_key_exists("foreignKey",$this->dataModel[$resName]["fields"][$field]);
+        return $this->get_field_foreign_key($resName, $field) !== null;
+    }
+
+    /**
+     * FK target for a column (outbound relation or legacy field.foreignKey).
+     *
+     * @return array{table:string, field:string}|null
+     */
+    function get_field_foreign_key($resName, $fieldName, $relName = null)
+    {
+        if (!$this->resource_exists($resName)) {
+            return null;
+        }
+        return structure_resolve_field_foreign_key($this->dataModel[$resName], $fieldName, $relName);
     }
 
 
@@ -698,13 +713,27 @@ class Datamodel {
     public function get_fk_fields ($resName)
     {
         $fks = [];
-//        foreach ($this->dataModel[$resName]["relations"] as $relName=>$relSpec) {
-//            if($relSpec["type"]==="outbound")
-//                $fks[$]
-//        }
-        foreach ($this->dataModel[$resName]["fields"] as $fieldName=>$fieldSpec) {
-            if(isset($fieldSpec["foreignKey"]))
-                $fks[$fieldName] = $fieldSpec["foreignKey"];
+        if (!$this->resource_exists($resName)) {
+            return $fks;
+        }
+        $relations = $this->dataModel[$resName]["relations"] ?? [];
+        foreach ($relations as $relName => $relSpec) {
+            if (!is_array($relSpec) || ($relSpec["type"] ?? "") !== "outbound") {
+                continue;
+            }
+            $localCol = function_exists('dbapi_outbound_local_column')
+                ? dbapi_outbound_local_column($relName, $relSpec)
+                : ($relSpec['fkfield'] ?? $relName);
+            $fks[$localCol] = [
+                "table" => $relSpec["table"],
+                "field" => $relSpec["field"],
+            ];
+        }
+        foreach ($this->dataModel[$resName]["fields"] as $fieldName => $fieldSpec) {
+            if (isset($fks[$fieldName]) || !is_array($fieldSpec) || !isset($fieldSpec["foreignKey"])) {
+                continue;
+            }
+            $fks[$fieldName] = $fieldSpec["foreignKey"];
         }
         return $fks;
     }

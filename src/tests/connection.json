@@ -1,0 +1,8 @@
+{
+  "driver": "mysql",
+  "host": "10.255.0.1",
+  "port": 3306,
+  "database": "dbapi_testdb",
+  "username": "dbapi",
+  "password": "dbapi"
+}

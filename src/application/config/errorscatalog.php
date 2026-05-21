@@ -20,7 +20,11 @@ $errorsCatalog["input"] = [
     "invalid_request"=>[
         "code"=>"2003",
         "message"=>"Invalid request"
-    ]
+    ],
+    "invalid_json"=>[
+        "code"=>"2004",
+        "message"=>"Invalid JSON"
+    ],
 ];
 $errorsCatalog["access"] = [
     "ip_not_authorized"=>[
@@ -52,7 +56,15 @@ $errorsCatalog["config"] = [
     "security_not_found"=>[
         "code"=>"3004",
         "message"=>"Security not found"
-    ]
+    ],
+    "api_not_active"=>[
+        "code"=>"3005",
+        "message"=>"API is not active"
+    ],
+    "not_ready_for_activate"=>[
+        "code"=>"3006",
+        "message"=>"API is not ready to activate"
+    ],
 
 ];
 

@@ -92,6 +92,18 @@ class Utilities
         return $long & 0xFFFFFFFF;
     }
 
+    /**
+     * Generate a short UUID (cryptographically random, URL-safe).
+     * @param int $bytes Number of random bytes (default 8 → 11 chars)
+     * @return string
+     */
+    public function short_uuid(int $bytes = 8): string
+    {
+        $raw = random_bytes($bytes);
+        $b64 = base64_encode($raw);
+        return rtrim(strtr($b64, '+/', '-_'), '=');
+    }
+
     function IP_is_allowed($acls) {
         if(!is_array($acls)) {
             $acls = [$acls];

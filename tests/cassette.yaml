@@ -1,0 +1,482 @@
+command: 'st run http://192.168.8.114:8888/admin-openapi.yaml --include-tag APIs --phases examples --header X-Admin-API-Key: myverysecuresecret --report-vcr-path /work/cassette.yaml'
+recorded_with: 'Schemathesis 4.9.5'
+seed: 107091715431690435900343036310688110394
+http_interactions:
+- id: 'unFD1l'
+  status: 'FAILURE'
+  generation:
+    time: 0.9719105989788659
+    mode: negative
+  components:
+    header:
+      mode: 'negative'
+  phase:
+    name: 'examples'
+    data: {}
+  recorded_at: '2026-01-29T11:03:15.658110+00:00'
+  checks:
+    - name: 'not_a_server_error'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'status_code_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'content_type_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_headers_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_schema_conformance'
+      status: 'FAILURE'
+      message: 'Response violates schema'
+    - name: 'negative_data_rejection'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'positive_data_acceptance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'missing_required_header'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'unsupported_method'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'use_after_free'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ensure_resource_availability'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ignored_auth'
+      status: 'SUCCESS'
+      message: ~
+
+  request:
+    uri: 'http://192.168.8.114:8888/admin/apis'
+    method: 'POST'
+    headers:
+      "User-Agent":
+      - "schemathesis/4.9.5"
+      "Accept-Encoding":
+      - "gzip, deflate, zstd"
+      "Accept":
+      - "*/*"
+      "Connection":
+      - "keep-alive"
+      "X-Admin-API-Key":
+      - "[Filtered]"
+      "Authorization":
+      - "[Filtered]"
+      "X-Schemathesis-TestCaseId":
+      - "unFD1l"
+      "Content-Type":
+      - "application/json"
+      "Content-Length":
+      - "136"
+
+    body:
+      encoding: 'utf-8'
+      string: "{\"name\": \"testapi\", \"description\": \"My API description\", \"contact\": {\"name\": \"My Name\", \"email\": \"my@email.com\", \"phone\": \"1234567890\"}}"
+  response:
+    status:
+      code: '409'
+      message: "Conflict"
+    elapsed: '0.017153'
+    headers:
+      "server":
+      - "nginx/1.18.0 (Ubuntu)"
+      "date":
+      - "Thu, 29 Jan 2026 11:03:15 GMT"
+      "content-type":
+      - "application/json"
+      "transfer-encoding":
+      - "chunked"
+      "connection":
+      - "keep-alive"
+      "access-control-allow-credentials":
+      - "[Filtered]"
+
+    body:
+      encoding: 'utf-8'
+      string: "{\"code\":\"3001\",\"message\":\"API already exists\"}"
+    http_version: '1.1'
+- id: 'AMkk8Y'
+  status: 'FAILURE'
+  generation:
+    time: 0.002417123003397137
+    mode: negative
+  components:
+    header:
+      mode: 'negative'
+  phase:
+    name: 'examples'
+    data: {}
+  recorded_at: '2026-01-29T11:03:15.708642+00:00'
+  checks:
+    - name: 'not_a_server_error'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'status_code_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'content_type_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_headers_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_schema_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'negative_data_rejection'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'positive_data_acceptance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'missing_required_header'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'unsupported_method'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'use_after_free'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ensure_resource_availability'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ignored_auth'
+      status: 'FAILURE'
+      message: 'API accepts invalid authentication'
+
+  request:
+    uri: 'http://192.168.8.114:8888/admin/apis/clone/testapi'
+    method: 'POST'
+    headers:
+      "User-Agent":
+      - "schemathesis/4.9.5"
+      "Accept-Encoding":
+      - "gzip, deflate, zstd"
+      "Accept":
+      - "*/*"
+      "Connection":
+      - "keep-alive"
+      "X-Admin-API-Key":
+      - "[Filtered]"
+      "Authorization":
+      - "[Filtered]"
+      "X-Schemathesis-TestCaseId":
+      - "AMkk8Y"
+      "Content-Length":
+      - "0"
+
+  response:
+    status:
+      code: '200'
+      message: "OK"
+    elapsed: '0.009423'
+    headers:
+      "server":
+      - "nginx/1.18.0 (Ubuntu)"
+      "date":
+      - "Thu, 29 Jan 2026 11:03:15 GMT"
+      "content-type":
+      - "application/json"
+      "transfer-encoding":
+      - "chunked"
+      "connection":
+      - "keep-alive"
+      "access-control-allow-credentials":
+      - "[Filtered]"
+
+    body:
+      encoding: 'utf-8'
+      string: "{\"name\":\"testapi_clone_1769684595\",\"description\":\"My API description\",\"contact\":{\"name\":\"My Name\",\"email\":\"my@email.com\",\"phone\":\"1234567890\"},\"id\":\"pig9Iw0CBnY\",\"status\":\"draft\",\"createdAt\":\"2026-01-29T11:03:15Z\",\"updatedAt\":\"2026-01-29T11:03:15Z\"}"
+    http_version: '1.1'
+- id: 'gr1jKH'
+  status: 'FAILURE'
+  generation:
+    time: 0.0021111490204930305
+    mode: negative
+  components:
+    header:
+      mode: 'negative'
+  phase:
+    name: 'examples'
+    data: {}
+  recorded_at: '2026-01-29T11:03:15.726893+00:00'
+  checks:
+    - name: 'not_a_server_error'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'status_code_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'content_type_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_headers_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_schema_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'negative_data_rejection'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'positive_data_acceptance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'missing_required_header'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'unsupported_method'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'use_after_free'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ensure_resource_availability'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ignored_auth'
+      status: 'FAILURE'
+      message: 'API accepts invalid authentication'
+
+  request:
+    uri: 'http://192.168.8.114:8888/admin/apis/testapi'
+    method: 'GET'
+    headers:
+      "User-Agent":
+      - "schemathesis/4.9.5"
+      "Accept-Encoding":
+      - "gzip, deflate, zstd"
+      "Accept":
+      - "*/*"
+      "Connection":
+      - "keep-alive"
+      "X-Admin-API-Key":
+      - "[Filtered]"
+      "Authorization":
+      - "[Filtered]"
+      "X-Schemathesis-TestCaseId":
+      - "gr1jKH"
+
+  response:
+    status:
+      code: '200'
+      message: "OK"
+    elapsed: '0.00904'
+    headers:
+      "server":
+      - "nginx/1.18.0 (Ubuntu)"
+      "date":
+      - "Thu, 29 Jan 2026 11:03:15 GMT"
+      "content-type":
+      - "application/json"
+      "transfer-encoding":
+      - "chunked"
+      "connection":
+      - "keep-alive"
+      "access-control-allow-credentials":
+      - "[Filtered]"
+
+    body:
+      encoding: 'utf-8'
+      string: "{\"name\":\"testapi\",\"description\":\"My API description\",\"contact\":{\"name\":\"My Name\",\"email\":\"my@email.com\",\"phone\":\"1234567890\"},\"id\":\"clr9QuknBis\",\"status\":\"draft\",\"createdAt\":\"2026-01-29T10:58:34Z\",\"updatedAt\":\"2026-01-29T10:58:34Z\"}"
+    http_version: '1.1'
+- id: 'VpY0nV'
+  status: 'FAILURE'
+  generation:
+    time: 0.014387283998075873
+    mode: negative
+  components:
+    header:
+      mode: 'negative'
+    body:
+      mode: 'positive'
+  phase:
+    name: 'examples'
+    data: {}
+  recorded_at: '2026-01-29T11:03:15.764192+00:00'
+  checks:
+    - name: 'not_a_server_error'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'status_code_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'content_type_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_headers_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_schema_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'negative_data_rejection'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'positive_data_acceptance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'missing_required_header'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'unsupported_method'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'use_after_free'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ensure_resource_availability'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ignored_auth'
+      status: 'FAILURE'
+      message: 'API accepts invalid authentication'
+
+  request:
+    uri: 'http://192.168.8.114:8888/admin/apis/testapi'
+    method: 'PATCH'
+    headers:
+      "User-Agent":
+      - "schemathesis/4.9.5"
+      "Accept-Encoding":
+      - "gzip, deflate, zstd"
+      "Accept":
+      - "*/*"
+      "Connection":
+      - "keep-alive"
+      "X-Admin-API-Key":
+      - "[Filtered]"
+      "Authorization":
+      - "[Filtered]"
+      "X-Schemathesis-TestCaseId":
+      - "VpY0nV"
+      "Content-Type":
+      - "application/json"
+      "Content-Length":
+      - "2"
+
+    body:
+      encoding: 'utf-8'
+      string: "{}"
+  response:
+    status:
+      code: '200'
+      message: "OK"
+    elapsed: '0.015211'
+    headers:
+      "server":
+      - "nginx/1.18.0 (Ubuntu)"
+      "date":
+      - "Thu, 29 Jan 2026 11:03:15 GMT"
+      "content-type":
+      - "application/json"
+      "transfer-encoding":
+      - "chunked"
+      "connection":
+      - "keep-alive"
+      "access-control-allow-credentials":
+      - "[Filtered]"
+
+    body:
+      encoding: 'utf-8'
+      string: "{\"name\":\"testapi\",\"description\":\"My API description\",\"contact\":{\"name\":\"My Name\",\"email\":\"my@email.com\",\"phone\":\"1234567890\"},\"id\":\"clr9QuknBis\",\"status\":\"draft\",\"createdAt\":\"2026-01-29T10:58:34Z\",\"updatedAt\":\"2026-01-29T11:03:15Z\"}"
+    http_version: '1.1'
+- id: '21U9kK'
+  status: 'FAILURE'
+  generation:
+    time: 0.00262483797268942
+    mode: negative
+  components:
+    header:
+      mode: 'negative'
+  phase:
+    name: 'examples'
+    data: {}
+  recorded_at: '2026-01-29T11:03:16.076377+00:00'
+  checks:
+    - name: 'not_a_server_error'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'status_code_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'content_type_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_headers_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'response_schema_conformance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'negative_data_rejection'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'positive_data_acceptance'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'missing_required_header'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'unsupported_method'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'use_after_free'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ensure_resource_availability'
+      status: 'SUCCESS'
+      message: ~
+    - name: 'ignored_auth'
+      status: 'FAILURE'
+      message: 'API accepts invalid authentication'
+
+  request:
+    uri: 'http://192.168.8.114:8888/admin/apis/testapi'
+    method: 'DELETE'
+    headers:
+      "User-Agent":
+      - "schemathesis/4.9.5"
+      "Accept-Encoding":
+      - "gzip, deflate, zstd"
+      "Accept":
+      - "*/*"
+      "Connection":
+      - "keep-alive"
+      "X-Admin-API-Key":
+      - "[Filtered]"
+      "Authorization":
+      - "[Filtered]"
+      "X-Schemathesis-TestCaseId":
+      - "21U9kK"
+      "Content-Length":
+      - "0"
+
+  response:
+    status:
+      code: '204'
+      message: "No Content"
+    elapsed: '0.302105'
+    headers:
+      "server":
+      - "nginx/1.18.0 (Ubuntu)"
+      "date":
+      - "Thu, 29 Jan 2026 11:03:16 GMT"
+      "content-type":
+      - "text/html;charset=UTF-8"
+      "connection":
+      - "keep-alive"
+      "access-control-allow-credentials":
+      - "[Filtered]"
+
+    body:
+      encoding: 'UTF-8'
+      string: ""
+    http_version: '1.1'

@@ -1,0 +1,129 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+require_once APPPATH . 'core/MY_MgmtController.php';
+
+class Schema extends MY_MgmtController
+{
+    public function introspect($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        try {
+            $structure = $this->generateStructure($apiId);
+            $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
+            file_put_contents($snapPath, json_encode($structure, JSON_PRETTY_PRINT));
+            $meta = $this->store->loadMeta($apiId);
+            $meta['schema']['introspectedAt'] = gmdate('Y-m-d\TH:i:s\Z');
+            $this->store->saveMeta($apiId, $meta);
+            HttpResp::json_out(200, [
+                'introspectedAt' => $meta['schema']['introspectedAt'],
+                'entityCount' => count($structure),
+            ]);
+        } catch (Exception $e) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function get_introspected($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
+        if (!is_file($snapPath)) {
+            try {
+                $structure = $this->generateStructure($apiId);
+                HttpResp::json_out(200, ['entities' => $structure]);
+                return;
+            } catch (Exception $e) {
+                $this->mgmtError(404, $this->errorsCatalog['config']['api_not_found']);
+            }
+        }
+        HttpResp::json_out(200, json_decode(file_get_contents($snapPath), true));
+    }
+
+    public function get_overrides($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $patch = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/patch.php");
+        HttpResp::json_out(200, $patch ?: new stdClass());
+    }
+
+    public function put_overrides($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $payload = $this->validatePayload();
+        $data = json_decode(json_encode($payload), true);
+        $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $data);
+        $this->store->touchUpdated($apiId);
+        HttpResp::json_out(200, $data);
+    }
+
+    public function patch_overrides($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $payload = $this->validatePayload();
+        $existing = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/patch.php");
+        $merged = smart_array_merge_recursive($existing, json_decode(json_encode($payload), true));
+        $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $merged);
+        $this->store->touchUpdated($apiId);
+        HttpResp::json_out(200, $merged);
+    }
+
+    public function get_effective($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        try {
+            $structure = $this->generateStructure($apiId);
+            HttpResp::json_out(200, ['entities' => $structure]);
+        } catch (Exception $e) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function rebuild($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        try {
+            $dir = $this->store->getApiDir($apiId);
+            $old = is_file("{$dir}/{$this->configFiles['structure']}")
+                ? @include "{$dir}/{$this->configFiles['structure']}"
+                : [];
+            if (!is_array($old)) {
+                $old = [];
+            }
+
+            $conn = @include "{$dir}/connection.php";
+            if (!is_array($conn) || empty($conn)) {
+                throw new RuntimeException('Connection not configured');
+            }
+            $db = @$this->load->database($conn, true);
+            $err = $db->error();
+            if ($err['code'] !== 0) {
+                throw new RuntimeException($err['message']);
+            }
+
+            $this->load->helper('config_util');
+            $patch = $this->store->loadPhp("{$dir}/patch.php");
+            $built = structure_build_from_database(
+                $db,
+                $conn['database'],
+                $old,
+                is_array($patch) && count($patch) ? $patch : null
+            );
+            $structure = $built['structure'];
+            structure_copy_hooks_from_old($old, $structure);
+
+            $this->saveStructure($apiId, $structure);
+            $meta = $this->store->loadMeta($apiId);
+            $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
+            $this->store->saveMeta($apiId, $meta);
+
+            HttpResp::json_out(200, [
+                'rebuiltAt' => gmdate('Y-m-d\TH:i:s\Z'),
+                'entityCount' => count($structure),
+                'warnings' => $built['warnings'] ?? [],
+            ]);
+        } catch (Exception $e) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
+        }
+    }
+}

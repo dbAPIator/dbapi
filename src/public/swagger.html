@@ -14,7 +14,8 @@
   window.onload = () => {
     const params = new URLSearchParams(window.location.search);
     window.ui = SwaggerUIBundle({
-      url: "apis/"+params.get('api')+"/swagger",
+      //url: "apis/"+params.get('api')+"/swagger",
+      url: params.get('url'),
       dom_id: '#swagger-ui',
     });
   };

@@ -5,6 +5,8 @@
  * Date: 10/3/18
  * Time: 11:59 AM
  */
+require_once __DIR__ . '/RequestContext.php';
+
 class HttpResp{
     private static $self=null;
 
@@ -49,6 +51,7 @@ class HttpResp{
         return $this;
     }
 
+
     /**
      * set response code
      * @param string|int $statusCode HTTP response code
@@ -66,6 +69,7 @@ class HttpResp{
      */
     public function output()
     {
+        self::applyRequestIdHeader($this);
         http_response_code($this->responseCode);
         foreach ($this->header as $header=>$value)
         {
@@ -75,6 +79,55 @@ class HttpResp{
         }
         echo $this->body;
         return true;
+    }
+
+    private static function applyRequestIdHeader(HttpResp $resp): void
+    {
+        $id = RequestContext::id();
+        if ($id !== null) {
+            $resp->header('X-Request-Id', $id);
+        }
+    }
+
+    /**
+     * @return array{errors:array<int,array<string,mixed>>}
+     */
+    public static function errorPayload(string $message, $code = null, int $httpStatus = 400): array
+    {
+        $error = ['message' => $message];
+        if ($code !== null && $code !== '') {
+            $error['code'] = $code;
+        }
+        $rid = RequestContext::id();
+        if ($rid !== null) {
+            $error['meta'] = ['request_id' => $rid];
+        }
+        return ['errors' => [$error]];
+    }
+
+    /**
+     * Attach request_id to JSON:API error document arrays.
+     *
+     * @param array<string,mixed> $doc
+     * @return array<string,mixed>
+     */
+    public static function enrichJsonApiErrors(array $doc): array
+    {
+        $rid = RequestContext::id();
+        if ($rid === null || empty($doc['errors']) || !is_array($doc['errors'])) {
+            return $doc;
+        }
+        foreach ($doc['errors'] as $i => $err) {
+            if (!is_array($err)) {
+                continue;
+            }
+            if (!isset($err['meta']) || !is_array($err['meta'])) {
+                $err['meta'] = [];
+            }
+            $err['meta']['request_id'] = $rid;
+            $doc['errors'][$i] = $err;
+        }
+        return $doc;
     }
 
     /**
@@ -201,6 +254,7 @@ class HttpResp{
         $resp = HttpResp::init();
         if($contentType)
             $resp->content_type($contentType);
+        self::applyRequestIdHeader($resp);
         $resp
             ->response_code($statusCode)
             ->body($body)
@@ -294,7 +348,8 @@ class HttpResp{
     static function out_autodetect($code,$body=null) {
         $http = HttpResp::init();
         if(is_array($body) || is_object($body)){
-            $body = json_encode($body);
+            
+            $body = json_encode($body,JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             $http->content_type("application/json");
         }
 
@@ -327,6 +382,11 @@ class HttpResp{
      */
     static function json_out($statusCode, $body=null, $headers=[],$jsonOptions=0)
     {
+        if (is_array($body)) {
+            if (isset($body['errors'])) {
+                $body = self::enrichJsonApiErrors($body);
+            }
+        }
         if(is_array($body) || is_object($body))
             $body = json_encode($body,$jsonOptions);
         
@@ -339,17 +399,17 @@ class HttpResp{
      */
     static function jsonapi_out($statusCode, $doc)
     {
-        $body = json_encode($doc->json_data(),JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $data = $doc->json_data();
+        if (is_array($data)) {
+            $data = self::enrichJsonApiErrors($data);
+        }
+        $body = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         HttpResp::ctype_out($statusCode,"application/json",$body);
     }
 
     static function error_out_json($message, $statusCode,$doExit=true)
     {
-        HttpResp::json_out($statusCode,[
-            "errors"=>[
-                ["message"=>$message]
-            ]
-        ]);
+        HttpResp::json_out($statusCode, self::errorPayload($message, null, (int) $statusCode));
         if($doExit) exit();
     }
 
@@ -359,7 +419,15 @@ class HttpResp{
      */
     static function exception_out($e,$doExit=true)
     {
-        HttpResp::json_out(500,["errors"=>[["message"=>$e->getMessage()]]]);
+        $code = (int) $e->getCode();
+        if ($code < 400 || $code > 599) {
+            $code = 500;
+        }
+        RequestContext::log($code >= 500 ? 'error' : 'debug', $e->getMessage(), [
+            'http_status' => $code,
+            'exception' => get_class($e),
+        ]);
+        HttpResp::json_out($code, self::errorPayload($e->getMessage(), $code, $code));
         if($doExit) exit();
     }
 

@@ -22,10 +22,10 @@ class DBAPIRequest {
     public $primaryKey = null;
 
     /**
-     * filter conditions
-     * @var array|string
+     * Filter AST (compare / and / or nodes) or legacy flat list of comparisons.
+     * @var array|string|null
      */
-    public $filter = [];                     // filters (where)
+    public $filter = [];
 
     /**
      * array of fields to include
@@ -90,6 +90,12 @@ class DBAPIRequest {
      */
     public $relSpec = null;
 
+    /**
+     * Relationship name on the parent resource (outbound local FK column name).
+     * @var string|null
+     */
+    public $relName = null;
+
     public $selectFieldsOffset;
 
     /**
@@ -107,27 +113,62 @@ class DBAPIRequest {
      * @return $this
      * @throws \dbAPI\API\Exception
      */
+    /**
+     * @param string $expression
+     * @return $this
+     * @throws Exception
+     */
     public function &add_filter($expression) {
 
         if(!$expression)
             return $this;
-        $validOps = ["!=","=","<","<=",">",">=","><","~=","!~=","~=~","!~=~","=~","!=~","<>","!><"];
 
-        if(!preg_match("/(\w+)([\>\<\=\~\!]+)(.*)/",$expression,$matches)) {
-            throw new \dbAPI\API\Exception("Invalid filtering expression $expression ".
-                "for resource $this->resourceName",400);
+        try {
+            $compare = FilterParser::parseComparison($expression);
+        } catch (Exception $e) {
+            throw new Exception("Invalid filtering expression $expression ".
+                "for resource $this->resourceName: ".$e->getMessage(), 400);
         }
 
-        if(!in_array($matches[2],$validOps)) {
-            throw new \dbAPI\API\Exception("Invalid comparison operator in".
-                " filtering expression $expression for resource $this->resourceName",400);
-        }
+        $this->filter = FilterParser::addCompare($this->filter, $compare['left'], $compare['op'], $compare['right']);
+        return $this;
+    }
 
-        $this->filter[] = [
-            "left"=>$matches[1],
-            "op"=>$matches[2],
-            "right"=>$matches[3],
-        ];
+    /**
+     * @param string $expression
+     * @return $this
+     * @throws Exception
+     */
+    public function &set_filter_from_string($expression) {
+        if (!$expression) {
+            $this->filter = [];
+            return $this;
+        }
+        try {
+            $this->filter = FilterParser::parse($expression);
+        } catch (Exception $e) {
+            throw new Exception("Invalid filter for resource $this->resourceName: ".$e->getMessage(), 400);
+        }
+        return $this;
+    }
+
+    /**
+     * @param string $left
+     * @param string $op
+     * @param string $right
+     * @return $this
+     */
+    public function &add_filter_condition($left, $op, $right) {
+        $this->filter = FilterParser::addCompare($this->filter, $left, $op, (string) $right);
+        return $this;
+    }
+
+    /**
+     * @param string $field
+     * @return $this
+     */
+    public function &remove_filters_on_field($field) {
+        $this->filter = FilterParser::removeCompareOnField($this->filter, $field) ?? [];
         return $this;
     }
 

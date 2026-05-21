@@ -24,6 +24,7 @@ $config["default_field_access_search"] = true;
 
 // path to where the APIs confingurations are stored
 $config["configs_dir"] = $_ENV["CONFIGS_DIR"]  ?? "/var/www/html/dbapi/dbconfigs";
+$config["links_dir"] = $_ENV["LINKS_DIR"]  ?? "/app/api_links";
 
 
 // default linked resources set page size
@@ -31,7 +32,22 @@ $config["default_relationships_page_size"] = $_ENV["DEFAULT_RELATIONSHIPS_PAGE_S
 // default page size
 $config["default_page_size"] = $_ENV["DEFAULT_PAGE_SIZE"] ?? 100;
 // max page size
-$config["max_page_size"] = $_ENV["MAX_PAGE_SIZE"] ?? 10000;
+$config["max_page_size"] = $_ENV["MAX_PAGE_SIZE"] ?? 1000;
+
+// filter expression guardrails
+$config["max_filter_expression_length"] = $_ENV["MAX_FILTER_EXPRESSION_LENGTH"] ?? 4096;
+$config["max_filter_ast_depth"] = $_ENV["MAX_FILTER_AST_DEPTH"] ?? 20;
+$config["max_filter_ast_nodes"] = $_ENV["MAX_FILTER_AST_NODES"] ?? 100;
+
+// bulk write limits
+$config["bulk_insert_limit"] = $_ENV["BULK_INSERT_LIMIT"] ?? 100;
+$config["bulk_update_limit"] = $_ENV["BULK_UPDATE_LIMIT"] ?? 50;
+
+// per-request / query timeout (seconds); override per API in connection.php as query_timeout_seconds
+$config["request_timeout_seconds"] = $_ENV["REQUEST_TIMEOUT_SECONDS"] ?? 60;
+
+// nested include depth for GET ?include=
+$config["max_include_depth"] = $_ENV["MAX_INCLUDE_DEPTH"] ?? 5;
 
 /**
  *  Configuration API settings. These settings are taken into account when creating a new API configuration, deleting an existing one or generating a new API key for an existing API configuration. 
@@ -55,5 +71,6 @@ $config["files"] = [
     "admin_config" => "admin_config.php",
     "connection" => "connection.php",
     "patch" => "patch.php",
-    "structure" => "structure.php"
+    "structure" => "structure.php",
+    "openapi" => "openapi.json",
 ];

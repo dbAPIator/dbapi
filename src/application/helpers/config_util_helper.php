@@ -46,6 +46,423 @@ function compute_struct_diff($db_struct, $target_struct) {
  * @param $arr2
  * @return bool
  */
+/**
+ * Local FK column on the parent resource for an outbound relation (relation array key).
+ */
+function dbapi_outbound_local_column(string $relName, array $relSpec): string
+{
+    if (($relSpec['type'] ?? '') !== 'outbound') {
+        return $relName;
+    }
+    return $relSpec['fkfield'] ?? $relName;
+}
+
+/**
+ * Stable identity for a relation edge (used to preserve public names on regen).
+ */
+function structure_relation_edge_id(string $parentEntity, array $relSpec, ?string $relName = null): string
+{
+    if (($relSpec['type'] ?? '') === 'inbound') {
+        return 'inbound:' . $parentEntity . ':' . $relSpec['table'] . '.' . $relSpec['field'];
+    }
+    $local = dbapi_outbound_local_column($relName ?? '', $relSpec);
+    return 'outbound:' . $parentEntity . ':' . $local . '->' . $relSpec['table'] . '.' . $relSpec['field'];
+}
+
+/**
+ * Default public name for a new inbound relation (deterministic).
+ */
+function structure_default_inbound_relation_name(string $childTable, string $childField): string
+{
+    return $childTable . '_' . $childField;
+}
+
+/**
+ * Propose inbound relation name; short child table name only when unambiguous.
+ */
+function structure_propose_inbound_relation_name(
+    string $childTable,
+    string $childField,
+    array $usedNames,
+    array $inboundCountByChild
+): string {
+    $short = $childTable;
+    $qualified = structure_default_inbound_relation_name($childTable, $childField);
+
+    if (($inboundCountByChild[$childTable] ?? 0) <= 1 && !isset($usedNames[$short])) {
+        return $short;
+    }
+    if (!isset($usedNames[$qualified])) {
+        return $qualified;
+    }
+    $n = 2;
+    while (isset($usedNames[$qualified . '_' . $n])) {
+        $n++;
+    }
+    return $qualified . '_' . $n;
+}
+
+/**
+ * Resolve FK target for a column from outbound relation (canonical) or legacy field.foreignKey.
+ *
+ * @return array{table:string, field:string}|null
+ */
+function structure_resolve_field_foreign_key(array $entity, string $fieldName, ?string $relName = null): ?array
+{
+    $relName = $relName ?? $fieldName;
+    $relations = $entity['relations'] ?? [];
+    if (isset($relations[$relName]) && is_array($relations[$relName])
+        && ($relations[$relName]['type'] ?? '') === 'outbound') {
+        return [
+            'table' => $relations[$relName]['table'],
+            'field' => $relations[$relName]['field'],
+        ];
+    }
+    $fields = $entity['fields'] ?? [];
+    if (isset($fields[$fieldName]['foreignKey']) && is_array($fields[$fieldName]['foreignKey'])) {
+        return $fields[$fieldName]['foreignKey'];
+    }
+    return null;
+}
+
+/**
+ * @return array<int, array{parent:string, child:string, childField:string, parentField:string}>
+ */
+function structure_collect_inbound_edges(array $structure): array
+{
+    $edges = [];
+    $seen = [];
+    foreach ($structure as $childTable => $table) {
+        if (!is_array($table)) {
+            continue;
+        }
+        if (isset($table['relations']) && is_array($table['relations'])) {
+            foreach ($table['relations'] as $relName => $rel) {
+                if (!is_array($rel) || ($rel['type'] ?? '') !== 'outbound') {
+                    continue;
+                }
+                $childField = dbapi_outbound_local_column($relName, $rel);
+                $parent = $rel['table'];
+                $key = "{$childTable}.{$childField}->{$parent}.{$rel['field']}";
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $edges[] = [
+                    'parent' => $parent,
+                    'child' => $childTable,
+                    'childField' => $childField,
+                    'parentField' => $rel['field'],
+                ];
+            }
+        }
+        if (!isset($table['fields']) || !is_array($table['fields'])) {
+            continue;
+        }
+        foreach ($table['fields'] as $fldName => $fldSpec) {
+            if (!is_array($fldSpec) || !isset($fldSpec['foreignKey'])) {
+                continue;
+            }
+            $key = "{$childTable}.{$fldName}->{$fldSpec['foreignKey']['table']}.{$fldSpec['foreignKey']['field']}";
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $edges[] = [
+                'parent' => $fldSpec['foreignKey']['table'],
+                'child' => $childTable,
+                'childField' => $fldName,
+                'parentField' => $fldSpec['foreignKey']['field'],
+            ];
+        }
+    }
+    return $edges;
+}
+
+/**
+ * Phase 2: relations-only — ensure outbound relations exist, drop redundant field.foreignKey.
+ *
+ * @return array{structure: array, changed: bool}
+ */
+function structure_phase2_normalize(array $structure): array
+{
+    $changed = false;
+    foreach ($structure as $entityName => &$entity) {
+        if (!is_array($entity) || !isset($entity['fields']) || !is_array($entity['fields'])) {
+            continue;
+        }
+        if (!isset($entity['relations']) || !is_array($entity['relations'])) {
+            $entity['relations'] = [];
+        }
+        foreach ($entity['fields'] as $fieldName => &$field) {
+            if (!is_array($field) || !isset($field['foreignKey']) || !is_array($field['foreignKey'])) {
+                continue;
+            }
+            $fk = $field['foreignKey'];
+            $localCol = $fieldName;
+            if (!isset($entity['relations'][$localCol])
+                || ($entity['relations'][$localCol]['type'] ?? '') !== 'outbound') {
+                $entity['relations'][$localCol] = [
+                    'table' => $fk['table'],
+                    'field' => $fk['field'],
+                    'type' => 'outbound',
+                ];
+                $changed = true;
+            }
+            unset($field['foreignKey']);
+            $changed = true;
+        }
+        unset($field);
+    }
+    unset($entity);
+    return ['structure' => $structure, 'changed' => $changed];
+}
+
+/**
+ * Assign inbound relations with stable, deterministic public names.
+ *
+ * @return list<array{code:string, message:string, entity?:string, relation?:string}>
+ */
+function structure_apply_inbound_relations(array &$structure, array $edges, ?array &$permissions = null): array
+{
+    $warnings = [];
+    $defaultPerms = [
+        'insert' => true,
+        'update' => true,
+        'select' => true,
+        'searchable' => true,
+    ];
+    $byParent = [];
+    foreach ($edges as $edge) {
+        $byParent[$edge['parent']][] = $edge;
+    }
+
+    foreach ($byParent as $parent => $parentEdges) {
+        usort($parentEdges, function ($a, $b) {
+            return [$a['child'], $a['childField']] <=> [$b['child'], $b['childField']];
+        });
+
+        if (!isset($structure[$parent]['relations']) || !is_array($structure[$parent]['relations'])) {
+            $structure[$parent]['relations'] = [];
+        }
+
+        $usedNames = array_fill_keys(array_keys($structure[$parent]['relations']), true);
+        $inboundCountByChild = [];
+        foreach ($parentEdges as $edge) {
+            $inboundCountByChild[$edge['child']] = ($inboundCountByChild[$edge['child']] ?? 0) + 1;
+        }
+
+        foreach ($parentEdges as $edge) {
+            $name = structure_propose_inbound_relation_name(
+                $edge['child'],
+                $edge['childField'],
+                $usedNames,
+                $inboundCountByChild
+            );
+
+            if ($name !== $edge['child']) {
+                $warnings[] = [
+                    'code' => 'QUALIFIED_RELATION_NAME',
+                    'message' => "Inbound relation on '{$parent}' published as '{$name}' (child {$edge['child']}.{$edge['childField']})",
+                    'entity' => $parent,
+                    'relation' => $name,
+                ];
+            }
+
+            $structure[$parent]['relations'][$name] = [
+                'table' => $edge['child'],
+                'field' => $edge['childField'],
+                'type' => 'inbound',
+            ];
+            if ($permissions !== null) {
+                if (!isset($permissions[$parent]['relations']) || !is_array($permissions[$parent]['relations'])) {
+                    $permissions[$parent]['relations'] = [];
+                }
+                $permissions[$parent]['relations'][$name] = $defaultPerms;
+            }
+            $usedNames[$name] = true;
+        }
+    }
+
+    return $warnings;
+}
+
+/**
+ * Preserve public relation names from the previous effective schema on regen.
+ *
+ * @return array{structure: array, warnings: list<array{code:string, message:string, entity?:string, relation?:string}>}
+ */
+function structure_merge_preserved_relations(array $oldStructure, array $newStructure): array
+{
+    $warnings = [];
+
+    foreach (array_keys($newStructure) as $parent) {
+        if (!is_array($newStructure[$parent])) {
+            continue;
+        }
+
+        $oldRels = (is_array($oldStructure[$parent] ?? null) && isset($oldStructure[$parent]['relations']))
+            ? $oldStructure[$parent]['relations'] : [];
+        $newRels = $newStructure[$parent]['relations'] ?? [];
+
+        if (!is_array($oldRels)) {
+            $oldRels = [];
+        }
+        if (!is_array($newRels)) {
+            $newRels = [];
+        }
+
+        $oldByEdge = [];
+        foreach ($oldRels as $relName => $spec) {
+            if (!is_array($spec)) {
+                continue;
+            }
+            $oldByEdge[structure_relation_edge_id($parent, $spec, $relName)] = [
+                'name' => $relName,
+                'spec' => $spec,
+            ];
+        }
+
+        $merged = [];
+        $usedNames = [];
+
+        foreach ($newRels as $relName => $spec) {
+            if (!is_array($spec)) {
+                continue;
+            }
+            $edgeId = structure_relation_edge_id($parent, $spec, $relName);
+            $publicName = $relName;
+
+            if (isset($oldByEdge[$edgeId])) {
+                $publicName = $oldByEdge[$edgeId]['name'];
+                unset($oldByEdge[$edgeId]);
+            }
+
+            if (isset($usedNames[$publicName])) {
+                $warnings[] = [
+                    'code' => 'CONFLICT_RELATION_NAME',
+                    'message' => "Cannot assign relation '{$publicName}' on '{$parent}': name already used",
+                    'entity' => $parent,
+                    'relation' => $publicName,
+                ];
+                continue;
+            }
+
+            $merged[$publicName] = $spec;
+            $usedNames[$publicName] = true;
+        }
+
+        foreach ($oldByEdge as $edgeId => $info) {
+            $warnings[] = [
+                'code' => 'ORPHAN_RELATION',
+                'message' => "Relation '{$info['name']}' on '{$parent}' no longer exists in the database; kept for API compatibility",
+                'entity' => $parent,
+                'relation' => $info['name'],
+            ];
+            if (!isset($usedNames[$info['name']])) {
+                $merged[$info['name']] = $info['spec'];
+                $usedNames[$info['name']] = true;
+            }
+        }
+
+        if (count($merged) || isset($newStructure[$parent]['relations'])) {
+            $newStructure[$parent]['relations'] = $merged;
+        }
+    }
+
+    return ['structure' => $newStructure, 'warnings' => $warnings];
+}
+
+/**
+ * Introspect DB + preserve stable relation names + optional patch merge.
+ *
+ * @return array{structure: array, warnings: list<array>}
+ */
+function structure_build_from_database($db, string $dbName, array $oldStructure = [], ?array $patch = null): array
+{
+    require_once APPPATH . 'third_party/dbAPI/Config/DBWalk.php';
+
+    $parsed = \dbAPI\Config\DBWalk::parse($db, $dbName);
+    $structure = $parsed['structure'];
+    $warnings = $parsed['warnings'] ?? [];
+
+    if (count($oldStructure)) {
+        $merge = structure_merge_preserved_relations($oldStructure, $structure);
+        $structure = $merge['structure'];
+        $warnings = array_merge($warnings, $merge['warnings']);
+    }
+
+    if (is_array($patch) && count($patch)) {
+        $structure = smart_array_merge_recursive($structure, $patch);
+    }
+
+    return ['structure' => $structure, 'warnings' => $warnings];
+}
+
+/**
+ * Copy per-resource hooks from a previous effective schema.
+ */
+function structure_copy_hooks_from_old(array $oldStructure, array &$newStructure): void
+{
+    foreach (array_keys($newStructure) as $resourceName) {
+        if (isset($oldStructure[$resourceName]['hooks'])) {
+            $newStructure[$resourceName]['hooks'] = $oldStructure[$resourceName]['hooks'];
+        }
+    }
+}
+
+/**
+ * Phase 1 structure slimming: remove referencedBy, fkfield, redundant name keys.
+ *
+ * @return array{structure: array, changed: bool}
+ */
+function structure_phase1_slim(array $structure): array
+{
+    $changed = false;
+    foreach ($structure as $entityName => &$entity) {
+        if (!is_array($entity)) {
+            continue;
+        }
+        if (array_key_exists('name', $entity) && (!isset($entity['name']) || $entity['name'] === $entityName)) {
+            unset($entity['name']);
+            $changed = true;
+        }
+        if (!isset($entity['fields']) || !is_array($entity['fields'])) {
+            continue;
+        }
+        foreach ($entity['fields'] as $fieldName => &$field) {
+            if (!is_array($field)) {
+                continue;
+            }
+            if (array_key_exists('name', $field) && (!isset($field['name']) || $field['name'] === $fieldName)) {
+                unset($field['name']);
+                $changed = true;
+            }
+            if (array_key_exists('referencedBy', $field)) {
+                unset($field['referencedBy']);
+                $changed = true;
+            }
+        }
+        unset($field);
+        if (!isset($entity['relations']) || !is_array($entity['relations'])) {
+            continue;
+        }
+        foreach ($entity['relations'] as $relName => &$rel) {
+            if (!is_array($rel)) {
+                continue;
+            }
+            if (($rel['type'] ?? '') === 'outbound' && array_key_exists('fkfield', $rel)) {
+                unset($rel['fkfield']);
+                $changed = true;
+            }
+        }
+        unset($rel);
+    }
+    unset($entity);
+
+    return ['structure' => $structure, 'changed' => $changed];
+}
+
 function smart_array_merge_recursive($arr1,$arr2) {
     if(!is_array($arr1) || !is_array($arr2) )
         return $arr1;
@@ -71,7 +488,7 @@ function smart_array_merge_recursive($arr1,$arr2) {
 
 function remove_dir_recursive($fsEntry) {
     if(!is_dir($fsEntry)) {
-        if(!unlink($fsEntry)) throw new Exception("Could not remove $fsEntry");
+        if(!@unlink($fsEntry)) throw new Exception("Could not remove $fsEntry");
         return true;
     }
 
