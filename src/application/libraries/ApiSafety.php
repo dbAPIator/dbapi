@@ -134,10 +134,6 @@ class ApiSafety
         try {
             if (strpos($driver, 'mysql') !== false || strpos($driver, 'mysqli') !== false) {
                 $db->query('SET SESSION max_execution_time = ' . ($seconds * 1000));
-            } elseif (strpos($driver, 'postgre') !== false) {
-                $db->query("SET statement_timeout = '" . (int) $seconds . "s'");
-            } elseif (strpos($driver, 'sqlsrv') !== false) {
-                $db->query('SET LOCK_TIMEOUT ' . ((int) $seconds * 1000));
             }
         } catch (\Throwable $e) {
             RequestContext::log('debug', 'Could not set DB query timeout', [

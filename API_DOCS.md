@@ -1,6 +1,6 @@
 #dbAPI
 
-dbAPI is a universal REST API for relational databases. It achieves this by scanning the database structure and generating a snapshot of the schema and a relations graph. This allows for data validation and relation retrieval.
+dbAPI is a REST API for **MySQL and MariaDB**. It scans the database structure and generates a snapshot of the schema and a relations graph for data validation and relation retrieval.
 
 ## Instalation
 

@@ -1,0 +1,235 @@
+# dbAPI
+
+**Turn your MySQL or MariaDB schema into a production-grade [JSON:API](https://jsonapi.org/) REST layer** — without writing CRUD routes for every table.
+
+dbAPI introspects your database, generates configuration and OpenAPI, and serves governed HTTP access: filtering, relationships, field-level permissions, JWT auth, and lifecycle management. One installation can host many independent data APIs, each pointing at its own database.
+
+```text
+  Apps & integrations                dbAPI                         Your database
+ ┌──────────────────┐    ┌─────────────────────────────┐    ┌─────────────────┐
+ │ SPA, mobile,     │    │ Control plane  /mgmt/v1     │    │ MySQL / MariaDB │
+ │ scripts, BI      │───▶│  create · configure ·       │───▶│ tables · views  │
+ │ partner APIs     │    │  validate · activate        │    │ FKs · procedures│
+ └──────────────────┘    │ Data plane  /v1/apis/…/data │    └─────────────────┘
+                         │  JSON:API CRUD + policies   │            ▲
+                         └──────────────┬──────────────┘            │
+                                        │ per-API config              │
+                                        ▼ (introspection)             │
+                         ┌─────────────────────────────┐──────────────┘
+                         │ dbconfigs/{apiId}/            │
+                         │ structure · policies · hooks  │
+                         └─────────────────────────────┘
+```
+
+---
+
+## Why dbAPI
+
+Building a REST API on top of an existing database usually means endless boilerplate: one controller per table, hand-maintained OpenAPI, ad hoc filter syntax, and security bolted on later. Schema changes break clients or require another deploy.
+
+dbAPI flips that model:
+
+- **Schema is the source of truth** — introspect from `information_schema`, rebuild when the database evolves, preserve overrides in `patch.php`.
+- **Policy before data** — APIs stay in `draft` until connection, schema, and policies pass validation; only then does the data plane go live.
+- **Standards-shaped responses** — [JSON:API](https://jsonapi.org/) documents with relationships, sparse fieldsets, and consistent errors.
+- **Operator-friendly control plane** — plain JSON Management API with OpenAPI validation, separate from consumer-facing data routes.
+
+dbAPI is a **standalone HTTP service** (not embedded middleware). It fits when you want governed data access to a relational database — internal tools, partner integrations, rapid prototypes, or an extra API surface alongside an existing app.
+
+**Supported databases:** MySQL and MariaDB (mysqli). Other engines are not supported yet.
+
+---
+
+## Two planes, one product
+
+| | Control plane | Data plane |
+|---|---------------|------------|
+| **Who** | Operators, CI/CD, admins | Applications and end users |
+| **Path** | `/mgmt/v1/apis/...` | `/v1/apis/{apiId}/data/...` |
+| **Format** | Plain JSON | JSON:API |
+| **Purpose** | Define *whether* and *how* an API exists | Read and write *rows* |
+
+**Control plane** — Create an API (`apiId`), attach a connection, introspect and rebuild schema, set network and auth policies, register webhooks, run preflight checks, then **activate**. Until activation, data routes do not serve traffic. Deactivate or delete without losing your override files (unless you remove the config directory).
+
+**Data plane** — Once `active`, clients call familiar REST shapes: list and fetch resources, create and update records, traverse foreign keys, filter and paginate. Legacy paths under `/apis/...` still work; new integrations should use `/v1/apis/...`.
+
+Full references: [Management API](docs/management_api.md) · [Using the data API](docs/using_the_api.md)
+
+---
+
+## Data plane — what you can do
+
+### Automatic API surface
+
+Every exposed table or view becomes a **resource type**. Foreign keys become **relationships** with stable names (preserved across schema rebuilds unless you override them). Each active API gets a cached **`openapi.json`** and works with the bundled **Swagger UI**.
+
+```http
+GET  /v1/apis/{apiId}/data/customers
+GET  /v1/apis/{apiId}/data/customers/42
+GET  /v1/apis/{apiId}/data/customers/42/orders
+POST /v1/apis/{apiId}/data/customers
+```
+
+### Read with power
+
+- **Filtering** — compact expression language (`=`, `>`, `>=`, contains, one-of, AND/OR, parentheses) compiled to safe SQL.
+- **Sort** — `sort=name,-created_at` (per-resource when using `include`).
+- **Pagination** — `page[offset]` and `page[limit]` with instance-level caps.
+- **Sparse fieldsets** — `fields[customers]=name,email` to trim payloads.
+- **Includes** — load related records in one round trip (`include=orders,account_manager`), depth-limited.
+- **Filter on relationships** — e.g. customers that have orders matching a condition.
+- **Views** — read-only resources; list and filter work; responses omit `id` when there is no primary key.
+- **Export** — optional CSV or XLS on reads for spreadsheets and reporting.
+
+### Write with control
+
+- **Create / update / delete** — single records or bulk operations where supported.
+- **Nested creates** — attach related records in one JSON:API payload (configurable recursion depth).
+- **Duplicate handling** — `onduplicate=error|ignore|update` with field lists for upsert-style flows.
+- **Filter-based updates and deletes** — bulk changes on matching rows (with guardrails).
+
+### Security on every request
+
+- **IP ACLs** for data endpoints (and separate rules for management/config traffic).
+- **Path-based authorization** — restrict which URLs and HTTP methods callers may use.
+- **JWT authentication** — issue tokens after a configurable SQL login query against the same database; optional guest/read modes.
+- **Per-table and per-field ACLs** — control read, insert, update, delete, sort, and search per column.
+- **Inactive APIs return 409** — configuration can continue while data traffic is blocked.
+
+### Safety guardrails
+
+Defaults are tunable via environment variables and `dbapiator.php` (and per-API query timeouts in `connection.php`):
+
+| Guardrail | Typical default |
+|-----------|-----------------|
+| Page size | 100 default, 1000 max |
+| Filter expression size / AST complexity | 4096 chars, depth 20, 100 nodes |
+| Bulk insert / update per request | 100 / 50 records |
+| Request and query timeout | 60 seconds |
+| Nested `include` depth | 5 levels |
+
+Every response can carry **`X-Request-Id`** for correlation; errors include `meta.request_id` when applicable.
+
+---
+
+## Control plane — how operators work
+
+Typical activation flow:
+
+```text
+POST /mgmt/v1/apis                    → draft (save per-API credential once)
+PUT  .../connection                   → database credentials
+POST .../connection:test              → verify connectivity
+POST .../schema:introspect            → snapshot from information_schema
+POST .../schema:rebuild               → structure.php + openapi.json
+PUT  .../policies/auth                → none, or dbAuth + JWT
+PUT  .../policies/data-network        → IP rules for data clients
+POST ...:validate                     → readiness report (required checks)
+POST ...:activate                     → data plane live
+```
+
+**Management capabilities include:**
+
+- **API lifecycle** — draft, active, inactive; clone, rename, delete (`force` when still active).
+- **Schema tools** — introspect, effective schema view, overrides via `patch.php`, rebuild with warnings.
+- **Policies** — config-network (who may manage this API), data-network (who may call data routes), auth (mode and login query).
+- **Hooks** — per-entity webhook targets for create/update/delete (delivered via **Redis Streams** when Redis is configured).
+- **Credential rotation** — per-API config keys without recreating the API.
+- **Quick-create** — `POST /mgmt/v1/apis?provision=immediate` with connection in one step when appropriate.
+
+**Authentication:** instance key (`X-Management-Key`) for full admin access; per-API key (`X-Api-Config-Key`) scoped to one API’s configuration directory. Request bodies are validated against the Management OpenAPI spec.
+
+---
+
+## Integration and extension
+
+- **Webhooks** — publish write events to Redis Streams for async dispatchers or downstream pipelines.
+- **Resource hooks** — PHP hook files under the API config (e.g. `before.insert.php`, `after.insert.php`) for custom logic.
+- **Schema overrides** — rename resources, hide tables, tune relationship names without forking generated structure by hand.
+- **OpenAPI everywhere** — management spec at `src/public/management-openapi.yaml`; per-API spec generated on rebuild and served from disk (no regeneration per request).
+- **Multi-API hosting** — dev, staging, and tenant-specific APIs as separate `apiId` directories under `dbconfigs/`.
+
+---
+
+## Quick start
+
+### Docker (fastest)
+
+```bash
+docker compose up -d
+```
+
+| Service | URL |
+|---------|-----|
+| dbAPI | http://localhost:8888/ |
+| Adminer | http://localhost:8889/ |
+| MariaDB | `localhost:3306` (database `myapp`) |
+
+Instance secret: `CONFIG_API_SECRET` in `docker-compose.yml` (default `myverysecuresecret`) → header **`X-Management-Key`**.
+
+```bash
+curl -sS -X POST 'http://localhost:8888/mgmt/v1/apis?provision=immediate' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Management-Key: myverysecuresecret' \
+  -d '{"name":"demo","connection":{"driver":"mysql","host":"mysql","port":3306,"database":"myapp","username":"user","password":"password"}}'
+```
+
+Data endpoints: `http://localhost:8888/v1/apis/demo/data/{resource}`
+
+### Local Apache / PHP
+
+**Requirements:** PHP 7.4+, `mysqli`, `json`, `mbstring`, `curl`.
+
+1. Point the web root at [`src/`](src/) (e.g. `http://localhost/dbapi/src`).
+2. Ensure [`dbconfigs/`](dbconfigs/) is writable by the web server user.
+3. Configure [`src/application/config/dbapiator.php`](src/application/config/dbapiator.php) — `configs_dir`, secrets, paging limits (or use env vars).
+
+**Swagger UI:** `{base}/swagger.html?url=management-openapi.yaml` · per-API: `{base}/swagger.html?url=apis/{apiId}/swagger`
+
+---
+
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| [`src/`](src/) | PHP application (document root) |
+| [`dbconfigs/`](dbconfigs/) | Generated per-API configuration |
+| [`docs/`](docs/) | Guides and test plans |
+| [`docker-compose.yml`](docker-compose.yml) | Local dev stack |
+| [`tests/`](tests/) | Schemathesis harness (optional) |
+
+Application entry point: [`src/index.php`](src/index.php).
+
+---
+
+## Tests
+
+Integration tests (PHPUnit + Guzzle) run against a live instance:
+
+```bash
+mysql -u root -p < src/tests/dbapi_dataplane.sql
+cp src/tests/connection.dataplane.example.json src/tests/connection.json
+cd src && composer install && ./vendor/bin/phpunit
+```
+
+| Suite | Focus |
+|-------|--------|
+| `TestManagementAPI` | Control plane lifecycle |
+| `TestDataPlaneAPI` | CRUD, filters, relationships, negatives |
+| Unit tests | Filter parser, OpenAPI validation, safety limits |
+
+Details: [management_api_test_plan.md](docs/management_api_test_plan.md) · [data_plane_test_plan.md](docs/data_plane_test_plan.md)
+
+---
+
+## Documentation
+
+- [Management API](docs/management_api.md) — control plane reference
+- [Using the API](docs/using_the_api.md) — filters, pagination, relationships, writes
+- [OpenAPI pipeline](docs/openapi_pipeline.md) — how specs are generated and validated
+
+---
+
+## License
+
+MIT — see [LICENSE.md](LICENSE.md).

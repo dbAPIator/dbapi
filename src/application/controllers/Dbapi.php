@@ -39,7 +39,7 @@ Autoloader::register();
  */
 
 /**
- * Class Dbapi controller: Implements a REST API for any database
+ * Class Dbapi controller: JSON:API data plane (MySQL/MariaDB)
  * @property CI_Config config
  * @property CI_Loader load
  * @property CI_Input input
