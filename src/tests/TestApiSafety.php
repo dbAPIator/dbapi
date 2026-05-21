@@ -2,6 +2,12 @@
 
 use PHPUnit\Framework\TestCase;
 
+if (!defined('BASEPATH')) {
+    define('BASEPATH', __DIR__ . '/../');
+}
+if (!defined('APPPATH')) {
+    define('APPPATH', __DIR__ . '/../application/');
+}
 require_once __DIR__ . '/../application/libraries/ApiSafety.php';
 
 class TestApiSafety extends TestCase

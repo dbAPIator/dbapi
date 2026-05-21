@@ -90,7 +90,8 @@ location ~ /instalation_path/ {
 mkdir dbapi
 cd dbapi
 git clone https://github.com/vsergione/dbapi .
-chmod 777 dbconfigs
+chmod 750 dbconfigs
+# ensure the web server user owns or can read/write this directory
 ```
 
 ### Configure

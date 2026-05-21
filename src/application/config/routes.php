@@ -5,8 +5,11 @@ $route['default_controller'] = 'errors/home';
 $route['404_override'] = 'errors/error_404';
 $route['translate_uri_dashes'] = false;
 
-// Management API (independent of data prefixes)
+// Management API (sole control plane)
 include 'routing/routes_mgmt.php';
+
+// Legacy Admin API paths → 410 Gone (see errors/deprecated_admin)
+include 'routing/routes_deprecated_admin.php';
 
 // v1 data plane
 $dataApiPrefix = '^v1/apis/(:any)/data';

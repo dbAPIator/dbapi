@@ -98,7 +98,7 @@ class Apis extends MY_MgmtController
         $status = $this->store->getStatus($apiId);
         $force = $this->input->get('force') === 'true' || $this->input->get('force') === '1';
         if ($status === 'active' && !$force) {
-            $this->mgmtError(409, $this->errorsCatalog['not_ready_for_activate'], [
+            $this->mgmtError(409, $this->errorsCatalog['config']['not_ready_for_activate'], [
                 'hint' => 'Deactivate first or pass force=true',
             ]);
         }

@@ -1,6 +1,8 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+require_once APPPATH . 'libraries/OpenApiSpecValidator.php';
+
 /**
  * Validate / activate readiness checks for Management API.
  */
@@ -113,9 +115,20 @@ class MgmtLifecycle
             );
         }
 
-        $decoded = json_decode((string) file_get_contents($openapiPath), true);
-        if (!is_array($decoded) || empty($decoded['openapi'])) {
-            return $this->check('schema.openapi', 'fail', 'openapi.json is invalid or empty');
+        $validation = OpenApiSpecValidator::validateFile($openapiPath);
+        if ($validation === null || !$validation['valid']) {
+            $msg = !empty($validation['errors'])
+                ? implode('; ', $validation['errors'])
+                : 'openapi.json is invalid or empty';
+            return $this->check('schema.openapi', 'fail', $msg);
+        }
+
+        if (!empty($validation['warnings'])) {
+            return $this->check(
+                'schema.openapi',
+                'warn',
+                'OpenAPI valid with warnings: ' . implode('; ', $validation['warnings'])
+            );
         }
 
         if (is_file($structPath)) {
@@ -130,7 +143,16 @@ class MgmtLifecycle
             }
         }
 
-        return $this->check('schema.openapi', 'ok', 'OpenAPI spec present');
+        $summary = $validation['summary'];
+        return $this->check(
+            'schema.openapi',
+            'ok',
+            sprintf(
+                'OpenAPI spec valid (%d paths, %d schemas)',
+                (int) ($summary['pathCount'] ?? 0),
+                (int) ($summary['schemaCount'] ?? 0)
+            )
+        );
     }
 
     private function hooksRedisWarn(string $apiId, $structure): array

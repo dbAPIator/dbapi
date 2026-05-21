@@ -378,7 +378,20 @@ function api_openapi_data_url(string $baseUrl, string $apiName): string
 }
 
 /**
+ * Validate a generated data-plane OpenAPI document before persisting.
+ *
+ * @return array{valid:bool,errors:array<int,string>,warnings:array<int,string>,summary:array<string,mixed>}
+ */
+function validate_data_api_openapi_spec(array $spec): array
+{
+    require_once APPPATH . 'libraries/OpenApiSpecValidator.php';
+    return OpenApiSpecValidator::validate($spec);
+}
+
+/**
  * Build and persist openapi.json for an API (call after structure save / patch / rebuild).
+ *
+ * @throws RuntimeException when generation, validation, or write fails
  */
 function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl, ?array $structure = null): bool
 {
@@ -389,7 +402,7 @@ function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl
 
     $structure = api_structure_for_openapi($apiDir, $structure);
     if (empty($structure)) {
-        return false;
+        throw new RuntimeException('Cannot generate OpenAPI: structure is empty for ' . $apiName);
     }
 
     $dm = \dbAPI\API\Datamodel::init($structure);
@@ -402,15 +415,34 @@ function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl
         'test@user.com'
     );
 
+    $validation = validate_data_api_openapi_spec($spec);
+    if (!$validation['valid']) {
+        throw new RuntimeException(
+            'Generated OpenAPI spec failed validation: ' . implode('; ', $validation['errors'])
+        );
+    }
+
     $path = openapi_spec_path($apiDir);
     $json = json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if ($json === false) {
         throw new RuntimeException('Failed to encode OpenAPI spec for ' . $apiName);
     }
-    if (file_put_contents($path, $json) === false) {
-        throw new RuntimeException('Failed to write OpenAPI spec to ' . $path);
+
+    $dir = dirname($path);
+    if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        throw new RuntimeException('Cannot create directory for OpenAPI spec: ' . $dir);
     }
-    @chmod($path, 0600);
+
+    $tmp = $path . '.tmp.' . getmypid();
+    if (file_put_contents($tmp, $json, LOCK_EX) === false) {
+        @unlink($tmp);
+        throw new RuntimeException('Failed to write temporary OpenAPI spec to ' . $tmp);
+    }
+    @chmod($tmp, 0600);
+    if (!@rename($tmp, $path)) {
+        @unlink($tmp);
+        throw new RuntimeException('Failed to publish OpenAPI spec to ' . $path);
+    }
     if (function_exists('opcache_invalidate')) {
         opcache_invalidate($path, true);
     }

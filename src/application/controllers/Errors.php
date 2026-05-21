@@ -2,15 +2,46 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 require_once APPPATH . 'libraries/HttpResp.php';
+require_once APPPATH . 'libraries/RequestContext.php';
 
 class Errors extends CI_Controller {
+
+    public function __construct()
+    {
+        parent::__construct();
+        RequestContext::init();
+    }
 
     public function home()
     {
         HttpResp::json_out(200, [
             'service' => 'dbAPI',
             'management' => '/mgmt/v1/apis',
+            'managementOpenApi' => '/management-openapi.yaml',
             'data' => '/v1/apis/{apiId}/data',
+            'deprecated' => [
+                'adminApi' => 'Removed. Use /mgmt/v1/apis instead of /admin/apis.',
+            ],
+        ]);
+    }
+
+    /**
+     * Legacy Admin API — removed; all configuration uses Management API.
+     */
+    public function deprecated_admin()
+    {
+        HttpResp::json_out(410, [
+            'error' => [
+                'code' => 'admin_api_removed',
+                'message' => 'The Admin API (/admin/apis) has been removed. Use the Management API at /mgmt/v1/apis.',
+                'documentation' => '/docs/management_api.md',
+                'openApi' => '/management-openapi.yaml',
+                'migration' => [
+                    'listApis' => 'GET /mgmt/v1/apis',
+                    'createApi' => 'POST /mgmt/v1/apis',
+                    'authHeader' => 'X-Management-Key (instance) or X-Api-Config-Key (per API)',
+                ],
+            ],
         ]);
     }
 

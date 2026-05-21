@@ -126,4 +126,71 @@ class Schema extends MY_MgmtController
             $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Regenerate cached openapi.json from structure.php (+ patch) without full DB rebuild.
+     */
+    public function regenerate_openapi($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $dir = $this->store->getApiDir($apiId);
+        $structPath = "{$dir}/{$this->configFiles['structure']}";
+        if (!is_file($structPath)) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => 'structure.php missing; run schema:rebuild first']);
+        }
+
+        try {
+            $this->regenerateOpenApiSpec($apiId);
+        } catch (Throwable $e) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
+        }
+
+        require_once APPPATH . 'libraries/OpenApiSpecValidator.php';
+        $this->load->helper('swagger');
+        $validation = OpenApiSpecValidator::validateFile(openapi_spec_path($dir));
+        $meta = $this->store->loadMeta($apiId);
+
+        HttpResp::json_out(200, [
+            'regeneratedAt' => $meta['schema']['openapiGeneratedAt'] ?? gmdate('Y-m-d\TH:i:s\Z'),
+            'path' => openapi_spec_filename(),
+            'validation' => $validation,
+        ]);
+    }
+
+    /**
+     * OpenAPI cache status (does not return full spec; use data API GET .../swagger for that).
+     */
+    public function get_openapi($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        $dir = $this->store->getApiDir($apiId);
+        $this->load->helper('swagger');
+        $path = openapi_spec_path($dir);
+        $meta = $this->store->loadMeta($apiId);
+
+        require_once APPPATH . 'libraries/OpenApiSpecValidator.php';
+        $validation = is_file($path) ? OpenApiSpecValidator::validateFile($path) : [
+            'valid' => false,
+            'errors' => ['openapi.json not found'],
+            'warnings' => [],
+            'summary' => [],
+        ];
+
+        $structPath = "{$dir}/{$this->configFiles['structure']}";
+        $stale = false;
+        if (is_file($path) && is_file($structPath)) {
+            $stale = (filemtime($structPath) ?: 0) > (filemtime($path) ?: 0);
+        }
+
+        HttpResp::json_out(200, [
+            'exists' => is_file($path),
+            'file' => openapi_spec_filename(),
+            'sizeBytes' => is_file($path) ? filesize($path) : 0,
+            'generatedAt' => $meta['schema']['openapiGeneratedAt'] ?? null,
+            'error' => $meta['schema']['openapiError'] ?? null,
+            'stale' => $stale,
+            'validation' => $validation,
+            'swaggerUrl' => $this->baseUrl() . '/apis/' . rawurlencode($apiId) . '/swagger',
+        ]);
+    }
 }

@@ -37,6 +37,8 @@ $route[$mgmtApi . '/schema/overrides']['put'] = 'mgmt/schema/put_overrides/$1';
 $route[$mgmtApi . '/schema/overrides']['patch'] = 'mgmt/schema/patch_overrides/$1';
 $route[$mgmtApi . '/schema/effective']['get'] = 'mgmt/schema/get_effective/$1';
 $route[$mgmtApi . '/schema:rebuild']['post'] = 'mgmt/schema/rebuild/$1';
+$route[$mgmtApi . '/schema:regenerate-openapi']['post'] = 'mgmt/schema/regenerate_openapi/$1';
+$route[$mgmtApi . '/schema/openapi']['get'] = 'mgmt/schema/get_openapi/$1';
 
 // Hooks
 $route[$mgmtApi . '/hooks']['get'] = 'mgmt/hooks/list_all/$1';

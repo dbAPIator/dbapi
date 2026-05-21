@@ -1,6 +1,8 @@
 # Management API
 
-The **Management API** is dbAPI’s control plane. Use it to create, configure, validate, activate, and retire **data APIs** — the JSON:API endpoints that expose your database (`/v1/apis/{apiId}/data/...`).
+The **Management API** is dbAPI’s **sole control plane**. Use it to create, configure, validate, activate, and retire **data APIs** — the JSON:API endpoints that expose your database (`/v1/apis/{apiId}/data/...`).
+
+> **Note:** The legacy Admin API (`/admin/apis`) has been **removed**. Old paths return `410 Gone` with migration hints. Use `/mgmt/v1/apis` only. See [DEPRECATED_ADMIN_API.md](../src/public/DEPRECATED_ADMIN_API.md).
 
 The Management API uses **plain JSON** (not JSON:API). Request bodies for write operations are validated against the OpenAPI specification.
 
@@ -221,7 +223,19 @@ Optional: `GET/PUT/PATCH .../schema/overrides` to adjust `patch.php` (contents m
 
 `schema:rebuild` preserves existing **relationship names** (stable public API) and returns `warnings` (e.g. `ORPHAN_RELATION`, `QUALIFIED_RELATION_NAME`, `CONFLICT_RELATION_NAME`) when the database and prior schema diverge. Warnings are also stored in `meta.php` under `schema.lastWarnings`.
 
-Each rebuild also writes **`openapi.json`** in the API config directory. The data API serves it at `GET /apis/{apiId}/swagger` (no runtime regeneration). After changing only `patch.php`, run rebuild again to refresh `openapi.json`. Existing APIs: `php scripts/generate_openapi_specs.php [configs_dir] [base_url]`.
+Each rebuild also writes **`openapi.json`** (validated, atomic write). The data API serves it at `GET /apis/{apiId}/swagger` (no runtime regeneration).
+
+After changing only `patch.php`, refresh the spec without a full DB rebuild:
+
+```bash
+curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema:regenerate-openapi" \
+  -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
+
+curl -sS "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema/openapi" \
+  -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
+```
+
+See [OpenAPI pipeline](openapi_pipeline.md). Bulk refresh: `php scripts/generate_openapi_specs.php [configs_dir] [base_url]`.
 
 ### 4. Policies
 
