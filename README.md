@@ -194,30 +194,29 @@ POST ...:activate                     → data plane live
 
 ## Quick start
 
-### Docker (fastest)
+### Docker
 
-**From source (local dev):**
+**Local development** (clone repo, live code mounts, bundled MariaDB/Redis):
 
 ```bash
 docker compose up -d
 ```
 
-**From GitHub Container Registry** (published on each release tag, e.g. `v1.0.0`):
+**Production / pre-built image** from GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/dbapiator/dbapi:latest
-# or pin a version: ghcr.io/dbapiator/dbapi:1.0.0
+docker pull ghcr.io/dbapiator/dbapi:1.0.0
 ```
 
-Run with your own MySQL/MariaDB and Redis — mount a writable `dbconfigs` volume and set env vars (`CONFIGS_DIR`, `CONFIG_API_SECRET`, `DB_*`, `REDIS_*`, etc.). For single-API mode add `DEPLOYMENT_MODE=single` and the `DB_*` connection settings (see [`docker-compose.yml`](docker-compose.yml)).
+See **[Docker deployment guide](docs/docker_deployment.md)** for `docker run`, Compose examples, environment variables, single- vs multi-API mode, upgrades, and troubleshooting.
 
-| Service | URL |
+| Service (local compose) | URL |
 |---------|-----|
 | dbAPI | http://localhost:8888/ |
 | Adminer | http://localhost:8889/ |
 | MariaDB | `localhost:3306` (database `myapp`) |
 
-Docker Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
+Local Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
 
 MariaDB is seeded with the full data-plane test schema on **first** database init (`docker/mysql-init/`). To re-run the seed, remove the MySQL data volume first: `rm -rf .docker_data/mysql && docker compose up -d`.
 
@@ -271,7 +270,7 @@ Data endpoints: `http://localhost:8888/v1/apis/demo/data/{resource}`
 |------|---------|
 | [`src/`](src/) | PHP application (document root) |
 | [`dbconfigs/`](dbconfigs/) | Generated per-API configuration |
-| [`docs/`](docs/) | Guides and test plans |
+| [`docs/`](docs/) | Guides and test plans ([Docker deployment](docs/docker_deployment.md)) |
 | [`docker-compose.yml`](docker-compose.yml) | Local dev stack |
 | [`tests/`](tests/) | Schemathesis harness (optional) |
 
@@ -310,9 +309,11 @@ Details: [management_api_test_plan.md](docs/management_api_test_plan.md) · [dat
 
 ## Documentation
 
+- [Docker deployment guide](docs/docker_deployment.md) — GHCR image, `docker run`, Compose, env vars
 - [Management API](docs/management_api.md) — control plane reference
 - [Using the API](docs/using_the_api.md) — filters, pagination, relationships, writes
 - [OpenAPI pipeline](docs/openapi_pipeline.md) — how specs are generated and validated
+- [Releasing](docs/releasing.md) — version tags, changelog, and Docker publish
 
 ---
 

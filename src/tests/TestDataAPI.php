@@ -167,7 +167,7 @@ class TestDataAPI extends TestCase
      */
     public function testLogIn($data)
     {
-        $response = $this->makeFormRequest('POST', "apis/{$this->apiName}/auth/login", [
+        $response = $this->makeFormRequest('POST', "apis/{$this->apiName}/auth/login/password", [
             "login" => "testuser",
             "password" => "parola123"
         ]);

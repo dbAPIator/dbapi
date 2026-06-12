@@ -13,7 +13,7 @@ class Auth extends MY_MgmtController
             $auth['jwt_key'] = '***********';
         }
         if (empty($auth['mode'])) {
-            $auth['mode'] = !empty($auth['loginQuery']) ? 'dbAuth' : 'none';
+            $auth['mode'] = (!empty($auth['loginQuery']) || !empty($auth['loginMethods'])) ? 'dbAuth' : 'none';
         }
         HttpResp::json_out(200, $auth);
     }
@@ -39,11 +39,18 @@ class Auth extends MY_MgmtController
             $dbAuth = $policy['dbAuth'] ?? $policy;
             $disk = [
                 'mode' => 'dbAuth',
-                'loginQuery' => $dbAuth['login']['sql'] ?? $dbAuth['loginQuery'] ?? null,
                 'validity' => $dbAuth['validity'] ?? 3600,
             ];
+
+            if (!empty($dbAuth['loginMethods']) && is_array($dbAuth['loginMethods'])) {
+                $disk['loginMethods'] = $this->loginMethodsToDisk($dbAuth['loginMethods']);
+            } else {
+                $disk['loginQuery'] = $dbAuth['login']['sql'] ?? $dbAuth['loginQuery'] ?? null;
+            }
+
             $existing = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/{$this->configFiles['auth']}");
-            if (!empty($disk['loginQuery']) && empty($existing['jwt_key'])) {
+            $hasLogin = !empty($disk['loginQuery']) || !empty($disk['loginMethods']);
+            if ($hasLogin && empty($existing['jwt_key'])) {
                 $disk['jwt_key'] = bin2hex(random_bytes(32));
             } elseif (!empty($existing['jwt_key'])) {
                 $disk['jwt_key'] = $existing['jwt_key'];
@@ -51,5 +58,30 @@ class Auth extends MY_MgmtController
             return $disk;
         }
         return $policy;
+    }
+
+    /**
+     * @param array<string,array<string,mixed>> $loginMethods
+     * @return array<string,array<string,mixed>>
+     */
+    private function loginMethodsToDisk(array $loginMethods): array
+    {
+        $disk = [];
+        foreach ($loginMethods as $name => $method) {
+            if (!is_array($method)) {
+                continue;
+            }
+            $entry = [
+                'loginQuery' => $method['sql'] ?? $method['loginQuery'] ?? null,
+            ];
+            if (isset($method['validity'])) {
+                $entry['validity'] = (int) $method['validity'];
+            }
+            if (!empty($method['fields']) && is_array($method['fields'])) {
+                $entry['fields'] = array_values($method['fields']);
+            }
+            $disk[$name] = $entry;
+        }
+        return $disk;
     }
 }

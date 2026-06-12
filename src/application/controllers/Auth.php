@@ -24,14 +24,13 @@ class Auth extends CI_Controller {
     }
 
     /**
-     * Connects to database
      * @param $configName
-     * @return mixed
+     * @return array
      */
-    private function db_connect($configName) {
+    private function load_auth_config($configName): array
+    {
         $cfgDir = $this->configDir."/$configName";
 
-//        print_r($_ENV);
         if(!is_dir($cfgDir)) {
             HttpResp::not_found("API not found");
         }
@@ -41,6 +40,18 @@ class Auth extends CI_Controller {
             HttpResp::bad_request(["error"=>"No authentication mechanism configured"]);
         }
 
+        return $this->normalize_auth_config($auth);
+    }
+
+    /**
+     * Connects to database
+     * @param $configName
+     * @return mixed
+     */
+    private function db_connect($configName) {
+        $auth = $this->load_auth_config($configName);
+
+        $cfgDir = $this->configDir."/$configName";
         $conn = @include $cfgDir."/connection.php";
         $conn["db_debug"] = FALSE;
         try {
@@ -189,39 +200,146 @@ class Auth extends CI_Controller {
     }
 
     /**
-     * @param $configName
+     * Backward compat: legacy loginQuery becomes loginMethods.password.
+     * @param array $auth
      * @return array
      */
-    private function fetch_user($configName) {
-        $auth = $this->db_connect($configName);
-        // print_r($auth);
+    private function normalize_auth_config(array $auth): array
+    {
+        if (empty($auth['loginMethods']) && !empty($auth['loginQuery'])) {
+            $auth['loginMethods'] = [
+                'password' => ['loginQuery' => $auth['loginQuery']],
+            ];
+        }
+        return $auth;
+    }
 
-        $uname = $this->input->post("login");
-        $upass = $this->input->post("password");
+    /**
+     * @param string $query
+     * @return string[]
+     */
+    private function placeholders_in_query(string $query): array
+    {
+        preg_match_all('/\[\[(\w+)\]\]/', $query, $matches);
+        return array_values(array_unique($matches[1]));
+    }
 
-        $sql = strtr($auth["loginQuery"],["[[login]]"=>$uname,"[[password]]"=>$upass]);
-        /**
-         * @var CI_DB_result
-         */
+    /**
+     * @param array $auth
+     * @param string $method
+     * @param array $methodConfig
+     * @return array{0:CI_DB_result,1:array}
+     */
+    private function fetch_user_by_method(array $auth, string $method, array $methodConfig): array
+    {
+        $query = $methodConfig['loginQuery'] ?? null;
+        if (empty($query)) {
+            HttpResp::bad_request(['error' => 'Login method is not configured', 'method' => $method]);
+        }
+
+        $fields = $methodConfig['fields'] ?? $this->placeholders_in_query($query);
+        if (empty($fields)) {
+            HttpResp::bad_request(['error' => 'Login method has no input fields configured', 'method' => $method]);
+        }
+
+        $replacements = [];
+        foreach ($fields as $field) {
+            $value = $this->input->post($field);
+            if ($value === null || $value === '') {
+                HttpResp::bad_request(['error' => "Missing required field: {$field}", 'method' => $method]);
+            }
+            $replacements["[[{$field}]]"] = $value;
+        }
+
+        $sql = strtr($query, $replacements);
+        /** @var CI_DB_result $res */
         $res = $this->db->query($sql);
-        return [$res,$auth];
+
+        $effectiveAuth = $auth;
+        if (isset($methodConfig['validity'])) {
+            $effectiveAuth['validity'] = (int) $methodConfig['validity'];
+        }
+
+        return [$res, $effectiveAuth];
+    }
+
+    /**
+     * @param string $name
+     * @param array $methodConfig
+     * @param array $auth
+     * @return array
+     */
+    private function public_login_method_descriptor(string $name, array $methodConfig, array $auth): array
+    {
+        $query = $methodConfig['loginQuery'] ?? '';
+        $fields = $methodConfig['fields'] ?? $this->placeholders_in_query($query);
+
+        $descriptor = [
+            'name' => $name,
+            'fields' => $fields,
+        ];
+
+        $validity = $methodConfig['validity'] ?? ($auth['validity'] ?? null);
+        if ($validity !== null) {
+            $descriptor['expiresIn'] = (int) $validity;
+        }
+
+        return $descriptor;
     }
 
     /**
      * @param $configName
+     */
+    function login_methods($configName) {
+        $auth = $this->load_auth_config($configName);
+
+        if (($auth['mode'] ?? null) === 'none') {
+            HttpResp::json_out(200, ['loginMethods' => []]);
+            return;
+        }
+
+        $methods = [];
+        foreach ($auth['loginMethods'] ?? [] as $name => $methodConfig) {
+            if (!is_array($methodConfig) || empty($methodConfig['loginQuery'])) {
+                continue;
+            }
+            $methods[] = $this->public_login_method_descriptor($name, $methodConfig, $auth);
+        }
+
+        HttpResp::json_out(200, ['loginMethods' => $methods]);
+    }
+
+    /**
+     * @param $configName
+     * @param $loginMethod
      * @throws Exception
      */
-    function login($configName) {
-        [$res,$auth] = $this->fetch_user($configName);
+    function login($configName, $loginMethod) {
+        if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $loginMethod)) {
+            HttpResp::bad_request(['error' => 'Invalid login method name', 'method' => $loginMethod]);
+        }
+
+        $auth = $this->db_connect($configName);
+
+        if (empty($auth['loginMethods']) || !is_array($auth['loginMethods'])) {
+            HttpResp::bad_request(['error' => 'No login methods configured']);
+        }
+
+        if (empty($auth['loginMethods'][$loginMethod]) || !is_array($auth['loginMethods'][$loginMethod])) {
+            HttpResp::not_found(['error' => 'Unknown or disabled login method', 'method' => $loginMethod]);
+        }
+
+        [$res, $auth] = $this->fetch_user_by_method($auth, $loginMethod, $auth['loginMethods'][$loginMethod]);
         if($this->db->error()["code"]>0) {
             HttpResp::server_error(["error"=>$this->db->error()]);
         }
 
         if($res->num_rows()!==1) {
-            HttpResp::not_found(["errors"=>["message"=>"Username not found or password incorrect","code"=>404]]);
+            HttpResp::not_found(["errors"=>["message"=>"Authentication failed","code"=>404]]);
         }
 
         $result = $res->row_array();
+        $result['login_method'] = $loginMethod;
 
         if(@$result["mfa_enabled"])
             $this->mfa_session_create($auth,$result);

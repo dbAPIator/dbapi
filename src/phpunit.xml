@@ -11,6 +11,7 @@
         </testsuite>
         <testsuite name="integration">
             <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestAuthLoginMethods.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>
@@ -22,6 +23,7 @@
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
             <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestAuthLoginMethods.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>

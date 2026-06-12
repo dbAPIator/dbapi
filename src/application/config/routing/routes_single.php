@@ -18,7 +18,8 @@ $route[$basePath . '/.*']['options'] = 'dbapi/options';
 $route[$basePath . '/swagger']['get'] = "swagger/index/{$singleApiId}";
 
 // Auth
-$route[$apiAuthUrlPrefix . '/login']['post'] = "auth/login/{$singleApiId}";
+$route[$apiAuthUrlPrefix . '/login']['get'] = "auth/login_methods/{$singleApiId}";
+$route[$apiAuthUrlPrefix . '/login/(:any)']['post'] = "auth/login/{$singleApiId}/$1";
 $route[$apiAuthUrlPrefix . '/verify']['post'] = "auth/mfa_code_verify/{$singleApiId}";
 $route[$apiAuthUrlPrefix . '/apiclienttoken/(.*)/(\d+)']['get'] = "auth/genApiClientToken/{$singleApiId}/$1/$2";
 

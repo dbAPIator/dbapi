@@ -152,6 +152,7 @@ CREATE TABLE `app_users` (
   `id`       INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(64) NOT NULL,
   `password` VARCHAR(128) NOT NULL,
+  `pin`      VARCHAR(16) NULL,
   `role`     VARCHAR(32) NOT NULL DEFAULT 'user',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_app_users_username` (`username`)
@@ -255,8 +256,8 @@ INSERT INTO `suppliers` (`id`, `name`) VALUES
 INSERT INTO `shipments` (`id`, `order_id`, `supplier_id`, `tracking_no`, `shipped_at`) VALUES
   (1, 2, 1, 'TRK-001', '2026-01-16 09:00:00');
 
-INSERT INTO `app_users` (`id`, `username`, `password`, `role`) VALUES
-  (1, 'testuser', 'testpass', 'user'),
-  (2, 'admin',    'adminpass', 'admin');
+INSERT INTO `app_users` (`id`, `username`, `password`, `pin`, `role`) VALUES
+  (1, 'testuser', 'testpass', '1234', 'user'),
+  (2, 'admin',    'adminpass', '9999', 'admin');
 
 SET FOREIGN_KEY_CHECKS = 1;

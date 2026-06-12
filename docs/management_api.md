@@ -160,7 +160,7 @@ Returned by list items, `GET/PATCH .../apis/{apiId}`, and lifecycle activate/dea
 | `schema.introspectedAt` | Last `schema:introspect` time |
 | `schema.effectiveVersion` | Set when `structure.php` exists |
 
-`GET .../connection` returns the wire format (`driver`, `host`, `port`, …) with `password` masked. `GET .../policies/auth` returns the **on-disk** shape (`loginQuery`, masked `jwt_key`), not necessarily the same as the PUT body.
+`GET .../connection` returns the wire format (`driver`, `host`, `port`, …) with `password` masked. `GET .../policies/auth` returns the **on-disk** shape (`loginMethods` or legacy `loginQuery`, masked `jwt_key`), not necessarily the same as the PUT body.
 
 ---
 
@@ -373,7 +373,7 @@ Each API is stored under `configs_dir/{apiId}/` (see [`dbapiator.php`](../src/ap
 | `patch.php` | Schema overrides |
 | `admin_config.php` | Per-API secret + config-network ACLs |
 | `data_api_acls.php` | Data API IP + path rules |
-| `authentication.php` | Data API auth (`mode`, `loginQuery`, JWT key, …) |
+| `authentication.php` | Data API auth (`mode`, `loginMethods` or legacy `loginQuery`, JWT key, …) |
 
 Hooks are stored **inside** `structure.php` per entity (`hooks` key on each resource).
 
@@ -384,21 +384,60 @@ Hooks are stored **inside** `structure.php` per entity (`hooks` key on each reso
 | `mode` | Behavior |
 |--------|----------|
 | `none` | No JWT required; `allowGuest` enabled for the Data API |
-| `dbAuth` | Login via SQL / procedure; JWT issued using `jwt_key` on disk |
+| `dbAuth` | One or more named login methods (SQL); JWT issued using `jwt_key` on disk |
 
-Example `dbAuth` body (request; either nested `dbAuth` or flat `login` / `loginQuery` is accepted):
+### Single login method (legacy shape)
+
+Request body accepts nested `dbAuth` or flat `login` / `loginQuery`. Placeholders use `[[field]]` syntax (replaced from form POST fields):
 
 ```json
 {
   "mode": "dbAuth",
   "dbAuth": {
-    "login": { "sql": "SELECT id AS user_id FROM app_users WHERE username = ? AND password = ?" },
+    "login": {
+      "sql": "SELECT username AS unm, role FROM app_users WHERE username='[[login]]' AND password='[[password]]'"
+    },
     "validity": 3600
   }
 }
 ```
 
-On disk (`authentication.php`): `mode`, `loginQuery`, `validity`, `jwt_key` (masked on GET). `mode: none` stores `{ "mode": "none", "allowGuest": true }`.
+On disk this becomes `loginQuery` plus default `validity`. At runtime it is exposed as login method **`password`**.
+
+### Multiple login methods (preferred)
+
+Define named methods under `dbAuth.loginMethods`. Each method has a `sql` (or `loginQuery`) and optional per-method `validity` and explicit `fields` (otherwise inferred from `[[placeholder]]` names in the SQL):
+
+```json
+{
+  "mode": "dbAuth",
+  "dbAuth": {
+    "validity": 3600,
+    "loginMethods": {
+      "password": {
+        "sql": "SELECT username AS unm, role FROM app_users WHERE username='[[login]]' AND password='[[password]]'"
+      },
+      "pin": {
+        "sql": "SELECT username AS unm, role FROM app_users WHERE pin='[[pin]]'",
+        "validity": 900
+      }
+    }
+  }
+}
+```
+
+On disk (`authentication.php`): `mode`, `validity`, `loginMethods` (each entry: `loginQuery`, optional `validity`, optional `fields`), `jwt_key` (masked on GET). Legacy configs may still have a single `loginQuery` instead of `loginMethods`. `mode: none` stores `{ "mode": "none", "allowGuest": true }`.
+
+### Data plane login endpoints
+
+After activate, clients use:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/v1/apis/{apiId}/auth/login` (or `/v1/auth/login` in single-mode) | List configured methods: `{ "loginMethods": [{ "name", "fields", "expiresIn" }] }` |
+| POST | `/v1/apis/{apiId}/auth/login/{loginMethod}` | Authenticate; body: `application/x-www-form-urlencoded` with the method's fields |
+
+`POST .../auth/login` without `{loginMethod}` returns **404**. Unknown method → **404**; bad/missing fields → **400**; failed auth → **404**.
 
 ---
 

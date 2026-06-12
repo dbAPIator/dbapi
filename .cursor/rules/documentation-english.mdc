@@ -1,0 +1,18 @@
+---
+description: All project documentation must be written in English
+globs: "**/*.md,docs/**"
+alwaysApply: false
+---
+
+# Documentation language
+
+All documentation in this repository must be written in **English**.
+
+This includes:
+
+- Files under `docs/`
+- Root-level markdown (`README.md`, `CHANGELOG.md`, guides, test plans)
+- AI integration guides and Cursor rules that describe dbAPI for other projects
+- Comments in markdown meant for human readers (prose, not code identifiers)
+
+Do not write documentation in other languages unless the user explicitly requests a translation of existing English docs.
