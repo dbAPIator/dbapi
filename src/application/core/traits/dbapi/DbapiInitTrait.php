@@ -55,6 +55,19 @@ trait DbapiInitTrait
         if ($installBase && $installBase !== '/' && strpos($path, $installBase) === 0) {
             $path = substr($path, strlen($installBase)) ?: '/';
         }
+
+        if (!function_exists('is_single_deployment_mode')) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+        }
+        if (is_single_deployment_mode()) {
+            $prefix = '/v1/data';
+            if (strpos($path, $prefix) === 0) {
+                $rest = substr($path, strlen($prefix));
+                return $rest === '' ? '/' : $rest;
+            }
+            return $path;
+        }
+
         foreach (["/v1/apis/{$configName}/data", "/apis/{$configName}/data"] as $prefix) {
             if (strpos($path, $prefix) === 0) {
                 $rest = substr($path, strlen($prefix));

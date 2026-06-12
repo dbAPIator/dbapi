@@ -11,7 +11,7 @@ class TestOpenApiSpecValidator extends TestCase
         $result = OpenApiSpecValidator::validate([
             'openapi' => '3.0.2',
             'info' => ['title' => 'Test', 'version' => '1.0.0'],
-            'servers' => [['url' => 'http://localhost/apis/demo/data']],
+            'servers' => [['url' => 'http://localhost/v1/apis/demo/data']],
             'paths' => [
                 '/widgets' => [
                     'get' => ['responses' => ['200' => ['description' => 'ok']]],

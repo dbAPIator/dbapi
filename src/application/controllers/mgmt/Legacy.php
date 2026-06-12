@@ -15,6 +15,9 @@ class Legacy extends Apis
         header('Sunset: Sat, 01 Jan 2027 00:00:00 GMT');
         $_GET['provision'] = 'immediate';
         $this->requireManagementKey();
+        if (($this->config->item('deployment_mode') ?? 'multi') === 'single') {
+            $this->mgmtError(409, $this->errorsCatalog['config']['single_mode_no_create']);
+        }
         $payload = $this->readCreatePayload();
         $apiId = $payload->name ?? null;
         if (!$apiId) {

@@ -1,3 +1,10 @@
-src/apis
-.docker_data/
+.git
 .idea
+.docker_data
+data
+dbconfigs
+docs
+src/apis
+src/vendor
+src/tests
+**/.phpunit.result.cache

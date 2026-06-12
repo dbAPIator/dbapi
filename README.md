@@ -11,15 +11,60 @@ dbAPI introspects your database, generates configuration and OpenAPI, and serves
  │ scripts, BI      │───▶│  create · configure ·       │───▶│ tables · views  │
  │ partner APIs     │    │  validate · activate        │    │ FKs · procedures│
  └──────────────────┘    │ Data plane  /v1/apis/…/data │    └─────────────────┘
-                         │  JSON:API CRUD + policies   │            ▲
-                         └──────────────┬──────────────┘            │
+                         │  JSON:API CRUD + policies   │              ▲
+                         └──────────────┬──────────────┘              │
                                         │ per-API config              │
                                         ▼ (introspection)             │
-                         ┌─────────────────────────────┐──────────────┘
-                         │ dbconfigs/{apiId}/            │
-                         │ structure · policies · hooks  │
-                         └─────────────────────────────┘
+                         ┌──────────────────────────────┐             │
+                         │ dbconfigs/{apiId}/           │─────────────┘
+                         │ structure · policies · hooks │
+                         └──────────────────────────────┘
 ```
+
+---
+
+## Who it is for
+
+dbAPI is for **teams that already build on MySQL or MariaDB** and need a governed HTTP API without maintaining CRUD code for every table. It works especially well when important rules live in the database (triggers, stored procedures, views) and clients need a stable, documented REST surface.
+
+| Audience | Typical need |
+|----------|----------------|
+| **Developers & founders** | Ship internal tools, admin panels, or small line-of-business apps quickly; keep transactional logic in SQL instead of duplicating it in application controllers. |
+| **Agencies & consultancies** | Deliver repeatable JSON:API + OpenAPI projects on client-owned databases, with per-project policies and docs. |
+| **IT & operations teams** | Modernize access to an existing MySQL estate (self-hosted or on-prem) without adopting a full vendor ERP or a cloud-only BaaS. |
+| **Products with many databases** | Host several independent APIs (`apiId`) on one installation — dev/staging/prod, multiple products, or per-tenant schemas. |
+
+**Less suited if you need:** a hosted Postgres platform with built-in auth and realtime (Supabase-style), GraphQL as the primary protocol, or a framework where all business logic stays in application code only.
+
+**Supported databases:** MySQL and MariaDB (mysqli). Other engines are not supported yet.
+
+---
+
+## Use cases
+
+### REST layer over an existing schema
+
+Point dbAPI at a database, introspect, set policies, activate — then consume tables and views as [JSON:API](https://jsonapi.org/) resources with filtering, relationships, field-level permissions, and JWT auth. Schema changes go through rebuild; clients stay aligned via generated OpenAPI.
+
+**Consumers:** SPAs, mobile apps, partner integrations, scripts, reporting tools.
+
+### Line-of-business and workflow applications
+
+Back-office systems where the database is the system of record: ERP-style modules, approval flows, document lifecycle, inventory, or membership admin. dbAPI provides HTTP and documentation; invariants and workflows can stay in SQL.
+
+### Extra API surface alongside an existing app
+
+Add governed read/write access for integrations or new UIs without rewriting your monolith — same database, separate `apiId`, independent network and auth policies.
+
+### Controlled rollout via the Management API
+
+Create APIs in `draft`, test connections, introspect and rebuild schema, configure policies, run validation, then **activate** when ready. Deactivate without losing config. Fits operators and CI/CD pipelines that should not expose data endpoints until checks pass.
+
+### Multi-API on one server
+
+Run dev, staging, and production APIs — or separate products and tenants — as distinct `apiId` directories under `dbconfigs/`, each with its own connection, policies, and OpenAPI spec.
+
+dbAPI is a **standalone HTTP service** (not embedded middleware). It is **not** a replacement for a full BaaS (auth platform, realtime, hosted database), a low-code admin UI, or a general microservices framework.
 
 ---
 
@@ -33,10 +78,6 @@ dbAPI flips that model:
 - **Policy before data** — APIs stay in `draft` until connection, schema, and policies pass validation; only then does the data plane go live.
 - **Standards-shaped responses** — [JSON:API](https://jsonapi.org/) documents with relationships, sparse fieldsets, and consistent errors.
 - **Operator-friendly control plane** — plain JSON Management API with OpenAPI validation, separate from consumer-facing data routes.
-
-dbAPI is a **standalone HTTP service** (not embedded middleware). It fits when you want governed data access to a relational database — internal tools, partner integrations, rapid prototypes, or an extra API surface alongside an existing app.
-
-**Supported databases:** MySQL and MariaDB (mysqli). Other engines are not supported yet.
 
 ---
 
@@ -165,7 +206,30 @@ docker compose up -d
 | Adminer | http://localhost:8889/ |
 | MariaDB | `localhost:3306` (database `myapp`) |
 
+Docker Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container auto-provisions the `default` API from `DB_*` environment variables — no manual create step.
+
+```bash
+# Service discovery
+curl -sS http://localhost:8888/
+
+# Data plane (after tables exist in myapp)
+curl -sS http://localhost:8888/v1/data/{resource}
+
+# OpenAPI spec + Swagger UI
+curl -sS http://localhost:8888/v1/swagger
+open 'http://localhost:8888/swagger.html?url=v1/swagger'
+```
+
+Management API (configure policies, rebuild schema, etc.) uses the fixed id **`default`**:
+
+```bash
+curl -sS http://localhost:8888/mgmt/v1/apis/default \
+  -H 'X-Management-Key: myverysecuresecret'
+```
+
 Instance secret: `CONFIG_API_SECRET` in `docker-compose.yml` (default `myverysecuresecret`) → header **`X-Management-Key`**.
+
+For **multi-API hosting** (dev/staging/prod on one install), omit `DEPLOYMENT_MODE=single` and use the standard flow:
 
 ```bash
 curl -sS -X POST 'http://localhost:8888/mgmt/v1/apis?provision=immediate' \

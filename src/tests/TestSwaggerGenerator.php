@@ -1,0 +1,155 @@
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+define('BASEPATH', dirname(__DIR__) . '/system/');
+define('APPPATH', dirname(__DIR__) . '/application/');
+define('ENVIRONMENT', 'testing');
+
+require_once APPPATH . 'helpers/swagger_helper.php';
+require_once APPPATH . 'third_party/dbAPI/Autoloader.php';
+\dbAPI\Autoloader::register();
+
+class TestSwaggerGenerator extends TestCase
+{
+    private static function sampleStructure(): array
+    {
+        return [
+            'customers' => [
+                'type' => 'table',
+                'keyFld' => 'id',
+                'fields' => [
+                    'id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => false,
+                        'select' => true,
+                    ],
+                    'name' => [
+                        'type' => ['proto' => 'varchar', 'length' => '100'],
+                        'required' => true,
+                        'select' => true,
+                    ],
+                ],
+                'relations' => [
+                    'orders' => [
+                        'type' => 'inbound',
+                        'table' => 'orders',
+                        'select' => true,
+                    ],
+                ],
+            ],
+            'orders' => [
+                'type' => 'table',
+                'keyFld' => 'id',
+                'fields' => [
+                    'id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => false,
+                        'select' => true,
+                    ],
+                    'customer_id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => true,
+                        'select' => true,
+                    ],
+                ],
+                'relations' => [],
+            ],
+        ];
+    }
+
+    public function testApiOpenapiDataUrlUsesV1Path(): void
+    {
+        putenv('DEPLOYMENT_MODE');
+        $this->assertSame(
+            'http://localhost/v1/apis/demo/data',
+            api_openapi_data_url('http://localhost', 'demo')
+        );
+        $this->assertSame(
+            'http://localhost/v1/apis/my%20api/data',
+            api_openapi_data_url('http://localhost/', 'my api')
+        );
+    }
+
+    public function testApiOpenapiDataUrlUsesSingleModePath(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        $this->assertSame(
+            'http://localhost/v1/data',
+            api_openapi_data_url('http://localhost', 'default')
+        );
+        putenv('DEPLOYMENT_MODE');
+    }
+
+    public function testGenerateSwaggerProducesValidSpec(): void
+    {
+        $structure = self::sampleStructure();
+        $dm = \dbAPI\API\Datamodel::init($structure);
+        $spec = generate_swagger(
+            api_openapi_data_url('http://localhost', 'demo'),
+            $dm->get_dataModel(),
+            'demo Spec',
+            'demo spec',
+            'demo',
+            'test@example.com'
+        );
+
+        $validation = validate_data_api_openapi_spec($spec);
+        $this->assertTrue($validation['valid'], implode('; ', $validation['errors']));
+
+        $this->assertSame('http://localhost/v1/apis/demo/data', $spec['servers'][0]['url']);
+
+        $this->assertArrayHasKey('/customers', $spec['paths']);
+        $this->assertArrayHasKey('/orders', $spec['paths']);
+        $this->assertArrayHasKey('/customers/{customers_id}', $spec['paths']);
+        $this->assertArrayHasKey('/customers/{customers_id}/orders', $spec['paths']);
+        $this->assertArrayHasKey('/customers/{customers_id}/orders/{orders_id}', $spec['paths']);
+        $this->assertArrayHasKey('/orders/{orders_id}', $spec['paths']);
+
+        $operations = 0;
+        foreach ($spec['paths'] as $pathItem) {
+            foreach (['get', 'post', 'patch', 'delete'] as $method) {
+                if (isset($pathItem[$method])) {
+                    $operations++;
+                }
+            }
+        }
+        $this->assertSame(6, count($spec['paths']));
+        $this->assertSame(15, $operations);
+    }
+
+    public function testApiStructureForOpenapiMergesPatch(): void
+    {
+        $dir = sys_get_temp_dir() . '/dbapi-swagger-test-' . bin2hex(random_bytes(4));
+        $this->assertTrue(mkdir($dir));
+
+        try {
+            file_put_contents($dir . '/structure.php', '<?php return ' . var_export([
+                'widgets' => [
+                    'type' => 'table',
+                    'keyFld' => 'id',
+                    'fields' => [
+                        'id' => ['type' => ['proto' => 'int'], 'required' => false, 'select' => true],
+                        'label' => ['type' => ['proto' => 'varchar'], 'required' => true, 'select' => true],
+                    ],
+                    'relations' => [],
+                ],
+            ], true) . ';');
+
+            file_put_contents($dir . '/patch.php', '<?php return ' . var_export([
+                'widgets' => [
+                    'fields' => [
+                        'label' => ['select' => false],
+                    ],
+                ],
+            ], true) . ';');
+
+            $structure = api_structure_for_openapi($dir);
+            $this->assertFalse($structure['widgets']['fields']['label']['select']);
+        } finally {
+            @unlink($dir . '/structure.php');
+            @unlink($dir . '/patch.php');
+            @rmdir($dir);
+        }
+    }
+}

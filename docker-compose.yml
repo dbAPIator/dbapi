@@ -10,6 +10,12 @@ services:
       - mysql
       - redis
     environment:
+      - DEPLOYMENT_MODE=single
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=myapp
+      - DB_USER=user
+      - DB_PASSWORD=password
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_STREAM=dbapi_webhooks

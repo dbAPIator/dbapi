@@ -65,6 +65,10 @@ $errorsCatalog["config"] = [
         "code"=>"3006",
         "message"=>"API is not ready to activate"
     ],
+    "single_mode_no_create"=>[
+        "code"=>"3010",
+        "message"=>"Single deployment mode: the default API is auto-provisioned; creating additional APIs is not supported"
+    ],
 
 ];
 

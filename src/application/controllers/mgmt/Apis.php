@@ -26,6 +26,9 @@ class Apis extends MY_MgmtController
     public function create()
     {
         $this->requireManagementKey();
+        if (($this->config->item('deployment_mode') ?? 'multi') === 'single') {
+            $this->mgmtError(409, $this->errorsCatalog['config']['single_mode_no_create']);
+        }
         $payload = $this->readCreatePayload();
         $apiId = $payload->name ?? null;
         if (!$apiId || !preg_match('/^[a-zA-Z0-9_\-]+$/', $apiId)) {

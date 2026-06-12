@@ -357,24 +357,51 @@ function openapi_spec_path(string $apiDir): string
 }
 
 /**
- * Schema used for OpenAPI generation (matches the data API: structure.php on disk).
+ * Effective schema for OpenAPI generation (structure.php merged with patch.php on disk).
  */
 function api_structure_for_openapi(string $apiDir, ?array $structure = null): array
 {
     if ($structure !== null) {
         return is_array($structure) ? $structure : [];
     }
-    $structureFile = rtrim($apiDir, '/') . '/structure.php';
+
+    $apiDir = rtrim($apiDir, '/');
+    $structureFile = $apiDir . '/structure.php';
     if (!is_file($structureFile)) {
         return [];
     }
+
     $structure = @include $structureFile;
-    return is_array($structure) ? $structure : [];
+    if (!is_array($structure)) {
+        return [];
+    }
+
+    $patchFile = $apiDir . '/patch.php';
+    if (!is_file($patchFile)) {
+        return $structure;
+    }
+
+    if (!function_exists('smart_array_merge_recursive')) {
+        require_once APPPATH . 'helpers/config_util_helper.php';
+    }
+
+    $patch = @include $patchFile;
+    if (!is_array($patch) || $patch === []) {
+        return $structure;
+    }
+
+    return smart_array_merge_recursive($structure, $patch);
 }
 
 function api_openapi_data_url(string $baseUrl, string $apiName): string
 {
-    return rtrim($baseUrl, '/') . '/apis/' . $apiName . '/data';
+    if (!function_exists('is_single_deployment_mode')) {
+        require_once APPPATH . 'helpers/deployment_helper.php';
+    }
+    if (is_single_deployment_mode()) {
+        return rtrim($baseUrl, '/') . '/v1/data';
+    }
+    return rtrim($baseUrl, '/') . '/v1/apis/' . rawurlencode($apiName) . '/data';
 }
 
 /**
@@ -402,6 +429,13 @@ function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl
 
     $structure = api_structure_for_openapi($apiDir, $structure);
     if (empty($structure)) {
+        $structureFile = rtrim($apiDir, '/') . '/structure.php';
+        if (!is_file($structureFile)) {
+            throw new RuntimeException('Cannot generate OpenAPI: structure.php missing for ' . $apiName);
+        }
+        if (!is_readable($structureFile)) {
+            throw new RuntimeException('Cannot generate OpenAPI: structure.php not readable for ' . $apiName);
+        }
         throw new RuntimeException('Cannot generate OpenAPI: structure is empty for ' . $apiName);
     }
 

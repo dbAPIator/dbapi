@@ -22,6 +22,10 @@ $config["default_field_access_select"] = true;
 $config["default_field_access_sort"] = true;
 $config["default_field_access_search"] = true;
 
+// deployment: "multi" (default) or "single" (Docker single-database onboarding)
+$config["deployment_mode"] = $_ENV["DEPLOYMENT_MODE"] ?? "multi";
+$config["default_api_id"] = $_ENV["DEFAULT_API_ID"] ?? "default";
+
 // path to where the APIs confingurations are stored
 $config["configs_dir"] = $_ENV["CONFIGS_DIR"]  ?? "/var/www/html/dbapi/dbconfigs";
 $config["links_dir"] = $_ENV["LINKS_DIR"]  ?? "/app/api_links";

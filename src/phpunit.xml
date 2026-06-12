@@ -5,6 +5,8 @@
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestOpenApiSpecValidator.php</file>
+            <file>tests/TestSwaggerGenerator.php</file>
+            <file>tests/TestDeploymentHelper.php</file>
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestFilterParser.php</file>
         </testsuite>
