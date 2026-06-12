@@ -1,0 +1,30 @@
+name: Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    # Weekly dependency audit (complements Dependabot alerts)
+    - cron: "0 6 * * 1"
+
+jobs:
+  composer-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "7.4"
+          extensions: json, curl
+          coverage: none
+
+      - name: Install dependencies
+        working-directory: src
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Composer audit
+        working-directory: src
+        run: composer audit
