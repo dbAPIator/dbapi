@@ -292,4 +292,6 @@ if [[ "$PUSH" == false && "$DRY_RUN" == false ]]; then
     echo
     echo "Next: git push origin HEAD && git push origin ${TAG}"
     echo "Or re-run with --push"
+    echo
+    echo "Pushing ${TAG} triggers the Docker publish workflow (ghcr.io/dbapiator/dbapi)."
 fi

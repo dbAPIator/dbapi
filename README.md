@@ -196,9 +196,20 @@ POST ...:activate                     → data plane live
 
 ### Docker (fastest)
 
+**From source (local dev):**
+
 ```bash
 docker compose up -d
 ```
+
+**From GitHub Container Registry** (published on each release tag, e.g. `v1.0.0`):
+
+```bash
+docker pull ghcr.io/dbapiator/dbapi:latest
+# or pin a version: ghcr.io/dbapiator/dbapi:1.0.0
+```
+
+Run with your own MySQL/MariaDB and Redis — mount a writable `dbconfigs` volume and set env vars (`CONFIGS_DIR`, `CONFIG_API_SECRET`, `DB_*`, `REDIS_*`, etc.). For single-API mode add `DEPLOYMENT_MODE=single` and the `DB_*` connection settings (see [`docker-compose.yml`](docker-compose.yml)).
 
 | Service | URL |
 |---------|-----|
