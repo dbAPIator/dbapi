@@ -909,10 +909,8 @@ class Records {
         if(!$this->dm->resource_allow_delete($tableName))
             throw new \Exception("Not authorized to delete from $tableName",401);
 
-        echo "------------------\n";
-//        print_r($filter);
-        echo $tableName;
-        $where = $this->generate_where_sql($filter[$tableName],$filter[$tableName]);
+        $filterAst = $filter[$tableName] ?? $filter;
+        $where = $this->generate_where_sql($filterAst, $tableName);
 
         $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);

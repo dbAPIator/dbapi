@@ -10,6 +10,17 @@
     "require-dev": {
         "phpunit/phpunit": "*"
     },
+    "scripts": {
+        "test": "phpunit --testsuite dbapi",
+        "test:unit": "phpunit --testsuite unit",
+        "test:integration": "phpunit --testsuite integration",
+        "test:dataplane-setup": [
+            "bash ../scripts/load-dataplane-schema-local.sh",
+            "cp -n tests/connection.dataplane.example.json tests/connection.json || true",
+            "cp -n tests/test.env.dataplane.example tests/test.env || true"
+        ],
+        "check:dataplane-schema": "bash ../scripts/check-dataplane-schema-sync.sh"
+    },
     "config": {
         "platform": {
             "php": "7.4.33"

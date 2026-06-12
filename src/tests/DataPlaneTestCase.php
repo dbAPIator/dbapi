@@ -15,8 +15,13 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = self::createHttpClient();
-        self::$apiName = 'phpunit-data-' . bin2hex(random_bytes(4));
         self::$connection = self::loadConnection();
+
+        if ($schemaError = self::probeDataplaneDatabase(self::$connection)) {
+            self::markTestSkipped($schemaError);
+        }
+
+        self::$apiName = 'phpunit-data-' . bin2hex(random_bytes(4));
         self::provisionActiveApi();
     }
 
@@ -72,7 +77,7 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         }
     }
 
-    protected function dataUrl(string $resource, ?string $id = null, ?string $relation = null): string
+    protected function dataUrl(string $resource, ?string $id = null, ?string $relation = null, ?string $relId = null): string
     {
         $path = 'v1/apis/' . self::$apiName . '/data/' . $resource;
         if ($id !== null) {
@@ -80,6 +85,9 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         }
         if ($relation !== null) {
             $path .= '/' . $relation;
+        }
+        if ($relId !== null) {
+            $path .= '/' . $relId;
         }
         return $path;
     }

@@ -117,7 +117,7 @@ POST /v1/apis/{apiId}/data/customers
 - **Sort** — `sort=name,-created_at` (per-resource when using `include`).
 - **Pagination** — `page[offset]` and `page[limit]` with instance-level caps.
 - **Sparse fieldsets** — `fields[customers]=name,email` to trim payloads.
-- **Includes** — load related records in one round trip (`include=orders,account_manager`), depth-limited.
+- **Includes** — load related records in one round trip (`include=orders,account_manager_id`), depth-limited.
 - **Filter on relationships** — e.g. customers that have orders matching a condition.
 - **Views** — read-only resources; list and filter work; responses omit `id` when there is no primary key.
 - **Export** — optional CSV or XLS on reads for spreadsheets and reporting.
@@ -208,7 +208,7 @@ docker compose up -d
 
 Docker Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
 
-MariaDB is seeded with demo `customers` and `products` tables on **first** database init (`docker/mysql-init/`). To re-run the seed, remove the MySQL data volume first: `rm -rf .docker_data/mysql && docker compose up -d`.
+MariaDB is seeded with the full data-plane test schema on **first** database init (`docker/mysql-init/`). To re-run the seed, remove the MySQL data volume first: `rm -rf .docker_data/mysql && docker compose up -d`.
 
 ```bash
 # Service discovery
@@ -273,16 +273,25 @@ Application entry point: [`src/index.php`](src/index.php).
 Integration tests (PHPUnit + Guzzle) run against a live instance:
 
 ```bash
-mysql -u root -p < src/tests/dbapi_dataplane.sql
-cp src/tests/connection.dataplane.example.json src/tests/connection.json
-cd src && composer install && ./vendor/bin/phpunit
+# Unit tests only (fast, no server/DB)
+cd src && composer install && composer test:unit
+
+# Multi-API mode (local Apache)
+composer test:dataplane-setup   # from src/ — loads DB + copies test env
+cd src && composer test:integration -- --filter TestDataPlaneAPI
+
+# Single-mode Docker
+docker compose up -d
+cp src/tests/test.env.single.example src/tests/test.env
+cd src && ./vendor/bin/phpunit tests/TestSingleModeDataPlaneAPI.php
 ```
 
 | Suite | Focus |
 |-------|--------|
+| `composer test:unit` | Filter parser, OpenAPI, schema sync checks (~14 tests) |
 | `TestManagementAPI` | Control plane lifecycle |
-| `TestDataPlaneAPI` | CRUD, filters, relationships, negatives |
-| Unit tests | Filter parser, OpenAPI validation, safety limits |
+| `TestDataPlaneAPI` | Full data-plane coverage (multi-API, ~55 tests) |
+| `TestSingleModeDataPlaneAPI` | Same scenarios via Docker `/v1/data/...` |
 
 Details: [management_api_test_plan.md](docs/management_api_test_plan.md) · [data_plane_test_plan.md](docs/data_plane_test_plan.md)
 

@@ -1,14 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="tests/bootstrap.php" colors="true">
     <testsuites>
-        <testsuite name="dbapi">
-            <file>tests/TestManagementAPI.php</file>
-            <file>tests/TestDataPlaneAPI.php</file>
+        <testsuite name="unit">
+            <file>tests/TestFilterParser.php</file>
             <file>tests/TestOpenApiSpecValidator.php</file>
             <file>tests/TestSwaggerGenerator.php</file>
             <file>tests/TestDeploymentHelper.php</file>
             <file>tests/TestApiSafety.php</file>
+            <file>tests/TestDataplaneSchemaSync.php</file>
+        </testsuite>
+        <testsuite name="integration">
+            <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestDataPlaneAPI.php</file>
+            <file>tests/TestSingleModeDataPlaneAPI.php</file>
+        </testsuite>
+        <testsuite name="dbapi">
             <file>tests/TestFilterParser.php</file>
+            <file>tests/TestOpenApiSpecValidator.php</file>
+            <file>tests/TestSwaggerGenerator.php</file>
+            <file>tests/TestDeploymentHelper.php</file>
+            <file>tests/TestApiSafety.php</file>
+            <file>tests/TestDataplaneSchemaSync.php</file>
+            <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestDataPlaneAPI.php</file>
+            <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

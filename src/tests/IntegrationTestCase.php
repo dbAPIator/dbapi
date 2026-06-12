@@ -128,4 +128,86 @@ abstract class IntegrationTestCase extends TestCase
             'http_errors' => false,
         ]);
     }
+
+    /**
+     * Minimum filter_cases rows required by DataPlaneTestsTrait fixtures.
+     */
+    protected static function dataplaneFilterCasesMinimum(): int
+    {
+        return 20;
+    }
+
+    /**
+     * Returns a skip message when the dataplane DB schema is missing or stale; null when OK.
+     */
+    protected static function probeDataplaneDatabase(?array $connection = null): ?string
+    {
+        if (!extension_loaded('mysqli')) {
+            return null;
+        }
+
+        $connection = $connection ?? self::loadConnection();
+        $host = $connection['host'] ?? '127.0.0.1';
+        $port = (int) ($connection['port'] ?? 3306);
+        $database = $connection['database'] ?? 'dbapi_dataplane';
+        $username = $connection['username'] ?? 'root';
+        $password = $connection['password'] ?? '';
+
+        $mysqli = @new mysqli($host, $username, $password, $database, $port);
+        if ($mysqli->connect_errno) {
+            return 'Cannot connect to dataplane database '
+                . "{$database}@{$host}:{$port} ({$mysqli->connect_error}). "
+                . 'Run: composer test:dataplane-setup (or scripts/load-dataplane-schema-local.sh).';
+        }
+
+        try {
+            $minRows = self::dataplaneFilterCasesMinimum();
+            $countResult = $mysqli->query('SELECT COUNT(*) AS c FROM `filter_cases`');
+            if (!$countResult) {
+                return 'Table filter_cases is missing. Reload schema: composer test:dataplane-setup';
+            }
+            $count = (int) ($countResult->fetch_assoc()['c'] ?? 0);
+            if ($count < $minRows) {
+                return "filter_cases has {$count} rows (need >= {$minRows}). "
+                    . 'Reload schema: composer test:dataplane-setup';
+            }
+
+            $columnResult = $mysqli->query(
+                "SHOW COLUMNS FROM `customers` LIKE 'account_manager_id'"
+            );
+            if (!$columnResult || $columnResult->num_rows === 0) {
+                return 'customers.account_manager_id column is missing (stale schema). '
+                    . 'Reload schema: composer test:dataplane-setup';
+            }
+        } finally {
+            $mysqli->close();
+        }
+
+        return null;
+    }
+
+    /**
+     * Probe filter_cases total via a live data-plane HTTP endpoint.
+     */
+    protected static function probeDataPlaneFilterCasesViaHttp(Client $client, string $listPath): bool
+    {
+        try {
+            $resp = $client->get($listPath, [
+                'query' => ['page' => ['filter_cases' => ['limit' => 1]]],
+                'http_errors' => false,
+                'timeout' => 5.0,
+            ]);
+            if ($resp->getStatusCode() !== 200) {
+                return false;
+            }
+            $body = json_decode((string) $resp->getBody(), true);
+            if (!is_array($body)) {
+                return false;
+            }
+            $total = (int) ($body['meta']['totalRecords'] ?? $body['meta']['total'] ?? 0);
+            return $total >= self::dataplaneFilterCasesMinimum();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
 }

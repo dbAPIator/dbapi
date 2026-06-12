@@ -20,7 +20,7 @@ trait DbapiMiscTrait
         /**
          * @var \dbAPI\API\
          */
-        $procedures = \dbAPI\API\Procedures::init($this->apiDb,$this->apiDm);
+        $procedures = \dbAPI\API\StoredProcedures::init($this->apiDb,$this->apiDm);
         // print_r($this->input->post("args"));
 
         try {

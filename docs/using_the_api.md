@@ -25,7 +25,7 @@ For example let's assume we have a table called **`customers`** and we want to r
 curl --location 'https://localhost/dbapi/apis/api_name/data/customers' 
 ```
 
-Let's assume the table customers which structure is composed of the following columns: `uid, fname, lname, bdate, city, country, account_manager`, where `uid` is primary key and `account_manager` is a foreign key to the `users` table. A possible response will look like this:
+Let's assume the table customers which structure is composed of the following columns: `uid, fname, lname, bdate, city, country, account_manager_id`, where `uid` is primary key and `account_manager_id` is a foreign key to the `users` table. A possible response will look like this:
 
 ```json
 {
@@ -45,7 +45,7 @@ Let's assume the table customers which structure is composed of the following co
             "orders": {
                 "data": null
             },
-            "account_manager": {
+            "account_manager_id": {
                 "data": {
                     "id": "a1b2c3d4",
                     "type": "users"
@@ -172,14 +172,14 @@ Relationship names are part of the API contract. They are used in URLs, the `inc
 
 | Direction | Default name | Notes |
 |-----------|--------------|--------|
-| Outbound (many-to-one) | FK **column name** on the current resource | Example: `account_manager` on `customers` |
+| Outbound (many-to-one) | FK **column name** on the current resource | Example: `account_manager_id` on `customers` |
 | Inbound (one-to-many) | Child **table name** when unambiguous | Example: `orders` under `customers` |
 | Inbound (ambiguous) | `{childTable}_{fkColumn}` | When several FKs share the same child table or the short name is already used |
 
 Examples:
 
 - `GET .../data/customers/1/orders` — inbound relationship `orders`
-- `include=account_manager` — outbound relationship keyed by column `account_manager`
+- `include=account_manager_id` — outbound relationship keyed by column `account_manager_id`
 - After regen, a removed FK may leave an **orphan** relationship (still accepted with a warning) so clients are not broken until you clean up `patch.php`.
 
 Rename relationships for clarity using schema overrides (`patch.php` / management API), not by relying on introspection order.

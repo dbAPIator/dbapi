@@ -90,10 +90,14 @@ trait DbapiReadTrait
         $outputFormat = $outputFormat && in_array($outputFormat,["csv","xls","json"]) ? $outputFormat : "json";
         switch ($outputFormat) {
             case "csv":
-                $this->out_csv($resourceName,$recId,$request,$result,$this->input->get("filename"));
+                $csvRecords = ($result instanceof \RecordSet) ? $result->records : [$result];
+                $csvTotal = ($result instanceof \RecordSet) ? (int) $result->total : 1;
+                $this->out_csv($resourceName, $recId ?? '', $request, $csvRecords, $csvTotal, $this->input->get("filename"));
                 break;
             case "xls":
-                $this->out_xls($resourceName,$recId,$request,$result,$this->input->get("filename"));
+                $xlsRecords = ($result instanceof \RecordSet) ? $result->records : [$result];
+                $xlsTotal = ($result instanceof \RecordSet) ? (int) $result->total : 1;
+                $this->out_xls($resourceName, $recId ?? '', $request, $xlsRecords, $xlsTotal, $this->input->get("filename"));
                 break;
             case "json":
                 error_log("get_records asdasd: $resourceName afterCreate: $afterCreate\n");
@@ -124,9 +128,9 @@ trait DbapiReadTrait
      * @param string|null $fileName
      * @throws \dbAPI\API\Exception
      */
-    function out_csv(string $resourceName,string $recId,DBAPIRequest $request,\dbAPI\API\Records $records,int $totalRecords,string $fileName=null) {
+    function out_csv(string $resourceName,string $recId,DBAPIRequest $request,$records,int $totalRecords,string $fileName=null) {
 
-        if(!is_null($recId) && !$totalRecords) {
+        if($recId !== '' && !$totalRecords) {
             HttpResp::not_found();
         }
 
@@ -152,7 +156,11 @@ trait DbapiReadTrait
             $out[] = '"'.implode('","',$tmp).'"';
         }
 
-        $fieldsNames = $request->fields ?   explode(",",$request->fields   )  : $fieldsNames;
+        if (is_array($request->fields) && count($request->fields)) {
+            $fieldsNames = $request->fields;
+        } elseif (is_string($request->fields) && $request->fields !== '') {
+            $fieldsNames = explode(',', $request->fields);
+        }
 
 
         foreach ($records as $record) {

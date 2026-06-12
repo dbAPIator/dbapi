@@ -38,6 +38,7 @@ services:
     volumes:
       - ./.docker_data/mysql:/var/lib/mysql
       - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+      - ./src/tests/dataplane-schema-body.sql:/docker-entrypoint-initdb.d/dataplane-schema-body.sql:ro
 
   adminer:
     image: adminer:latest

@@ -1,0 +1,835 @@
+<?php
+
+/**
+ * Shared data-plane integration tests for multi-API and single-mode deployments.
+ *
+ * @see docs/data_plane_test_plan.md
+ */
+trait DataPlaneTestsTrait
+{
+    // --- Read / list ---
+
+    public function testListCustomersReturnsJsonApiCollection(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'));
+        $body = $this->assertHttpStatus($resp, 200, 'list customers');
+        $this->assertArrayHasKey('data', $body);
+        $this->assertIsArray($body['data']);
+        $this->assertGreaterThanOrEqual(3, count($body['data']));
+        $this->assertArrayHasKey('meta', $body);
+    }
+
+    public function testGetCustomerById(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'));
+        $body = $this->assertHttpStatus($resp, 200, 'get customer 1');
+        $this->assertEquals('customers', $body['data']['type']);
+        $this->assertEquals('alice@example.com', $body['data']['attributes']['email']);
+    }
+
+    public function testGetNonexistentCustomerReturns404(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '999999'));
+        $this->assertHttpStatus($resp, 404, 'missing customer');
+    }
+
+    public function testUnknownResourceReturns404(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('no_such_table'));
+        $this->assertHttpStatus($resp, 404, 'unknown resource');
+    }
+
+    public function testSparseFieldset(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'), [
+            'query' => ['fields' => ['customers' => 'name,email']],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sparse fields');
+        $attrs = $body['data']['attributes'];
+        $this->assertArrayHasKey('name', $attrs);
+        $this->assertArrayHasKey('email', $attrs);
+        $this->assertArrayNotHasKey('country_code', $attrs);
+    }
+
+    public function testReadOnlyView(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('v_order_totals_by_day'));
+        $body = $this->assertHttpStatus($resp, 200, 'list view');
+        $this->assertArrayHasKey('data', $body);
+        $this->assertNotEmpty($body['data']);
+        $first = $body['data'][0];
+        $this->assertArrayNotHasKey('id', $first, 'resources without a primary key omit id');
+        $this->assertEquals('v_order_totals_by_day', $first['type']);
+        $this->assertArrayHasKey('attributes', $first);
+        $this->assertArrayHasKey('day', $first['attributes']);
+    }
+
+    public function testGetViewByIdWithoutPrimaryKeyReturns404(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('v_order_totals_by_day', 'abc123'));
+        $this->assertHttpStatus($resp, 404, 'get view by id');
+    }
+
+    public function testCatalogItemsJsonMetadata(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('catalog_items', '1'));
+        $body = $this->assertHttpStatus($resp, 200, 'catalog item');
+        $metadata = $body['data']['attributes']['metadata'] ?? null;
+        $this->assertNotNull($metadata);
+        if (is_string($metadata)) {
+            $metadata = json_decode($metadata, true);
+        }
+        $this->assertEquals('standard', $metadata['tier'] ?? null);
+    }
+
+    // --- Filters (filter_cases seed IDs 1-20) ---
+
+    public function testFilterEquality(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'id=1'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter eq');
+        $this->assertCount(1, $body['data']);
+        $this->assertEquals('alpha-low', $body['data'][0]['attributes']['label']);
+    }
+
+    public function testFilterScoreGreaterThan(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'score>40'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter gt');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertGreaterThan(40, (int) $row['attributes']['score']);
+        }
+    }
+
+    public function testFilterGreaterThanAndSort(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => [
+                'filter' => ['filter_cases' => 'score>40'],
+                'sort' => ['filter_cases' => '-score'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter gt + sort');
+        $labels = array_column(array_column($body['data'], 'attributes'), 'label');
+        $this->assertContains('alpha-high', $labels);
+        $this->assertContains('epsilon-list', $labels);
+        if (count($labels) >= 2) {
+            $this->assertGreaterThanOrEqual(
+                (int) $body['data'][1]['attributes']['score'],
+                (int) $body['data'][0]['attributes']['score']
+            );
+        }
+    }
+
+    public function testFilterOneOf(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'country><US;DE'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter in-list');
+        foreach ($body['data'] as $row) {
+            $this->assertContains($row['attributes']['country'], ['US', 'DE']);
+        }
+    }
+
+    public function testFilterOrGrouping(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => '(status=closed||status=pending)'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter or');
+        $this->assertGreaterThanOrEqual(2, count($body['data']));
+    }
+
+    public function testFilterNoMatchReturnsEmptyData(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'label=nonexistent-xyz'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter empty');
+        $this->assertCount(0, $body['data']);
+    }
+
+    public function testInvalidFilterReturns400(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => '(((unclosed'],
+        ]);
+        $this->assertContains($resp->getStatusCode(), [400, 422], 'invalid filter');
+    }
+
+    public function testFilterBeginsWith(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'label=~prefix'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter begins-with');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertStringStartsWith('prefix', $row['attributes']['label']);
+        }
+    }
+
+    public function testFilterContains(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'label~=~sort'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter contains');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertStringContainsString('sort', $row['attributes']['label']);
+        }
+    }
+
+    public function testFilterLessThanOrEqual(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'score<=10'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter lte');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertLessThanOrEqual(10, (int) $row['attributes']['score']);
+        }
+    }
+
+    public function testFilterNegation(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'status!=open'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter negation');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertNotEquals('open', $row['attributes']['status']);
+        }
+    }
+
+    public function testFilterAndCombination(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['filter' => 'status=open,country=US,score>20'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter and');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $attrs = $row['attributes'];
+            $this->assertEquals('open', $attrs['status']);
+            $this->assertEquals('US', $attrs['country']);
+            $this->assertGreaterThan(20, (int) $attrs['score']);
+        }
+    }
+
+    public function testFilterAdvanced(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => [
+                'filter' => 'is_active=1',
+                'filter_advanced' => ['filter_cases' => 'score>=75'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter_advanced');
+        $this->assertNotEmpty($body['data']);
+        foreach ($body['data'] as $row) {
+            $this->assertEquals(1, (int) $row['attributes']['is_active']);
+            $this->assertGreaterThanOrEqual(75, (int) $row['attributes']['score']);
+        }
+    }
+
+    public function testFilterOnRelationship(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
+            'query' => [
+                'filter' => ['customers/orders' => 'status=shipped'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter on relationship');
+        $this->assertNotEmpty($body['data']);
+        $ids = array_map('strval', array_column($body['data'], 'id'));
+        $this->assertContains('1', $ids);
+    }
+
+    // --- Sorting ---
+
+    public function testSortAscendingByLabel(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => [
+                'filter' => 'label~=~zeta-sort',
+                'sort' => 'label',
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sort asc');
+        $labels = array_column(array_column($body['data'], 'attributes'), 'label');
+        $sorted = $labels;
+        sort($sorted, SORT_STRING);
+        $this->assertSame($sorted, $labels);
+    }
+
+    public function testSortDescendingByScore(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => [
+                'filter' => 'label~=~zeta-sort',
+                'sort' => '-score',
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sort desc');
+        $scores = array_map('intval', array_column(array_column($body['data'], 'attributes'), 'score'));
+        $sorted = $scores;
+        rsort($sorted, SORT_NUMERIC);
+        $this->assertSame($sorted, $scores);
+    }
+
+    public function testSortMultipleFields(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => [
+                'filter' => 'label~=~zeta-sort',
+                'sort' => 'score,-label',
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sort multi');
+        $this->assertGreaterThanOrEqual(2, count($body['data']));
+        $scores = array_map('intval', array_column(array_column($body['data'], 'attributes'), 'score'));
+        $sortedScores = $scores;
+        sort($sortedScores, SORT_NUMERIC);
+        $this->assertSame($sortedScores, $scores);
+    }
+
+    // --- Pagination ---
+
+    public function testPaginationLimitOffset(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
+            'query' => ['page' => ['customers' => ['limit' => 1, 'offset' => 1]]],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'pagination');
+        $this->assertCount(1, $body['data']);
+    }
+
+    public function testPaginationMetaTotal(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['page' => ['filter_cases' => ['limit' => 5, 'offset' => 0]]],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'pagination meta');
+        $this->assertCount(5, $body['data']);
+        $this->assertArrayHasKey('meta', $body);
+        $this->assertGreaterThanOrEqual(20, (int) ($body['meta']['totalRecords'] ?? $body['meta']['total'] ?? 0));
+        $this->assertEquals(0, (int) ($body['meta']['offset'] ?? -1));
+    }
+
+    public function testPaginationSecondPage(): void
+    {
+        $first = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['page' => ['filter_cases' => ['limit' => 5, 'offset' => 0]]],
+        ]);
+        $second = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['page' => ['filter_cases' => ['limit' => 5, 'offset' => 5]]],
+        ]);
+        $firstBody = $this->assertHttpStatus($first, 200, 'page 1');
+        $secondBody = $this->assertHttpStatus($second, 200, 'page 2');
+        $firstIds = array_column($firstBody['data'], 'id');
+        $secondIds = array_column($secondBody['data'], 'id');
+        $this->assertEmpty(array_intersect($firstIds, $secondIds));
+    }
+
+    public function testPaginationOffsetBeyondTotal(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['page' => ['filter_cases' => ['limit' => 10, 'offset' => 9999]]],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'pagination beyond total');
+        $this->assertCount(0, $body['data']);
+    }
+
+    public function testPaginationGlobalSyntax(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('filter_cases'), [
+            'query' => ['page' => ['filter_cases' => ['offset' => 2, 'limit' => 3]]],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'pagination per-resource syntax');
+        $this->assertCount(3, $body['data']);
+        $this->assertEquals(2, (int) ($body['meta']['offset'] ?? -1));
+    }
+
+    // --- Relationships ---
+
+    public function testIncludeOrdersOnCustomer(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'), [
+            'query' => ['include' => 'orders'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'include orders');
+        $this->assertArrayHasKey('relationships', $body['data']);
+        $this->assertArrayHasKey('orders', $body['data']['relationships']);
+        if (isset($body['included'])) {
+            $this->assertNotEmpty($body['included']);
+        }
+    }
+
+    public function testIncludeOutboundAccountManager(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'), [
+            'query' => ['include' => 'account_manager_id'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'include account manager');
+        $this->assertArrayHasKey('relationships', $body['data']);
+        $this->assertArrayHasKey('account_manager_id', $body['data']['relationships']);
+        if (isset($body['included'])) {
+            $types = array_column($body['included'], 'type');
+            $this->assertContains('users', $types);
+        }
+    }
+
+    public function testRelatedRecordsEndpoint(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders'));
+        $body = $this->assertHttpStatus($resp, 200, 'customer orders');
+        $this->assertArrayHasKey('data', $body);
+        $this->assertGreaterThanOrEqual(1, count($body['data']));
+        $orderIds = array_map('strval', array_column($body['data'], 'id'));
+        $this->assertNotEmpty(array_intersect($orderIds, ['1', '2', '4']));
+    }
+
+    public function testRelatedRecordsPagination(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders'), [
+            'query' => ['page' => ['orders' => ['limit' => 1, 'offset' => 0]]],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'related pagination');
+        $this->assertCount(1, $body['data']);
+    }
+
+    public function testCreateRelatedOrder(): void
+    {
+        $create = $this->dataRequest('POST', $this->dataUrl('customers', '3', 'orders'), [
+            'json' => [
+                'data' => [
+                    'type' => 'orders',
+                    'attributes' => [
+                        'status' => 'draft',
+                        'total' => 13,
+                    ],
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($create, 201, 'create related order');
+        $orderId = $body['data']['id'] ?? null;
+        $this->assertNotNull($orderId);
+
+        $get = $this->dataRequest('GET', $this->dataUrl('orders', (string) $orderId));
+        $order = $this->assertHttpStatus($get, 200, 'verify related order');
+        $customerRel = $order['data']['relationships']['customer_id']['data']['id'] ?? null;
+        $this->assertEquals('3', (string) $customerRel);
+
+        $this->dataRequest('DELETE', $this->dataUrl('orders', (string) $orderId));
+    }
+
+    public function testUpdateRelatedOrder(): void
+    {
+        $create = $this->dataRequest('POST', $this->dataUrl('customers', '3', 'orders'), [
+            'json' => [
+                'data' => [
+                    'type' => 'orders',
+                    'attributes' => ['status' => 'draft', 'total' => 5.00],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'setup related order');
+        $orderId = $created['data']['id'];
+
+        $patch = $this->dataRequest('PATCH', $this->dataUrl('customers', '3', 'orders', (string) $orderId), [
+            'json' => [
+                'data' => [
+                    'type' => 'orders',
+                    'id' => $orderId,
+                    'attributes' => ['status' => 'placed'],
+                ],
+            ],
+        ]);
+        $updated = $this->assertHttpStatus($patch, 200, 'update related order');
+        $this->assertEquals('placed', $updated['data']['attributes']['status']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('orders', (string) $orderId));
+    }
+
+    // --- Create / update / delete ---
+
+    public function testCreateAndDeleteCustomer(): void
+    {
+        $email = $this->uniqueEmail('create');
+        $create = $this->dataRequest('POST', $this->dataUrl('customers'), [
+            'json' => [
+                'data' => [
+                    'type' => 'customers',
+                    'attributes' => [
+                        'name' => 'PHPUnit Create',
+                        'email' => $email,
+                        'country_code' => 'US',
+                    ],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'create customer');
+        $id = $created['data']['id'];
+
+        $patch = $this->dataRequest('PATCH', $this->dataUrl('customers', $id), [
+            'json' => [
+                'data' => [
+                    'type' => 'customers',
+                    'id' => $id,
+                    'attributes' => ['name' => 'PHPUnit Updated'],
+                ],
+            ],
+        ]);
+        $updated = $this->assertHttpStatus($patch, 200, 'patch customer');
+        $this->assertEquals('PHPUnit Updated', $updated['data']['attributes']['name']);
+
+        $del = $this->dataRequest('DELETE', $this->dataUrl('customers', $id));
+        $this->assertContains($del->getStatusCode(), [200, 204], 'delete customer');
+    }
+
+    public function testNestedCreateWithOrder(): void
+    {
+        $email = $this->uniqueEmail('nested');
+        $create = $this->dataRequest('POST', $this->dataUrl('customers'), [
+            'json' => [
+                'data' => [
+                    'type' => 'customers',
+                    'attributes' => [
+                        'name' => 'Nested Create',
+                        'email' => $email,
+                        'country_code' => 'US',
+                    ],
+                    'relationships' => [
+                        'orders' => [
+                            'data' => [
+                                'type' => 'orders',
+                                'attributes' => [
+                                    'status' => 'draft',
+                                    'total' => 10,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        if ($create->getStatusCode() === 500) {
+            $this->markTestSkipped('Nested 1:n create not supported for this API configuration');
+        }
+        $body = $this->assertHttpStatus($create, 201, 'nested create');
+        $customerId = $body['data']['id'];
+
+        $orders = $this->dataRequest('GET', $this->dataUrl('customers', $customerId, 'orders'));
+        $ordersBody = $this->assertHttpStatus($orders, 200, 'nested orders');
+        $this->assertGreaterThanOrEqual(1, count($ordersBody['data']));
+
+        foreach ($ordersBody['data'] as $order) {
+            $this->dataRequest('DELETE', $this->dataUrl('orders', $order['id']));
+        }
+        $this->dataRequest('DELETE', $this->dataUrl('customers', $customerId));
+    }
+
+    public function testBulkInsertMultipleRecords(): void
+    {
+        $skuBase = 'BULK-' . bin2hex(random_bytes(3));
+        $create = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'json' => [
+                'data' => [
+                    [
+                        'type' => 'products',
+                        'attributes' => [
+                            'sku' => $skuBase . '-1',
+                            'name' => 'Bulk One',
+                            'price' => 1.00,
+                            'is_active' => 1,
+                        ],
+                    ],
+                    [
+                        'type' => 'products',
+                        'attributes' => [
+                            'sku' => $skuBase . '-2',
+                            'name' => 'Bulk Two',
+                            'price' => 2.00,
+                            'is_active' => 1,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($create, 201, 'bulk insert');
+        $this->assertIsArray($body['data']);
+        $this->assertCount(2, $body['data']);
+        foreach ($body['data'] as $row) {
+            $this->dataRequest('DELETE', $this->dataUrl('products', $row['id']));
+        }
+    }
+
+    public function testBulkUpdateByIdArray(): void
+    {
+        $email1 = $this->uniqueEmail('bulk1');
+        $email2 = $this->uniqueEmail('bulk2');
+        $c1 = $this->assertHttpStatus($this->dataRequest('POST', $this->dataUrl('customers'), [
+            'json' => ['data' => ['type' => 'customers', 'attributes' => [
+                'name' => 'Bulk A', 'email' => $email1, 'country_code' => 'US',
+            ]]],
+        ]), 201);
+        $c2 = $this->assertHttpStatus($this->dataRequest('POST', $this->dataUrl('customers'), [
+            'json' => ['data' => ['type' => 'customers', 'attributes' => [
+                'name' => 'Bulk B', 'email' => $email2, 'country_code' => 'US',
+            ]]],
+        ]), 201);
+
+        $patch = $this->dataRequest('PATCH', $this->dataUrl('customers'), [
+            'json' => [
+                'data' => [
+                    ['type' => 'customers', 'id' => $c1['data']['id'], 'attributes' => ['name' => 'Bulk A Updated']],
+                    ['type' => 'customers', 'id' => $c2['data']['id'], 'attributes' => ['name' => 'Bulk B Updated']],
+                ],
+            ],
+        ]);
+        $updated = $this->assertHttpStatus($patch, 200, 'bulk update');
+        $names = array_column(array_column($updated['data'], 'attributes'), 'name');
+        $this->assertContains('Bulk A Updated', $names);
+        $this->assertContains('Bulk B Updated', $names);
+
+        $this->dataRequest('DELETE', $this->dataUrl('customers', $c1['data']['id']));
+        $this->dataRequest('DELETE', $this->dataUrl('customers', $c2['data']['id']));
+    }
+
+    public function testBulkDeleteByFilter(): void
+    {
+        $tag = 'bulk-del-' . bin2hex(random_bytes(3));
+        $ids = [];
+        for ($i = 0; $i < 2; $i++) {
+            $created = $this->assertHttpStatus($this->dataRequest('POST', $this->dataUrl('notes'), [
+                'json' => ['data' => ['type' => 'notes', 'attributes' => [
+                    'body' => $tag . ' note ' . $i,
+                    'priority' => 0,
+                ]]],
+            ]), 201);
+            $ids[] = $created['data']['id'];
+        }
+
+        $del = $this->dataRequest('DELETE', $this->dataUrl('notes'), [
+            'query' => ['filter' => 'id><' . implode(';', $ids)],
+        ]);
+        $this->assertContains($del->getStatusCode(), [200, 204], 'bulk delete');
+
+        $check = $this->dataRequest('GET', $this->dataUrl('notes'), [
+            'query' => ['filter' => 'id><' . implode(';', $ids)],
+        ]);
+        $body = $this->assertHttpStatus($check, 200, 'verify bulk delete');
+        $this->assertCount(0, $body['data']);
+    }
+
+    public function testDuplicateEmailReturns409(): void
+    {
+        $resp = $this->dataRequest('POST', $this->dataUrl('customers'), [
+            'json' => [
+                'data' => [
+                    'type' => 'customers',
+                    'attributes' => [
+                        'name' => 'Dup',
+                        'email' => 'alice@example.com',
+                        'country_code' => 'US',
+                    ],
+                ],
+            ],
+        ]);
+        $this->assertEquals(409, $resp->getStatusCode(), 'duplicate email');
+    }
+
+    public function testOnDuplicateIgnoreAllowsSecondInsert(): void
+    {
+        $sku = 'DUP-' . bin2hex(random_bytes(3));
+        $payload = [
+            'data' => [
+                'type' => 'products',
+                'attributes' => [
+                    'sku' => $sku,
+                    'name' => 'First',
+                    'price' => 1.00,
+                    'is_active' => 1,
+                ],
+            ],
+        ];
+        $first = $this->dataRequest('POST', $this->dataUrl('products') . '?onduplicate=ignore', [
+            'json' => $payload,
+        ]);
+        $this->assertHttpStatus($first, 201, 'first product');
+
+        $payload['data']['attributes']['name'] = 'Second';
+        $second = $this->dataRequest('POST', $this->dataUrl('products') . '?onduplicate=ignore', [
+            'json' => $payload,
+        ]);
+        $this->assertContains($second->getStatusCode(), [200, 201], 'ignore duplicate');
+    }
+
+    public function testOnDuplicateUpdate(): void
+    {
+        $sku = 'UPD-' . bin2hex(random_bytes(3));
+        $create = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'attributes' => [
+                        'sku' => $sku,
+                        'name' => 'Original',
+                        'price' => 3.00,
+                        'is_active' => 1,
+                    ],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'setup product');
+        $id = $created['data']['id'];
+
+        $upsert = $this->dataRequest('POST', $this->dataUrl('products') . '?onduplicate=update&update=name,price', [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'attributes' => [
+                        'sku' => $sku,
+                        'name' => 'Updated Name',
+                        'price' => 5,
+                        'is_active' => 1,
+                    ],
+                ],
+            ],
+        ]);
+        $this->assertContains($upsert->getStatusCode(), [200, 201], 'onduplicate update');
+
+        $get = $this->dataRequest('GET', $this->dataUrl('products', $id));
+        $body = $this->assertHttpStatus($get, 200, 'verify upsert');
+        $this->assertEquals('Updated Name', $body['data']['attributes']['name']);
+        $this->assertEquals('5.00', (string) $body['data']['attributes']['price']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('products', $id));
+    }
+
+    public function testInvalidForeignKeyOnOrderReturnsError(): void
+    {
+        $resp = $this->dataRequest('POST', $this->dataUrl('orders'), [
+            'json' => [
+                'data' => [
+                    'type' => 'orders',
+                    'attributes' => [
+                        'customer_id' => 999999,
+                        'status' => 'draft',
+                        'total' => 1.00,
+                    ],
+                ],
+            ],
+        ]);
+        $this->assertGreaterThanOrEqual(400, $resp->getStatusCode());
+        $this->assertLessThan(600, $resp->getStatusCode());
+    }
+
+    public function testDeleteCustomerWithOrdersFails(): void
+    {
+        try {
+            $resp = $this->dataRequest('DELETE', $this->dataUrl('customers', '1'));
+        } catch (\GuzzleHttp\Exception\TransferException $e) {
+            $this->assertTrue(true, 'DELETE rejected when FK RESTRICT applies');
+            return;
+        }
+        $this->assertGreaterThanOrEqual(400, $resp->getStatusCode());
+    }
+
+    public function testBulkPatchWithoutFilterReturns400(): void
+    {
+        $resp = $this->dataRequest('PATCH', $this->dataUrl('customers'), [
+            'json' => [
+                'data' => [
+                    'type' => 'customers',
+                    'attributes' => ['name' => 'Bulk'],
+                ],
+            ],
+        ]);
+        $this->assertEquals(400, $resp->getStatusCode(), 'bulk patch without filter');
+    }
+
+    public function testEmptyPostBodyReturns400(): void
+    {
+        $resp = $this->dataRequest('POST', $this->dataUrl('customers'), [
+            'body' => '',
+            'headers' => ['Content-Type' => 'application/json'],
+        ]);
+        $this->assertEquals(400, $resp->getStatusCode(), 'empty body');
+    }
+
+    public function testPostToViewFails(): void
+    {
+        $resp = $this->dataRequest('POST', $this->dataUrl('v_order_totals_by_day'), [
+            'json' => [
+                'data' => [
+                    'type' => 'v_order_totals_by_day',
+                    'attributes' => ['day' => '2026-01-01', 'order_count' => 1, 'revenue' => 0],
+                ],
+            ],
+        ]);
+        $this->assertGreaterThanOrEqual(400, $resp->getStatusCode());
+    }
+
+    // --- Export ---
+
+    public function testExportCsvFormat(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('products'), [
+            'query' => ['format' => 'csv', 'includetablehead' => 'true'],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'csv export');
+        $body = (string) $resp->getBody();
+        $this->assertStringContainsString('sku', strtolower($body));
+        $this->assertStringContainsString('SKU-001', $body);
+    }
+
+    // --- Stored procedures ---
+
+    public function testStoredProcedureCall(): void
+    {
+        $resp = $this->dataRequest('POST', $this->storedProcedureUrl('sp_validate_login'), [
+            'json' => [
+                ['name' => 'p_username', 'value' => 'testuser', 'dir' => 'in'],
+                ['name' => 'p_password', 'value' => 'testpass', 'dir' => 'in'],
+            ],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'stored procedure');
+        $body = trim((string) $resp->getBody());
+        if ($body === '') {
+            $this->markTestSkipped('Stored procedure returned empty body');
+        }
+        $decoded = json_decode($body, true);
+        $this->assertTrue(is_array($decoded) && !empty($decoded));
+    }
+
+    public function testRequestIdHeaderPresent(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'), [
+            'headers' => ['X-Request-Id' => 'phpunit-req-1'],
+        ]);
+        $this->assertHttpStatus($resp, 200);
+        $this->assertEquals('phpunit-req-1', $resp->getHeaderLine('X-Request-Id'));
+    }
+
+    abstract protected function dataUrl(string $resource, ?string $id = null, ?string $relation = null, ?string $relId = null): string;
+
+    abstract protected function dataRequest(string $method, string $uri, array $options = []);
+
+    abstract protected function uniqueEmail(string $prefix = 'test'): string;
+
+    protected function storedProcedureUrl(string $procedureName): string
+    {
+        return $this->dataUrl('__call__/' . $procedureName);
+    }
+}

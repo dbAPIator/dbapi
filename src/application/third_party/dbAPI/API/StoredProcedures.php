@@ -54,6 +54,7 @@ class StoredProcedures
             throw new \Exception("Invalid input",400);
         }
         $execSql = [];
+        $result = [];
 
         $args =  [];
         foreach ($parameters as $para) {
@@ -71,6 +72,10 @@ class StoredProcedures
         }
         foreach ($execSql as $sql) {
             $res = $this->db->query($sql);
+        }
+
+        if (isset($res) && $res && $res->num_rows() > 0) {
+            return $res->result();
         }
 
         if(count($result)) {

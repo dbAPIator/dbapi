@@ -117,15 +117,8 @@ trait DbapiWriteTrait
         }
 
         $_GET["filter"] = "id><".implode(";",$ids);
-        $qp = $this->get_req_parameters($resourceName);
-        $qp["paging"] = [
-            $resourceName => [
-                "offset" => 0
-            ]
-        ];
-
-//        print_r($qp);
-        $this->get_records($configName,$resourceName,null,$qp);
+        $request = $this->get_dbapi_request($resourceName);
+        $this->get_records($configName,$resourceName,null,$request);
 
 
         $doc = Document::create($this->JsonApiDocOptions,[]);
@@ -185,7 +178,7 @@ trait DbapiWriteTrait
      * @throws Exception
      * @todo validate it
      */
-    function update_single_record(string $configName, string $resourceName, string $recId, array $updateData=null)
+    function update_single_record(string $configName, string $resourceName, string $recId, $updateData=null)
     {
         $this->_init($configName);
 
