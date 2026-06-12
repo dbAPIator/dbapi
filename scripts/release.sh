@@ -50,9 +50,13 @@ semver_valid() {
 
 read_version() {
     local version=""
+    local from_file=""
 
     if [[ -f "$VERSION_FILE" ]]; then
-        version="$(tr -d '[:space:]' < "$VERSION_FILE")"
+        from_file="$(tr -d '[:space:]' < "$VERSION_FILE")"
+        if semver_valid "$from_file"; then
+            version="$from_file"
+        fi
     fi
 
     if [[ -z "$version" ]]; then
@@ -68,8 +72,8 @@ read_version() {
         version="0.0.0"
     fi
 
-    if ! semver_valid "$version"; then
-        die "invalid version '${version}' in ${VERSION_FILE}"
+    if [[ -n "$from_file" ]] && ! semver_valid "$from_file"; then
+        echo "warning: ignoring invalid VERSION file contents: ${from_file}" >&2
     fi
 
     echo "$version"
