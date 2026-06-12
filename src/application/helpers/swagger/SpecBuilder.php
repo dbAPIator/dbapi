@@ -477,6 +477,7 @@ function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl
         @unlink($tmp);
         throw new RuntimeException('Failed to publish OpenAPI spec to ' . $path);
     }
+    @chmod($path, 0644);
     if (function_exists('opcache_invalidate')) {
         opcache_invalidate($path, true);
     }

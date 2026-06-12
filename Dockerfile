@@ -36,9 +36,8 @@ RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.4/fpm/php.ini
 
 WORKDIR /app
 
-COPY src/composer.json ./
-RUN composer config policy.advisories.block false \
-    && composer install --no-dev --no-interaction --optimize-autoloader
+COPY src/composer.json src/composer.lock ./
+RUN composer install --no-dev --no-interaction --optimize-autoloader
 
 COPY src/ ./
 
@@ -48,6 +47,9 @@ COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://127.0.0.1/ || exit 1
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

@@ -20,6 +20,7 @@ class Cli extends CI_Controller
         }
         $this->config->load('dbapiator');
         $this->load->helper('string');
+        $this->load->helper('config_util');
     }
 
     /**

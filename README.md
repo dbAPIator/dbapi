@@ -206,14 +206,16 @@ docker compose up -d
 | Adminer | http://localhost:8889/ |
 | MariaDB | `localhost:3306` (database `myapp`) |
 
-Docker Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container auto-provisions the `default` API from `DB_*` environment variables — no manual create step.
+Docker Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
+
+MariaDB is seeded with demo `customers` and `products` tables on **first** database init (`docker/mysql-init/`). To re-run the seed, remove the MySQL data volume first: `rm -rf .docker_data/mysql && docker compose up -d`.
 
 ```bash
 # Service discovery
 curl -sS http://localhost:8888/
 
-# Data plane (after tables exist in myapp)
-curl -sS http://localhost:8888/v1/data/{resource}
+# Data plane
+curl -sS http://localhost:8888/v1/data/customers
 
 # OpenAPI spec + Swagger UI
 curl -sS http://localhost:8888/v1/swagger

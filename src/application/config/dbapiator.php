@@ -8,6 +8,26 @@
 
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+if (!function_exists('dbapi_env')) {
+    /**
+     * Read config from environment (works in FPM, CLI, and Docker).
+     *
+     * @param mixed $default
+     * @return mixed
+     */
+    function dbapi_env(string $key, $default = null)
+    {
+        $value = getenv($key);
+        if ($value !== false) {
+            return $value;
+        }
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+        return $default;
+    }
+}
+
 // default resource access rules (tables and views);
 // custom rules can be configured on a per table/view base
 $config["default_resource_access_read"] = true;
@@ -23,51 +43,54 @@ $config["default_field_access_sort"] = true;
 $config["default_field_access_search"] = true;
 
 // deployment: "multi" (default) or "single" (Docker single-database onboarding)
-$config["deployment_mode"] = $_ENV["DEPLOYMENT_MODE"] ?? "multi";
-$config["default_api_id"] = $_ENV["DEFAULT_API_ID"] ?? "default";
+$config["deployment_mode"] = dbapi_env("DEPLOYMENT_MODE", "multi");
+$config["default_api_id"] = dbapi_env("DEFAULT_API_ID", "default");
 
 // path to where the APIs confingurations are stored
-$config["configs_dir"] = $_ENV["CONFIGS_DIR"]  ?? "/var/www/html/dbapi/dbconfigs";
-$config["links_dir"] = $_ENV["LINKS_DIR"]  ?? "/app/api_links";
+$config["configs_dir"] = dbapi_env("CONFIGS_DIR", "/var/www/html/dbapi/dbconfigs");
+$config["links_dir"] = dbapi_env("LINKS_DIR", "/app/api_links");
 
 
 // default linked resources set page size
-$config["default_relationships_page_size"] = $_ENV["DEFAULT_RELATIONSHIPS_PAGE_SIZE"] ?? 10;
+$config["default_relationships_page_size"] = (int) dbapi_env("DEFAULT_RELATIONSHIPS_PAGE_SIZE", 10);
 // default page size
-$config["default_page_size"] = $_ENV["DEFAULT_PAGE_SIZE"] ?? 100;
+$config["default_page_size"] = (int) dbapi_env("DEFAULT_PAGE_SIZE", 100);
 // max page size
-$config["max_page_size"] = $_ENV["MAX_PAGE_SIZE"] ?? 1000;
+$config["max_page_size"] = (int) dbapi_env("MAX_PAGE_SIZE", 1000);
 
 // filter expression guardrails
-$config["max_filter_expression_length"] = $_ENV["MAX_FILTER_EXPRESSION_LENGTH"] ?? 4096;
-$config["max_filter_ast_depth"] = $_ENV["MAX_FILTER_AST_DEPTH"] ?? 20;
-$config["max_filter_ast_nodes"] = $_ENV["MAX_FILTER_AST_NODES"] ?? 100;
+$config["max_filter_expression_length"] = (int) dbapi_env("MAX_FILTER_EXPRESSION_LENGTH", 4096);
+$config["max_filter_ast_depth"] = (int) dbapi_env("MAX_FILTER_AST_DEPTH", 20);
+$config["max_filter_ast_nodes"] = (int) dbapi_env("MAX_FILTER_AST_NODES", 100);
 
 // bulk write limits
-$config["bulk_insert_limit"] = $_ENV["BULK_INSERT_LIMIT"] ?? 100;
-$config["bulk_update_limit"] = $_ENV["BULK_UPDATE_LIMIT"] ?? 50;
+$config["bulk_insert_limit"] = (int) dbapi_env("BULK_INSERT_LIMIT", 100);
+$config["bulk_update_limit"] = (int) dbapi_env("BULK_UPDATE_LIMIT", 50);
 
 // per-request / query timeout (seconds); override per API in connection.php as query_timeout_seconds
-$config["request_timeout_seconds"] = $_ENV["REQUEST_TIMEOUT_SECONDS"] ?? 60;
+$config["request_timeout_seconds"] = (int) dbapi_env("REQUEST_TIMEOUT_SECONDS", 60);
 
 // nested include depth for GET ?include=
-$config["max_include_depth"] = $_ENV["MAX_INCLUDE_DEPTH"] ?? 5;
+$config["max_include_depth"] = (int) dbapi_env("MAX_INCLUDE_DEPTH", 5);
 
 /**
  *  Configuration API settings. These settings are taken into account when creating a new API configuration, deleting an existing one or generating a new API key for an existing API configuration. 
  * For updating an existing API configuration, use the secret generated when the API was created.
  */
 // configuration API secret; pass it in header as x-api-key or as an URL parameter
-$config["config_api_secret"] = $_ENV["CONFIG_API_SECRET"] ?? "myverysecuresecret";
+$config["config_api_secret"] = dbapi_env("CONFIG_API_SECRET", "myverysecuresecret");
 // restrict access to configuration API based on IPs
-$config["config_api_ips_acls"] = isset($_ENV["CONFIG_API_IPS_ACLS"]) ? json_decode($_ENV["CONFIG_API_IPS_ACLS"],true) : [["allow"=>true,"ip"=>"0.0.0.0/0"]];
+$ipsAcls = dbapi_env("CONFIG_API_IPS_ACLS");
+$config["config_api_ips_acls"] = $ipsAcls !== null
+    ? json_decode($ipsAcls, true)
+    : [["allow" => true, "ip" => "0.0.0.0/0"]];
 
-$config["redis_host"] = $_ENV["REDIS_HOST"] ?? null;
-$config["redis_port"] = $_ENV["REDIS_PORT"] ?? 6379;
-$config["redis_user"] = $_ENV["REDIS_USER"] ?? null;
-$config["redis_password"] = $_ENV["REDIS_PASSWORD"] ?? null;
-$config["redis_stream"] = $_ENV["REDIS_STREAM"] ?? null;
-$config["redis_group"] = $_ENV["REDIS_GROUP"] ?? null;
+$config["redis_host"] = dbapi_env("REDIS_HOST");
+$config["redis_port"] = (int) dbapi_env("REDIS_PORT", 6379);
+$config["redis_user"] = dbapi_env("REDIS_USER");
+$config["redis_password"] = dbapi_env("REDIS_PASSWORD");
+$config["redis_stream"] = dbapi_env("REDIS_STREAM");
+$config["redis_group"] = dbapi_env("REDIS_GROUP");
 
 $config["files"] = [
     "auth" => "authentication.php",

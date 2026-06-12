@@ -1,6 +1,5 @@
 .idea
 src/apis/*
-composer.lock
 src/vendor/
 **/**/test.php
 data/*
@@ -8,3 +7,4 @@ build.sh
 src/application/logs/*
 dbconfigs
 .docker_data/
+CodeIgniter-3.1.13.zip
