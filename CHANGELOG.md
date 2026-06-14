@@ -12,4 +12,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Publish docker image to Docker Hub
 
 
+## [1.1.0] - 2026-06-14
+
+- Implement access control enhancements and update documentation
+
+
 ## [Unreleased]
