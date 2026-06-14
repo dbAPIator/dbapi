@@ -55,7 +55,7 @@ class MgmtConfigStore
         $this->saveMeta($apiId, $meta);
         $this->savePhp("{$dir}/connection.php", []);
         $this->savePhp("{$dir}/patch.php", []);
-        $this->savePhp("{$dir}/{$this->configFiles['auth']}", ['mode' => 'none', 'allowGuest' => true]);
+        $this->savePhp("{$dir}/{$this->configFiles['auth']}", ['mode' => 'none', 'default_access_rule' => 'public']);
         $this->saveDefaultDataAcls($apiId);
         $this->savePhp("{$dir}/{$this->configFiles['admin_config']}", $this->defaultAdminConfig());
     }
@@ -296,17 +296,21 @@ class MgmtConfigStore
                 ['ip' => '0.0.0.0/0', 'allow' => ($policy['defaultAction'] ?? 'deny') === 'allow'],
             ];
         }
-        if (!empty($policy['path']) && is_array($policy['path'])) {
+        if (array_key_exists('path', $policy) && is_array($policy['path'])) {
             $acls['path'] = [];
             foreach ($policy['path'] as $rule) {
                 if (!is_array($rule)) {
                     continue;
                 }
-                $acls['path'][] = [
+                $entry = [
                     'pattern' => $rule['pattern'] ?? '/*',
-                    'methods' => $rule['methods'] ?? '*',
+                    'methods' => $rule['methods'] ?? $rule['method'] ?? '*',
                     'allow' => !empty($rule['allow']),
                 ];
+                if (!empty($rule['when']) && is_array($rule['when'])) {
+                    $entry['when'] = $rule['when'];
+                }
+                $acls['path'][] = $entry;
             }
         }
         return $acls;
@@ -322,6 +326,10 @@ class MgmtConfigStore
                 'action' => !empty($acl['allow']) ? 'allow' : 'deny',
             ];
         }
-        return ['defaultAction' => 'deny', 'rules' => $rules];
+        $policy = ['defaultAction' => 'deny', 'rules' => $rules];
+        if (!empty($acls['path']) && is_array($acls['path'])) {
+            $policy['path'] = $acls['path'];
+        }
+        return $policy;
     }
 }

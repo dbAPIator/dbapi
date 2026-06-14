@@ -4,6 +4,16 @@
 
 dbAPI introspects your database, generates configuration and OpenAPI, and serves governed HTTP access: filtering, relationships, field-level permissions, JWT auth, and lifecycle management. One installation can host many independent data APIs, each pointing at its own database.
 
+**Current release:** `1.0.1` · **Docker image:** [`ghcr.io/dbapiator/dbapi`](https://github.com/dbAPIator/dbapi/pkgs/container/dbapi)
+
+| Goal | Where to start |
+|------|----------------|
+| Run the published container | [Docker deployment guide](docs/docker_deployment.md) |
+| Develop locally | [Quick start — Docker](#docker) (`docker compose up -d`) |
+| Build a client app | [Using the API](docs/using_the_api.md) · [AI integration guide](docs/ai_dbapi_guide.md) |
+| Provision and operate APIs | [Management API](docs/management_api.md) |
+| Cut a release | [Releasing](docs/releasing.md) |
+
 ```text
   Apps & integrations                dbAPI                         Your database
  ┌──────────────────┐    ┌─────────────────────────────┐    ┌─────────────────┐
@@ -86,7 +96,8 @@ dbAPI flips that model:
 | | Control plane | Data plane |
 |---|---------------|------------|
 | **Who** | Operators, CI/CD, admins | Applications and end users |
-| **Path** | `/mgmt/v1/apis/...` | `/v1/apis/{apiId}/data/...` |
+| **Path (multi-API)** | `/mgmt/v1/apis/...` | `/v1/apis/{apiId}/data/...` |
+| **Path (single-mode Docker)** | `/mgmt/v1/apis/default` | `/v1/data/...` |
 | **Format** | Plain JSON | JSON:API |
 | **Purpose** | Define *whether* and *how* an API exists | Read and write *rows* |
 
@@ -196,27 +207,50 @@ POST ...:activate                     → data plane live
 
 ### Docker
 
-**Local development** (clone repo, live code mounts, bundled MariaDB/Redis):
+#### Production (GHCR image)
+
+Pre-built images are published on each release tag to **GitHub Container Registry**:
+
+```text
+ghcr.io/dbapiator/dbapi
+```
+
+```bash
+docker pull ghcr.io/dbapiator/dbapi:1.0.1
+```
+
+Minimal single-API run (external MySQL/MariaDB required):
+
+```bash
+docker run -d --name dbapi -p 8888:80 \
+  -e DEPLOYMENT_MODE=single \
+  -e CONFIGS_DIR=/app/apis \
+  -e CONFIG_API_SECRET='change-me' \
+  -e DB_HOST=mysql.example.com \
+  -e DB_NAME=myapp \
+  -e DB_USER=dbapi \
+  -e DB_PASSWORD='secret' \
+  -v dbapi-configs:/app/apis \
+  ghcr.io/dbapiator/dbapi:1.0.1
+```
+
+Full **`docker run`**, Compose stacks, environment variables, upgrades, and troubleshooting: **[Docker deployment guide](docs/docker_deployment.md)**.
+
+#### Local development (from source)
+
+Clone the repo and start the dev stack (live code mounts, bundled MariaDB, Redis, Adminer):
 
 ```bash
 docker compose up -d
 ```
 
-**Production / pre-built image** from GitHub Container Registry:
-
-```bash
-docker pull ghcr.io/dbapiator/dbapi:1.0.0
-```
-
-See **[Docker deployment guide](docs/docker_deployment.md)** for `docker run`, Compose examples, environment variables, single- vs multi-API mode, upgrades, and troubleshooting.
-
-| Service (local compose) | URL |
+| Service | URL |
 |---------|-----|
 | dbAPI | http://localhost:8888/ |
 | Adminer | http://localhost:8889/ |
 | MariaDB | `localhost:3306` (database `myapp`) |
 
-Local Compose runs dbAPI in **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
+Local Compose uses **single deployment mode** (`DEPLOYMENT_MODE=single`). On first start the container waits for MySQL, auto-provisions the `default` API from `DB_*` environment variables, and serves data at `/v1/data/...`.
 
 MariaDB is seeded with the full data-plane test schema on **first** database init (`docker/mysql-init/`). To re-run the seed, remove the MySQL data volume first: `rm -rf .docker_data/mysql && docker compose up -d`.
 
@@ -270,8 +304,11 @@ Data endpoints: `http://localhost:8888/v1/apis/demo/data/{resource}`
 |------|---------|
 | [`src/`](src/) | PHP application (document root) |
 | [`dbconfigs/`](dbconfigs/) | Generated per-API configuration |
-| [`docs/`](docs/) | Guides and test plans ([Docker deployment](docs/docker_deployment.md)) |
+| [`docs/`](docs/) | Guides ([Docker](docs/docker_deployment.md), [Management API](docs/management_api.md), [Releasing](docs/releasing.md)) |
+| [`Dockerfile`](Dockerfile) | Production container image |
 | [`docker-compose.yml`](docker-compose.yml) | Local dev stack |
+| [`.github/workflows/`](.github/workflows/) | CI — tests, security audit, Docker publish |
+| [`scripts/release.sh`](scripts/release.sh) | Version bump, changelog, git tag |
 | [`tests/`](tests/) | Schemathesis harness (optional) |
 
 Application entry point: [`src/index.php`](src/index.php).
@@ -307,13 +344,28 @@ Details: [management_api_test_plan.md](docs/management_api_test_plan.md) · [dat
 
 ---
 
+## CI and security
+
+GitHub Actions run on push/PR to `master` and on release tags:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| [Tests](.github/workflows/tests.yml) | Push, PR | PHPUnit unit tests; integration tests with MariaDB |
+| [Security](.github/workflows/security.yml) | Push, PR, weekly | `composer audit` for dependency CVEs |
+| [Publish Docker image](.github/workflows/docker-publish.yml) | Tag `v*.*.*` | Build, push to `ghcr.io/dbapiator/dbapi`, Trivy container scan |
+
+[Dependabot](.github/dependabot.yml) opens weekly update PRs for Composer, GitHub Actions, and the Docker base image.
+
+---
+
 ## Documentation
 
 - [Docker deployment guide](docs/docker_deployment.md) — GHCR image, `docker run`, Compose, env vars
 - [Management API](docs/management_api.md) — control plane reference
 - [Using the API](docs/using_the_api.md) — filters, pagination, relationships, writes
+- [AI integration guide](docs/ai_dbapi_guide.md) — copy into consumer projects for Cursor / agents
 - [OpenAPI pipeline](docs/openapi_pipeline.md) — how specs are generated and validated
-- [Releasing](docs/releasing.md) — version tags, changelog, and Docker publish
+- [Releasing](docs/releasing.md) — version tags, changelog, Docker publish
 
 ---
 

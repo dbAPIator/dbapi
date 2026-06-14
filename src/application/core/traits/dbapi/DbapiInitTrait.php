@@ -1,6 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+use dbAPI\API\AccessControl;
 use dbAPI\API\Datamodel;
 
 /**
@@ -82,109 +83,86 @@ trait DbapiInitTrait
         return $path;
     }
 
-    private function  security_check(string $configName) {
+    private function security_check(string $configName) {
         $this->load->library("Utilities");
 
-        $headers = getallheaders();
+        $headers = getallheaders() ?: [];
 
-        // default security rules
         $security = [];
-
         $data = @include "$this->configDir/$configName/{$this->configFiles['data_api_acls']}";
-        $security = array_merge($security,$data ? $data : []);
+        $security = array_merge($security, $data ? $data : []);
 
-        // check if client IP is allowed 
         $ipAcls = $security["IP"] ?? [];
         $allow = false;
-        foreach($ipAcls as $rule) {
-            if($rule["allow"] && $this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"],$rule["ip"])) {
+        foreach ($ipAcls as $rule) {
+            if ($rule["allow"] && $this->utilities->ip_in_cidr($_SERVER["REMOTE_ADDR"], $rule["ip"])) {
                 $allow = true;
                 break;
             }
         }
-        if(!$allow) {
-            throw new Exception("IP ".$_SERVER["REMOTE_ADDR"]." not allowed",401);
+        if (!$allow) {
+            throw new Exception("IP ".$_SERVER["REMOTE_ADDR"]." not allowed", 401);
         }
-
-        /*
-         * Authenticate request based on JWT tokens
-         */
 
         $auth = @include "$this->configDir/$configName/{$this->configFiles['auth']}";
-        $authMode = $auth['mode'] ?? null;
-        $allowGuest = $auth['allowGuest'] ?? ($authMode === 'none');
-        $requiresJwt = !empty($auth['jwt_key']) && $authMode !== 'none';
-
-        // extract JWT from Authorization header
-        $payload = new stdClass();
-        if ($requiresJwt) {
-            try {
-                preg_match("/Bearer (.*$)/i",@$headers["Authorization"],$matches);
-                $jwt = count($matches)==2 ? $matches[1] : null;
-                if(empty($jwt)) {
-                    throw new Exception("No JWT token provided",401);
-                }
-                $payload = JWT::decode($jwt,new Key($auth["jwt_key"],'HS256'));
-            }
-            catch (Exception $e) {
-                if (!$allowGuest) {
-                    throw $e;
-                }
-                $payload = new stdClass();
-            }
-
-            if (!$allowGuest) {
-                if (isset($payload->exp) && $payload->exp < time()) {
-                    throw new Exception("Token expired",401);
-                }
-            }
+        if (!is_array($auth)) {
+            $auth = [];
         }
-        $userData = [];
-        foreach(get_object_vars($payload) as $key => $value) {
-            $userData['{{'.$key.'}}'] = $value;
-        }
+        $this->apiAuthConfig = $auth;
 
+        $jwt = AccessControl::decodeJwt($auth, $headers, $_SERVER);
+        $payload = $jwt['payload'];
+        $this->apiJwtPayload = $payload;
+        $this->apiJwtValid = $jwt['valid'];
+        $this->apiJwtAnonymous = $jwt['anonymous'];
 
-        // check path rules
-        $rules = $security["path"] ?? [];
+        $userData = AccessControl::claimSubstitutions($payload);
 
-        if($this->input->get("dbg")) {
+        if ($this->input->get("dbg")) {
             print_r($payload);
         }
 
         $reqPath = $this->dataRequestPath($configName);
-        $allow = false;
-        foreach ($rules as $rule) {
-            $urlPattern = "/^".strtr(str_replace(["/","*"],["\\/",".*"],$rule["pattern"]),$userData)."$/i";
-            
-            if(!preg_match($urlPattern,$reqPath)) {
-                // echo "url not allowed $reqPath".json_encode($rule)."\n";
-                continue;
-            }
+        $method = $_SERVER["REQUEST_METHOD"] ?? 'GET';
+        $rules = $security["path"] ?? [];
+        $pathResult = AccessControl::evaluatePathRules($rules, $reqPath, $method, $userData, $payload);
 
-            $ruleMethod = $rule['method'] ?? $rule['methods'] ?? null;
-            if ($ruleMethod) {
-                $methodPattern = "/^".strtoupper(str_replace("*",".*",$ruleMethod))."$/i";
-                if(!preg_match($methodPattern,$_SERVER["REQUEST_METHOD"])) {
-                    // echo "method not allowed".$_SERVER["REQUEST_METHOD"].json_encode($rule)."\n";
-                    continue;
-                }
+        if ($pathResult !== null) {
+            if (!$pathResult) {
+                throw new Exception("You are not allowed to access this resource ".$_SERVER['REQUEST_URI'], 401);
             }
-           
-            if($this->input->get("dbg")) {
-                echo "urlPattern: $urlPattern\n";
-                echo "reqPath: $reqPath\n";
-            }
-            $allow = $rule["allow"] ?? false;
-            break;
-        }
-        
-        if($this->input->get("dbg")) {
-            echo "allow: $allow\n";
+            return;
         }
 
-        if(!$allow) {
-            throw new Exception("You are not allowed to access this resource $_SERVER[REQUEST_URI]",401);
+        // Legacy configs: non-empty path rules with no match → deny (pre-table-access behavior).
+        if (!empty($rules)) {
+            throw new Exception("You are not allowed to access this resource ".$_SERVER['REQUEST_URI'], 401);
+        }
+
+        $structure = @include "$this->configDir/$configName/{$this->configFiles['structure']}";
+        if (!is_array($structure)) {
+            $structure = [];
+        }
+
+        $tableAllowed = AccessControl::evaluateTableAccess(
+            $auth,
+            $structure,
+            $reqPath,
+            $method,
+            $payload,
+            $this->apiJwtValid,
+            $this->apiJwtAnonymous
+        );
+
+        if ($this->input->get("dbg")) {
+            echo "tableAllowed: ".($tableAllowed ? '1' : '0')."\n";
+        }
+
+        if (!$tableAllowed) {
+            if ($this->apiJwtAnonymous && AccessControl::resolveDefaultAccessRule($auth) === AccessControl::ACCESS_PRIVATE) {
+                throw new Exception("No JWT token provided", 401);
+            }
+            throw new Exception("You are not allowed to access this resource ".$_SERVER['REQUEST_URI'], 401);
         }
     }
     private function _init(string $configName)
@@ -290,6 +268,7 @@ trait DbapiInitTrait
             // TODO log unable to initialize records navigator class
             HttpResp::server_error("Invalid API config");
         }
+        $this->recs->setAccessContext($this->apiAuthConfig, $this->apiJwtPayload);
     }
 
     /**

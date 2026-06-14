@@ -8,10 +8,13 @@
             <file>tests/TestDeploymentHelper.php</file>
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
+            <file>tests/TestAccessControl.php</file>
         </testsuite>
         <testsuite name="integration">
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestAuthLoginMethods.php</file>
+            <file>tests/TestAccessControlManagement.php</file>
+            <file>tests/TestAccessControlDataPlane.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>
@@ -22,8 +25,11 @@
             <file>tests/TestDeploymentHelper.php</file>
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
+            <file>tests/TestAccessControl.php</file>
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestAuthLoginMethods.php</file>
+            <file>tests/TestAccessControlManagement.php</file>
+            <file>tests/TestAccessControlDataPlane.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>

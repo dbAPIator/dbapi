@@ -212,6 +212,36 @@ class FilterParser
         return self::collapseSingleChild($pruned);
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function collectCompareFields(?array $filter): array
+    {
+        $ast = self::normalize($filter);
+        if ($ast === null) {
+            return [];
+        }
+        $fields = [];
+        self::walkCompareFields($ast, $fields);
+        return array_values(array_unique($fields));
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    private static function walkCompareFields(array $node, array &$fields): void
+    {
+        if (($node['type'] ?? '') === 'compare') {
+            $fields[] = (string) ($node['left'] ?? '');
+            return;
+        }
+        foreach ($node['children'] ?? [] as $child) {
+            if (is_array($child)) {
+                self::walkCompareFields($child, $fields);
+            }
+        }
+    }
+
     public static function addCompare($filter, string $left, string $op, string $right): array
     {
         $node = ['type' => 'compare', 'left' => $left, 'op' => $op, 'right' => $right];

@@ -30,3 +30,4 @@ require_once __DIR__ . '/IntegrationTestCase.php';
 require_once __DIR__ . '/DataPlaneTestCase.php';
 require_once __DIR__ . '/SingleModeDataPlaneTestCase.php';
 require_once __DIR__ . '/DataPlaneTestsTrait.php';
+require_once __DIR__ . '/AccessControlIntegrationTrait.php';

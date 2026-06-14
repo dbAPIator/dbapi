@@ -2,6 +2,9 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 require_once APPPATH . 'core/MY_MgmtController.php';
+require_once APPPATH . 'third_party/dbAPI/Autoloader.php';
+
+use dbAPI\API\AccessControl;
 
 class Auth extends MY_MgmtController
 {
@@ -33,14 +36,25 @@ class Auth extends MY_MgmtController
     {
         $mode = $policy['mode'] ?? 'none';
         if ($mode === 'none') {
-            return ['mode' => 'none', 'allowGuest' => true];
+            return [
+                'mode' => 'none',
+                'default_access_rule' => AccessControl::ACCESS_PUBLIC,
+            ];
         }
         if ($mode === 'dbAuth') {
             $dbAuth = $policy['dbAuth'] ?? $policy;
             $disk = [
                 'mode' => 'dbAuth',
                 'validity' => $dbAuth['validity'] ?? 3600,
+                'default_access_rule' => $dbAuth['default_access_rule']
+                    ?? $policy['default_access_rule']
+                    ?? AccessControl::ACCESS_PRIVATE,
             ];
+            if (!empty($dbAuth['filterBypassRoles']) && is_array($dbAuth['filterBypassRoles'])) {
+                $disk['filterBypassRoles'] = array_values($dbAuth['filterBypassRoles']);
+            } elseif (!empty($policy['filterBypassRoles']) && is_array($policy['filterBypassRoles'])) {
+                $disk['filterBypassRoles'] = array_values($policy['filterBypassRoles']);
+            }
 
             if (!empty($dbAuth['loginMethods']) && is_array($dbAuth['loginMethods'])) {
                 $disk['loginMethods'] = $this->loginMethodsToDisk($dbAuth['loginMethods']);

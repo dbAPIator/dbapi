@@ -383,8 +383,15 @@ Hooks are stored **inside** `structure.php` per entity (`hooks` key on each reso
 
 | `mode` | Behavior |
 |--------|----------|
-| `none` | No JWT required; `allowGuest` enabled for the Data API |
-| `dbAuth` | One or more named login methods (SQL); JWT issued using `jwt_key` on disk |
+| `none` | No JWT; `default_access_rule: public` on disk |
+| `dbAuth` | Named login methods (SQL) → JWT; `default_access_rule` usually `private` |
+
+| Field | Meaning |
+|-------|---------|
+| `default_access_rule` | `public` — anonymous GET on tables marked `access: public`; `private` — JWT required by default |
+| `filterBypassRoles` | JWT `role` values that skip `mandatoryFilter` / `mandatoryAssign` (e.g. `["admin"]`) |
+
+Legacy `allowGuest` is still read: `true` → `public`, `false` → `private`.
 
 ### Single login method (legacy shape)
 
@@ -426,7 +433,42 @@ Define named methods under `dbAuth.loginMethods`. Each method has a `sql` (or `l
 }
 ```
 
-On disk (`authentication.php`): `mode`, `validity`, `loginMethods` (each entry: `loginQuery`, optional `validity`, optional `fields`), `jwt_key` (masked on GET). Legacy configs may still have a single `loginQuery` instead of `loginMethods`. `mode: none` stores `{ "mode": "none", "allowGuest": true }`.
+On disk (`authentication.php`): `mode`, `default_access_rule`, optional `filterBypassRoles`, `validity`, `loginMethods` (or legacy `loginQuery`), `jwt_key` (masked on GET).
+
+---
+
+## Data plane access control
+
+Layers (evaluated in order):
+
+1. **IP ACL** (`data_api_acls.php` → `IP`)
+2. **Path rules** (`path`) — first match wins; optional `when: { claim: value }` on JWT claims; evaluated **before** rejecting missing JWT
+3. **Table access** (`structure.php`) — only when `path` is **empty**; per-entity `access` (`public` \| `private` \| `scoped`) inherits `default_access_rule`
+4. **`mandatoryFilter`** — server-side filter AST on GET / bulk PATCH / DELETE / by-id PATCH / DELETE (overrides client filter on same fields)
+5. **`mandatoryAssign`** — on POST, overwrites body columns from JWT (e.g. `user_id: "{{userId}}"`)
+6. **Schema ACL** — static `read` / `insert` / `update` / `delete` per table/field
+
+### Path rule with role (`when`)
+
+```json
+{ "pattern": "/*", "methods": "*", "allow": true, "when": { "role": "admin" } },
+{ "pattern": "/users/{{userId}}/*", "methods": "*", "allow": true }
+```
+
+### Table access (empty `path` array)
+
+```yaml
+# structure.php excerpts
+products: { access: public }
+users:    { access: scoped, scopePattern: "/users/{{userId}}" }
+orders:
+  access: private
+  mandatoryFilter: "user_id={{userId}}"
+  mandatoryAssign:
+    user_id: "{{userId}}"
+```
+
+Anonymous write (e.g. registration): path rule without `when`, e.g. `{ "pattern": "/users", "methods": "POST", "allow": true }`; table stays `scoped` or `private`.
 
 ### Data plane login endpoints
 

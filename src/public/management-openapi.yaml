@@ -584,15 +584,33 @@ components:
               pattern: { type: string }
               methods: { type: string, description: HTTP method or * for all }
               allow: { type: boolean }
+              when:
+                type: object
+                description: JWT claim conditions (all must match). Rule skipped when when fails.
+                additionalProperties: { type: string }
 
     AuthPolicy:
       type: object
       required: [mode]
       properties:
         mode: { type: string, enum: [none, dbAuth] }
+        default_access_rule:
+          type: string
+          enum: [public, private]
+          description: Default data access when path rules are empty. public = anonymous GET on public tables; private = JWT required.
+        filterBypassRoles:
+          type: array
+          items: { type: string }
+          description: JWT role values that skip mandatoryFilter / mandatoryAssign (e.g. admin).
         dbAuth:
           type: object
           properties:
+            default_access_rule:
+              type: string
+              enum: [public, private]
+            filterBypassRoles:
+              type: array
+              items: { type: string }
             login:
               type: object
               properties:

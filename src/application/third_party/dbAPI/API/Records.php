@@ -44,6 +44,12 @@ class Records {
     private $maxNoRels=10;
     private $configDir;
 
+    /** @var array<string, mixed> */
+    private $authConfig = [];
+
+    /** @var \stdClass */
+    private $jwtPayload;
+
     /**
      * Records constructor.
      * @param \CI_DB_query_builder $dbDriver
@@ -55,6 +61,16 @@ class Records {
         $instance = get_instance();
         $this->maxNoRels = $instance->config->item("inbound_relationships_page_size");
         $this->configDir = $apiConfigDir;
+        $this->jwtPayload = new \stdClass();
+    }
+
+    /**
+     * @param array<string, mixed> $auth
+     */
+    function setAccessContext(array $auth, \stdClass $payload): void
+    {
+        $this->authConfig = $auth;
+        $this->jwtPayload = $payload;
     }
 
     static function init($dbDriver,$dataModel,$apiConfigDir) {
@@ -124,6 +140,8 @@ class Records {
         $resourceName = $request->resourceName;
         if(!$this->dm->resource_allow_read($resourceName))
             throw new \Exception("Not authorized to read from '$resourceName'",403);
+
+        AccessControl::applyMandatoryFilter($request, $this->dm, $this->authConfig, $this->jwtPayload);
 
         $whereStr = $this->generate_where_sql($request->filter,$request->resourceName);
         if(empty($whereStr)) {
@@ -392,6 +410,8 @@ class Records {
             $insertData[$fldName] = $value;
         }
 
+        AccessControl::applyMandatoryAssign($insertData, $table, $this->dm, $this->authConfig, $this->jwtPayload);
+
         $one2nRelations = [];
 
         // iterate relations and insert recursive if it is the case
@@ -650,11 +670,18 @@ class Records {
      */
     function update_attributes_by_filter($table, $attributes, $paras)
     {
-        if(array_key_exists("custom_where",$paras))
+        if (array_key_exists("custom_where", $paras)) {
             $where = $paras["custom_where"];
-        else {
+        } else {
             $filter = $paras["filter"][$table] ?? $paras["filter"];
-            $where = $this->generate_where_sql($filter, $table);
+            $filterAst = is_array($filter) ? $filter : FilterParser::normalize($filter);
+            $where = AccessControl::compileMandatoryWhere(
+                $table,
+                $this->dm,
+                $this->authConfig,
+                $this->jwtPayload,
+                $filterAst
+            );
         }
 
         return $this->update_attributes($table,$attributes,$where);
@@ -748,8 +775,17 @@ class Records {
             }
         }
 
-        if(!$this->update_attributes($table,$attributes,[$priKey=>$id]))
-            return  null;
+        $where = AccessControl::compileMandatoryWhere(
+            $table,
+            $this->dm,
+            $this->authConfig,
+            $this->jwtPayload,
+            null,
+            $id
+        );
+        if (!$this->update_attributes($table, $attributes, $where)) {
+            return null;
+        }
 
         if(isset($attributes[$priKey]))
             return $attributes[$priKey];
@@ -868,7 +904,15 @@ class Records {
             throw new \Exception("Delete by ID not supported: resource '$tableName' has no primary key", 400);
         }
 
-        $this->dbdrv->where("$idFld in ('$recId')");
+        $where = AccessControl::compileMandatoryWhere(
+            $tableName,
+            $this->dm,
+            $this->authConfig,
+            $this->jwtPayload,
+            null,
+            $recId
+        );
+        $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);
 
         $err=$this->dbdrv->error();
@@ -910,7 +954,13 @@ class Records {
             throw new \Exception("Not authorized to delete from $tableName",401);
 
         $filterAst = $filter[$tableName] ?? $filter;
-        $where = $this->generate_where_sql($filterAst, $tableName);
+        $where = AccessControl::compileMandatoryWhere(
+            $tableName,
+            $this->dm,
+            $this->authConfig,
+            $this->jwtPayload,
+            is_array($filterAst) ? $filterAst : FilterParser::normalize($filterAst)
+        );
 
         $this->dbdrv->where($where);
         $this->dbdrv->delete($tableName);

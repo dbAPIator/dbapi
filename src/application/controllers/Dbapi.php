@@ -139,14 +139,24 @@ class Dbapi extends CI_Controller
     private $configFiles;
     private $configDir;
 
+    /** @var array<string, mixed> */
+    private $apiAuthConfig = [];
+
+    /** @var \stdClass */
+    private $apiJwtPayload;
+
+    private $apiJwtValid = false;
+
+    private $apiJwtAnonymous = true;
+
     function get_max_insert_recursions()
     {
         return $this->insertMaxRecursionLevel;
     }
 
-  
     function __construct ()
     {
+        $this->apiJwtPayload = new \stdClass();
         parent::__construct();
         $this->config->load("dbapiator");
         RequestContext::init();
