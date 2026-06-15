@@ -4,6 +4,8 @@
 </IfModule>
 
 RewriteEngine On
+RewriteRule ^management-openapi\.yaml$ index.php/swagger/management_yaml [L,QSA]
+RewriteRule ^management-openapi\.json$ index.php/swagger/management_json [L,QSA]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php/$1 [L]

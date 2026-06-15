@@ -423,6 +423,71 @@ function with_api_openapi_servers_url(array $spec, string $apiName, ?string $bas
     return $spec;
 }
 
+function mgmt_openapi_spec_path(): string
+{
+    return APPPATH . '../public/management-openapi.json';
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function read_mgmt_openapi_spec(): array
+{
+    $path = mgmt_openapi_spec_path();
+    if (!is_file($path)) {
+        throw new RuntimeException('Management OpenAPI spec not found');
+    }
+    $spec = json_decode((string) file_get_contents($path), true);
+    if (!is_array($spec)) {
+        throw new RuntimeException('Management OpenAPI spec is invalid JSON');
+    }
+    return $spec;
+}
+
+/**
+ * Replace servers[].url with the public instance base URL for the current request.
+ *
+ * @param array<string,mixed> $spec
+ * @return array<string,mixed>
+ */
+function with_mgmt_openapi_servers_url(array $spec, ?string $baseUrl = null): array
+{
+    if ($baseUrl === null) {
+        if (!function_exists('api_public_base_url')) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+        }
+        $baseUrl = api_public_base_url();
+    }
+    $spec['servers'] = [['url' => rtrim($baseUrl, '/')]];
+    return $spec;
+}
+
+function mgmt_openapi_yaml_with_servers(?string $baseUrl = null): string
+{
+    if ($baseUrl === null) {
+        if (!function_exists('api_public_base_url')) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+        }
+        $baseUrl = api_public_base_url();
+    }
+    $path = APPPATH . '../public/management-openapi.yaml';
+    if (!is_file($path)) {
+        throw new RuntimeException('Management OpenAPI YAML not found');
+    }
+    $yaml = (string) file_get_contents($path);
+    $patched = preg_replace(
+        '/^(servers:\s*\n\s*- url: ).+$/m',
+        '${1}' . rtrim($baseUrl, '/'),
+        $yaml,
+        1,
+        $count
+    );
+    if ($count !== 1) {
+        throw new RuntimeException('Could not patch servers URL in management-openapi.yaml');
+    }
+    return $patched;
+}
+
 /**
  * Validate a generated data-plane OpenAPI document before persisting.
  *

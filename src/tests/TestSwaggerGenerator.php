@@ -94,6 +94,24 @@ class TestSwaggerGenerator extends TestCase
         putenv('DEPLOYMENT_MODE');
     }
 
+    public function testWithMgmtOpenapiServersUrlRewritesCachedServer(): void
+    {
+        $spec = [
+            'openapi' => '3.1.0',
+            'servers' => [['url' => 'http://localhost/dbapi/src']],
+            'paths' => [],
+        ];
+        $out = with_mgmt_openapi_servers_url($spec, 'http://api.example.com');
+        $this->assertSame('http://api.example.com', $out['servers'][0]['url']);
+    }
+
+    public function testMgmtOpenapiYamlWithServersPatchesUrl(): void
+    {
+        $yaml = mgmt_openapi_yaml_with_servers('http://api.example.com');
+        $this->assertStringContainsString("url: http://api.example.com\n", $yaml);
+        $this->assertStringNotContainsString('http://localhost/dbapi/src', $yaml);
+    }
+
     public function testApiPublicBaseUrlPrefersBaseUrlEnv(): void
     {
         require_once APPPATH . 'helpers/deployment_helper.php';

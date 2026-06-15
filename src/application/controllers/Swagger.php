@@ -42,4 +42,24 @@ class Swagger extends CI_Controller {
 
         HttpResp::json_out(200, with_api_openapi_servers_url($spec, $configName));
     }
+
+    public function management_json()
+    {
+        try {
+            $spec = with_mgmt_openapi_servers_url(read_mgmt_openapi_spec());
+        } catch (RuntimeException $e) {
+            HttpResp::exception_out(new Exception($e->getMessage(), 404));
+        }
+        HttpResp::json_out(200, $spec);
+    }
+
+    public function management_yaml()
+    {
+        try {
+            $yaml = mgmt_openapi_yaml_with_servers();
+        } catch (RuntimeException $e) {
+            HttpResp::exception_out(new Exception($e->getMessage(), 404));
+        }
+        HttpResp::quick(200, 'application/yaml', $yaml);
+    }
 }
