@@ -25,17 +25,15 @@ OpenAPI: `src/public/management-openapi.yaml`
 
 ## Happy path (stepped)
 
-1. `POST /mgmt/v1/apis` — create draft, save credential
+1. `POST /mgmt/v1/apis` — create draft (defaults: auth none, permissive network), save credential
 2. `PUT /mgmt/v1/apis/{apiId}/connection` — set DB connection
 3. `POST /mgmt/v1/apis/{apiId}/connection:test` — expect `status: ok`
-4. `POST /mgmt/v1/apis/{apiId}/schema:introspect` — optional `GET .../schema/introspected` or `.../schema/effective`
-5. `POST /mgmt/v1/apis/{apiId}/schema:rebuild` — check `warnings` in response
-6. `PUT /mgmt/v1/apis/{apiId}/policies/auth` — `{ "mode": "none" }`
-7. `POST /mgmt/v1/apis/{apiId}:validate` — `ready: true`
-8. `POST /mgmt/v1/apis/{apiId}:activate` — `status: active`
-9. `GET /v1/apis/{apiId}/data/...` — data API serves
-10. `POST /mgmt/v1/apis/{apiId}:deactivate` — data API blocked (409)
-11. `DELETE /mgmt/v1/apis/{apiId}?force=true`
+4. `POST /mgmt/v1/apis/{apiId}/schema:sync?activate=true` — sync schema and activate
+5. `GET /v1/apis/{apiId}/data/...` — data API serves
+6. `POST /mgmt/v1/apis/{apiId}:deactivate` — data API blocked (409)
+7. `DELETE /mgmt/v1/apis/{apiId}?force=true`
+
+Optional: `POST ...:validate` before activate (dry-run). Stepped schema: `schema:introspect` → overrides → `schema:rebuild` → `POST ...:activate`.
 
 ## Quick-create
 

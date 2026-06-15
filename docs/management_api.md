@@ -81,15 +81,16 @@ Renaming: `PATCH /mgmt/v1/apis/{apiId}` with body field `name` set to a new id r
 Typical flow:
 
 ```text
-POST /mgmt/v1/apis          → draft
+POST /mgmt/v1/apis          → draft (auth: none, permissive network defaults)
 PUT  .../connection         → configure DB
 POST .../connection:test    → verify connectivity
-POST .../schema:introspect  → snapshot schema
-POST .../schema:rebuild     → write structure.php + openapi.json
-PUT  .../policies/*         → network + auth
-POST ...:validate             → preflight checks
-POST ...:activate             → active (data API live)
+POST .../schema:sync        → introspect + rebuild (+ optional ?activate=true)
+POST ...:activate           → active (runs validation inline; :validate is dry-run only)
 ```
+
+**Schema:sync** replaces the separate `schema:introspect` + `schema:rebuild` steps. Add `?activate=true` to validate and activate in one call.
+
+Stepped schema (when you need to inspect between steps): `schema:introspect` → optional overrides → `schema:rebuild`.
 
 **Validate** (`POST /mgmt/v1/apis/{apiId}:validate`) returns:
 
@@ -111,7 +112,7 @@ POST ...:activate             → active (data API live)
 
 Required check ids: `connection.configured`, `connection.tested`, `schema.structure`, `schema.openapi`, `policies.configNetwork`, `policies.dataNetwork`, `policies.auth`, `meta.name`. `hooks.redis` is `warn` if hooks exist but `REDIS_HOST` is unset. `schema.openapi` is `warn` when `openapi.json` is older than `structure.php` (run `schema:rebuild`).
 
-**Activate** requires `ready: true` (all required checks `ok`; warnings allowed). Returns the API resource object (same shape as `GET /mgmt/v1/apis/{apiId}`). On failure returns `409` with `error.details.validation`. Idempotent if already active.
+**Activate** runs validation inline; a separate `:validate` call is optional (dry-run). Returns the API resource object (same shape as `GET /mgmt/v1/apis/{apiId}`). On failure returns `409` with `error.details.validation`. Idempotent if already active.
 
 **Deactivate** sets `inactive` without deleting files; returns the API resource object. **Delete** removes `configs_dir/{apiId}/` (`204`); requires instance key; use `?force=true` if the API is still `active`.
 
@@ -179,6 +180,8 @@ curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis" \
 
 Response includes `api` and `managementCredential.secret` — save the secret.
 
+New APIs are created with **dev-friendly defaults**: `auth` mode `none`, config-network and data-network allow `0.0.0.0/0`. Tighten policies before production.
+
 ### 2. Connection
 
 ```bash
@@ -205,11 +208,21 @@ Connection body uses `driver` `mysql` (mysqli). Fields: `host`, `port`, `databas
 ### 3. Schema
 
 ```bash
-curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema:introspect" \
+# Recommended: introspect + rebuild in one step
+curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema:sync" \
   -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
 
-# Optional: inspect snapshot or effective schema before rebuild
-curl -sS "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema/introspected" \
+# Optional: sync and activate in one call (skips separate :validate / :activate)
+curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema:sync?activate=true" \
+  -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
+```
+
+`schema:sync` writes `schema_introspected.json`, rebuilds `structure.php` (preserves relationship names), and regenerates `openapi.json`. Response includes `warnings` when the DB and prior schema diverge.
+
+Stepped alternative (inspect between steps):
+
+```bash
+curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema:introspect" \
   -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
 
 curl -sS "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema/effective" \
@@ -237,31 +250,31 @@ curl -sS "http://localhost/dbapi/src/mgmt/v1/apis/demo/schema/openapi" \
 
 See [OpenAPI pipeline](openapi_pipeline.md). Bulk refresh: `php scripts/generate_openapi_specs.php [configs_dir] [base_url]`.
 
-### 4. Policies
+### 4. Policies (optional)
+
+Defaults on create are permissive (`auth: none`, allow-all network). Skip this section for local dev; configure before production.
 
 ```bash
-# Data API auth: no login (guest read for GET — see data-network for stricter rules)
+# Example: restrict data API to JWT + IP allowlist
 curl -sS -X PUT "http://localhost/dbapi/src/mgmt/v1/apis/demo/policies/auth" \
   -H "Content-Type: application/json" \
   -H "X-Api-Config-Key: YOUR_PER_API_SECRET" \
-  -d '{"mode":"none"}'
+  -d '{"mode":"dbAuth","dbAuth":{"loginMethods":{"password":{"sql":"SELECT ..."}}}}'
 
-# Allow data API clients by IP (example: allow all — tighten in production)
 curl -sS -X PUT "http://localhost/dbapi/src/mgmt/v1/apis/demo/policies/data-network" \
   -H "Content-Type: application/json" \
   -H "X-Api-Config-Key: YOUR_PER_API_SECRET" \
-  -d '{"defaultAction":"deny","rules":[{"cidr":"0.0.0.0/0","action":"allow"}]}'
+  -d '{"defaultAction":"deny","rules":[{"cidr":"203.0.113.0/24","action":"allow"}]}'
 ```
 
-### 5. Validate and activate
+### 5. Activate (if not using schema:sync?activate=true)
 
 ```bash
-curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo:validate" \
-  -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
-
 curl -sS -X POST "http://localhost/dbapi/src/mgmt/v1/apis/demo:activate" \
   -H "X-Api-Config-Key: YOUR_PER_API_SECRET"
 ```
+
+`:validate` is optional — use it as a dry-run before activate.
 
 ### 6. Use the Data API
 
@@ -342,6 +355,7 @@ Prefer `/mgmt/v1/apis` for new integrations.
 | GET | `/mgmt/v1/apis/{apiId}/policies/auth` | Instance or per-API | Auth policy |
 | PUT | `/mgmt/v1/apis/{apiId}/policies/auth` | Instance or per-API | Set auth policy (`none`, `dbAuth`) |
 | POST | `/mgmt/v1/apis/{apiId}/schema:introspect` | Instance or per-API | Introspect DB; writes `schema_introspected.json` |
+| POST | `/mgmt/v1/apis/{apiId}/schema:sync` | Instance or per-API | Introspect + rebuild (`?activate=true` to activate) |
 | GET | `/mgmt/v1/apis/{apiId}/schema/introspected` | Instance or per-API | Read introspection snapshot (or generate if missing) |
 | GET | `/mgmt/v1/apis/{apiId}/schema/effective` | Instance or per-API | Effective schema preview (DB + `patch.php`, not written to disk) |
 | GET | `/mgmt/v1/apis/{apiId}/schema/overrides` | Instance or per-API | Get `patch.php` overrides |
@@ -352,11 +366,11 @@ Prefer `/mgmt/v1/apis` for new integrations.
 | PUT | `/mgmt/v1/apis/{apiId}/hooks` | Instance or per-API | Replace all hooks (map) |
 | PUT | `/mgmt/v1/apis/{apiId}/hooks/{entityName}` | Instance or per-API | Upsert hooks for one table |
 | DELETE | `/mgmt/v1/apis/{apiId}/hooks/{entityName}` | Instance or per-API | Remove entity hooks |
-| POST | `/mgmt/v1/apis/{apiId}:validate` | Instance or per-API | Preflight checks |
-| POST | `/mgmt/v1/apis/{apiId}:activate` | Instance or per-API | Activate data API |
+| POST | `/mgmt/v1/apis/{apiId}:validate` | Instance or per-API | Preflight checks (dry-run; optional before activate) |
+| POST | `/mgmt/v1/apis/{apiId}:activate` | Instance or per-API | Activate data API (validates inline) |
 | POST | `/mgmt/v1/apis/{apiId}:deactivate` | Instance or per-API | Deactivate data API |
 
-Colon actions (`:validate`, `:activate`, `connection:test`, `schema:introspect`) are literal path segments.
+Colon actions (`:validate`, `:activate`, `connection:test`, `schema:sync`, `schema:introspect`) are literal path segments.
 
 ---
 

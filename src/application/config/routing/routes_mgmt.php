@@ -31,6 +31,7 @@ $route[$mgmtApi . '/policies/auth']['put'] = 'mgmt/policies/auth/update/$1';
 
 // Schema
 $route[$mgmtApi . '/schema:introspect']['post'] = 'mgmt/schema/introspect/$1';
+$route[$mgmtApi . '/schema:sync']['post'] = 'mgmt/schema/sync/$1';
 $route[$mgmtApi . '/schema/introspected']['get'] = 'mgmt/schema/get_introspected/$1';
 $route[$mgmtApi . '/schema/overrides']['get'] = 'mgmt/schema/get_overrides/$1';
 $route[$mgmtApi . '/schema/overrides']['put'] = 'mgmt/schema/put_overrides/$1';

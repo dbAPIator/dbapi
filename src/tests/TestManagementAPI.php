@@ -69,38 +69,18 @@ class TestManagementAPI extends IntegrationTestCase
         $testBody = $this->assertHttpStatus($test, 200, 'connection:test');
         $this->assertEquals('ok', $testBody['status']);
 
-        $intro = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/schema:introspect", [
+        $intro = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/schema:sync", [
             'headers' => $this->apiHeaders(),
+            'query' => ['activate' => 'true'],
         ]);
-        $this->assertHttpStatus($intro, 200, 'schema introspect');
+        $syncBody = $this->assertHttpStatus($intro, 200, 'schema sync + activate');
+        $this->assertArrayHasKey('entityCount', $syncBody);
+        $this->assertTrue($syncBody['activation']['activated'] ?? false);
 
-        $rebuild = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}/schema:rebuild", [
+        $getApi = $this->httpRequest($this->client, 'GET', "mgmt/v1/apis/{$this->apiName}", [
             'headers' => $this->apiHeaders(),
         ]);
-        $this->assertHttpStatus($rebuild, 200, 'schema rebuild');
-
-        $auth = $this->httpRequest($this->client, 'PUT', "mgmt/v1/apis/{$this->apiName}/policies/auth", [
-            'headers' => $this->apiHeaders(),
-            'json' => ['mode' => 'none'],
-        ]);
-        $this->assertHttpStatus($auth, 200, 'put auth policy');
-
-        $dataNet = $this->httpRequest($this->client, 'PUT', "mgmt/v1/apis/{$this->apiName}/policies/data-network", [
-            'headers' => $this->apiHeaders(),
-            'json' => self::allowAllIpDataNetworkPolicy(),
-        ]);
-        $this->assertHttpStatus($dataNet, 200, 'put data-network policy');
-
-        $validate = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}:validate", [
-            'headers' => $this->apiHeaders(),
-        ]);
-        $valBody = $this->assertHttpStatus($validate, 200, 'validate');
-        $this->assertTrue($valBody['ready'], json_encode($valBody['checks'] ?? []));
-
-        $activate = $this->httpRequest($this->client, 'POST', "mgmt/v1/apis/{$this->apiName}:activate", [
-            'headers' => $this->apiHeaders(),
-        ]);
-        $api = $this->assertHttpStatus($activate, 200, 'activate');
+        $api = $this->assertHttpStatus($getApi, 200, 'get api after sync');
         $this->assertEquals('active', $api['status']);
 
         $customers = $this->httpRequest($this->client, 'GET', "v1/apis/{$this->apiName}/data/customers", [

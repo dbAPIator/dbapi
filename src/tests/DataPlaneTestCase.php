@@ -61,14 +61,7 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         $steps = [
             ['put', 'mgmt/v1/apis/' . self::$apiName . '/connection', ['json' => self::$connection]],
             ['post', 'mgmt/v1/apis/' . self::$apiName . '/connection:test', []],
-            ['post', 'mgmt/v1/apis/' . self::$apiName . '/schema:introspect', []],
-            ['post', 'mgmt/v1/apis/' . self::$apiName . '/schema:rebuild', []],
-            ['put', 'mgmt/v1/apis/' . self::$apiName . '/policies/auth', ['json' => ['mode' => 'none']]],
-            ['post', 'mgmt/v1/apis/' . self::$apiName . ':validate', []],
-            ['post', 'mgmt/v1/apis/' . self::$apiName . ':activate', []],
-            ['put', 'mgmt/v1/apis/' . self::$apiName . '/policies/data-network', [
-                'json' => self::permissiveDataNetworkPolicy(),
-            ]],
+            ['post', 'mgmt/v1/apis/' . self::$apiName . '/schema:sync', ['query' => ['activate' => 'true']]],
         ];
 
         foreach ($steps as [$method, $uri, $opts]) {

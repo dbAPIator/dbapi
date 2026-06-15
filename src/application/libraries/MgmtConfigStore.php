@@ -64,8 +64,7 @@ class MgmtConfigStore
     {
         return [
             'acls' => [
-                ['ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'allow' => true],
-                ['ip' => '0.0.0.0/0', 'allow' => false],
+                ['ip' => '0.0.0.0/0', 'allow' => true],
             ],
             'secret' => bin2hex(random_bytes(32)),
         ];
@@ -73,17 +72,19 @@ class MgmtConfigStore
 
     public function saveDefaultDataAcls(string $apiId): void
     {
-        $this->savePhp("{$this->getApiDir($apiId)}/{$this->configFiles['data_api_acls']}", [
+        $this->savePhp("{$this->getApiDir($apiId)}/{$this->configFiles['data_api_acls']}", $this->defaultDataAcls());
+    }
+
+    public function defaultDataAcls(): array
+    {
+        return [
             'IP' => [
-                ['ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'allow' => true],
-                ['ip' => '0.0.0.0/0', 'allow' => false],
+                ['ip' => '0.0.0.0/0', 'allow' => true],
             ],
             'path' => [
-                ['pattern' => '/*', 'methods' => 'GET', 'allow' => true],
-                ['pattern' => '/*', 'methods' => 'OPTIONS', 'allow' => true],
-                ['pattern' => '/*', 'methods' => '*', 'allow' => false],
+                ['pattern' => '/*', 'methods' => '*', 'allow' => true],
             ],
-        ]);
+        ];
     }
 
     public function loadMeta(string $apiId): array

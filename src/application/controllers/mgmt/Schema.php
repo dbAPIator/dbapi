@@ -83,45 +83,59 @@ class Schema extends MY_MgmtController
     {
         $this->requireApiAccess($apiId);
         try {
-            $dir = $this->store->getApiDir($apiId);
-            $old = is_file("{$dir}/{$this->configFiles['structure']}")
-                ? @include "{$dir}/{$this->configFiles['structure']}"
-                : [];
-            if (!is_array($old)) {
-                $old = [];
-            }
-
-            $conn = @include "{$dir}/connection.php";
-            if (!is_array($conn) || empty($conn)) {
-                throw new RuntimeException('Connection not configured');
-            }
-            $db = @$this->load->database($conn, true);
-            $err = $db->error();
-            if ($err['code'] !== 0) {
-                throw new RuntimeException($err['message']);
-            }
-
-            $this->load->helper('config_util');
-            $patch = $this->store->loadPhp("{$dir}/patch.php");
-            $built = structure_build_from_database(
-                $db,
-                $conn['database'],
-                $old,
-                is_array($patch) && count($patch) ? $patch : null
-            );
-            $structure = $built['structure'];
-            structure_copy_hooks_from_old($old, $structure);
-
-            $this->saveStructure($apiId, $structure);
+            $built = $this->rebuildStructureFromDatabase($apiId);
+            $this->saveStructure($apiId, $built['structure']);
             $meta = $this->store->loadMeta($apiId);
             $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
             $this->store->saveMeta($apiId, $meta);
 
             HttpResp::json_out(200, [
                 'rebuiltAt' => gmdate('Y-m-d\TH:i:s\Z'),
-                'entityCount' => count($structure),
+                'entityCount' => count($built['structure']),
                 'warnings' => $built['warnings'] ?? [],
             ]);
+        } catch (Exception $e) {
+            $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Introspect DB, write snapshot, rebuild structure.php (preserves relationship names).
+     * Optional ?activate=true runs validation and activates in the same request.
+     */
+    public function sync($apiId)
+    {
+        $this->requireApiAccess($apiId);
+        try {
+            $structure = $this->generateStructure($apiId);
+            $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
+            file_put_contents($snapPath, json_encode($structure, JSON_PRETTY_PRINT));
+
+            $built = $this->rebuildStructureFromDatabase($apiId);
+            $this->saveStructure($apiId, $built['structure']);
+            $meta = $this->store->loadMeta($apiId);
+            $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
+            $this->store->saveMeta($apiId, $meta);
+
+            $result = [
+                'syncedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+                'introspectedAt' => $meta['schema']['introspectedAt'] ?? null,
+                'entityCount' => count($built['structure']),
+                'warnings' => $built['warnings'] ?? [],
+            ];
+
+            if ($this->wantsActivate()) {
+                $activation = $this->tryActivateApi($apiId);
+                $result['activation'] = $activation;
+                if (!$activation['activated']) {
+                    $this->mgmtError(409, $this->errorsCatalog['config']['not_ready_for_activate'], [
+                        'validation' => $activation['validation'],
+                        'sync' => $result,
+                    ]);
+                }
+            }
+
+            HttpResp::json_out(200, $result);
         } catch (Exception $e) {
             $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
         }

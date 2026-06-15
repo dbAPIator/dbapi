@@ -70,7 +70,6 @@ class SingleModeProvisioner
         ];
 
         $this->store->scaffoldDraft($apiId, $meta);
-        $this->applyDockerFriendlyPolicies($apiId);
         $this->store->saveConnection($apiId, $connection);
         $this->runConnectionTest($apiId);
 
@@ -116,25 +115,6 @@ class SingleModeProvisioner
         }
         $structure = @include $structurePath;
         return is_array($structure) && count($structure) > 0;
-    }
-
-    private function applyDockerFriendlyPolicies(string $apiId): void
-    {
-        $dir = $this->store->getApiDir($apiId);
-        $this->store->savePhp("{$dir}/{$this->configFiles['admin_config']}", [
-            'acls' => [
-                ['ip' => '0.0.0.0/0', 'allow' => true],
-            ],
-            'secret' => bin2hex(random_bytes(32)),
-        ]);
-        $this->store->savePhp("{$dir}/{$this->configFiles['data_api_acls']}", [
-            'IP' => [
-                ['ip' => '0.0.0.0/0', 'allow' => true],
-            ],
-            'path' => [
-                ['pattern' => '/*', 'methods' => '*', 'allow' => true],
-            ],
-        ]);
     }
 
     private function runConnectionTest(string $apiId): void

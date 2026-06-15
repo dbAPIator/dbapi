@@ -246,6 +246,7 @@
           "Lifecycle"
         ],
         "operationId": "validateApi",
+        "description": "Dry-run preflight checks; optional before `:activate` (activate validates inline).",
         "security": [
           {
             "managementKey": []
@@ -278,6 +279,7 @@
           "Lifecycle"
         ],
         "operationId": "activateApi",
+        "description": "Runs validation checks inline; `:validate` is optional (dry-run only).",
         "security": [
           {
             "managementKey": []
@@ -836,6 +838,58 @@
         }
       }
     },
+    "/mgmt/v1/apis/{apiId}/schema:sync": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ApiId"
+        },
+        {
+          "name": "activate",
+          "in": "query",
+          "description": "When `true`, validate and activate after sync",
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Schema"
+        ],
+        "operationId": "syncSchema",
+        "description": "Introspect DB, write snapshot, rebuild structure.php (preserves relationship names).",
+        "security": [
+          {
+            "managementKey": []
+          },
+          {
+            "apiConfigKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaSyncResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sync succeeded but activation failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mgmt/v1/apis/{apiId}/schema:rebuild": {
       "parameters": [
         {
@@ -1185,6 +1239,50 @@
                 "message": {
                   "type": "string"
                 }
+              }
+            }
+          }
+        }
+      },
+      "SchemaSyncResult": {
+        "type": "object",
+        "properties": {
+          "syncedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "introspectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entityCount": {
+            "type": "integer"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "activation": {
+            "type": "object",
+            "properties": {
+              "activated": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "validation": {
+                "$ref": "#/components/schemas/ValidateResult"
               }
             }
           }

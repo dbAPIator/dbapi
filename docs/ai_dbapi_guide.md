@@ -162,12 +162,12 @@ An API must be `**active`** for the data plane to respond. Otherwise: **409 API 
 Typical flow (Management API):
 
 ```text
-POST /mgmt/v1/apis → draft
+POST /mgmt/v1/apis → draft (permissive defaults)
 PUT  .../connection + POST .../connection:test
-POST .../schema:introspect → POST .../schema:rebuild
-PUT  .../policies/auth + .../policies/data-network
-POST ...:validate → POST ...:activate
+POST .../schema:sync?activate=true
 ```
+
+Stepped: `schema:introspect` → `schema:rebuild` → `POST ...:activate` (`:validate` is optional dry-run).
 
 Quick-create (dev/CI): `POST /mgmt/v1/apis?provision=immediate` with `connection` in the body.
 

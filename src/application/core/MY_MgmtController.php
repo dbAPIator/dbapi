@@ -173,6 +173,69 @@ class MY_MgmtController extends CI_Controller
         return stripos($prefer, 'immediate-provision') !== false;
     }
 
+    protected function wantsActivate(): bool
+    {
+        return $this->input->get('activate') === 'true' || $this->input->get('activate') === '1';
+    }
+
+    /**
+     * @return array{structure: array, warnings: array}
+     */
+    protected function rebuildStructureFromDatabase(string $apiId): array
+    {
+        $dir = $this->store->getApiDir($apiId);
+        $old = is_file("{$dir}/{$this->configFiles['structure']}")
+            ? @include "{$dir}/{$this->configFiles['structure']}"
+            : [];
+        if (!is_array($old)) {
+            $old = [];
+        }
+
+        $conn = @include "{$dir}/connection.php";
+        if (!is_array($conn) || empty($conn)) {
+            throw new RuntimeException('Connection not configured');
+        }
+        $db = @$this->load->database($conn, true);
+        $err = $db->error();
+        if ($err['code'] !== 0) {
+            throw new RuntimeException($err['message']);
+        }
+
+        $this->load->helper('config_util');
+        $patch = $this->store->loadPhp("{$dir}/patch.php");
+        $built = structure_build_from_database(
+            $db,
+            $conn['database'],
+            $old,
+            is_array($patch) && count($patch) ? $patch : null
+        );
+        $structure = $built['structure'];
+        structure_copy_hooks_from_old($old, $structure);
+
+        return ['structure' => $structure, 'warnings' => $built['warnings'] ?? []];
+    }
+
+    /**
+     * @return array{activated: bool, status: string, validation: ?array}
+     */
+    protected function tryActivateApi(string $apiId): array
+    {
+        if ($this->store->getStatus($apiId) === 'active') {
+            return ['activated' => true, 'status' => 'active', 'validation' => null];
+        }
+        $result = $this->lifecycle->validate($apiId);
+        if (!$result['ready']) {
+            return [
+                'activated' => false,
+                'status' => $this->store->getStatus($apiId),
+                'validation' => $result,
+            ];
+        }
+        $this->store->setStatus($apiId, 'active');
+        $this->store->touchUpdated($apiId);
+        return ['activated' => true, 'status' => 'active', 'validation' => $result];
+    }
+
     protected function baseUrl(): string
     {
         require_once APPPATH . 'helpers/deployment_helper.php';

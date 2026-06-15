@@ -18,23 +18,12 @@ class Lifecycle extends MY_MgmtController
             HttpResp::json_out(200, $this->store->buildApiResource($apiId));
             return;
         }
-        $result = $this->lifecycle->validate($apiId);
-        if (!$result['ready']) {
-            $this->mgmtError(409, $this->errorsCatalog['config']['not_ready_for_activate'], ['validation' => $result]);
+        $activation = $this->tryActivateApi($apiId);
+        if (!$activation['activated']) {
+            $this->mgmtError(409, $this->errorsCatalog['config']['not_ready_for_activate'], [
+                'validation' => $activation['validation'],
+            ]);
         }
-        $this->store->saveDefaultDataAcls($apiId);
-        $dir = $this->store->getApiDir($apiId);
-        $acls = $this->store->loadPhp("{$dir}/{$this->configFiles['data_api_acls']}");
-        if (empty($acls['path'])) {
-            $acls['path'] = [
-                ['pattern' => '/*', 'methods' => 'GET', 'allow' => true],
-                ['pattern' => '/*', 'methods' => 'OPTIONS', 'allow' => true],
-                ['pattern' => '/*', 'methods' => '*', 'allow' => false],
-            ];
-            $this->store->savePhp("{$dir}/{$this->configFiles['data_api_acls']}", $acls);
-        }
-        $this->store->setStatus($apiId, 'active');
-        $this->store->touchUpdated($apiId);
         HttpResp::json_out(200, $this->store->buildApiResource($apiId));
     }
 

@@ -161,8 +161,11 @@ class Apis extends MY_MgmtController
                 $this->runConnectionTest($apiId);
             }
             if (!empty($payload->connection)) {
-                $structure = $this->generateStructure($apiId);
-                $this->saveStructure($apiId, $structure);
+                $built = $this->rebuildStructureFromDatabase($apiId);
+                $this->saveStructure($apiId, $built['structure']);
+                $meta = $this->store->loadMeta($apiId);
+                $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
+                $this->store->saveMeta($apiId, $meta);
             }
             $result = $this->lifecycle->validate($apiId);
             if (!$result['ready']) {
