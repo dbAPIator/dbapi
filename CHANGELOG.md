@@ -32,4 +32,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Update management API for single mode
 
 
+## [1.2.3] - 2026-06-15
+
+- Update management API for single mode
+
+
 ## [Unreleased]
