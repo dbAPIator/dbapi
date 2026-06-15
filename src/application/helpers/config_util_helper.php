@@ -374,6 +374,62 @@ function structure_merge_preserved_relations(array $oldStructure, array $newStru
 }
 
 /**
+ * Expand SchemaOverrides keys (hiddenFields, hiddenEntities) into entity patch entries for merge.
+ * Top-level hiddenFields/hiddenEntities are not merged into structure as-is.
+ */
+function schema_patch_apply_overrides(array $patch): array
+{
+    $hiddenFields = $patch['hiddenFields'] ?? null;
+    $hiddenEntities = $patch['hiddenEntities'] ?? null;
+
+    if (!is_array($hiddenFields) && !is_array($hiddenEntities)) {
+        return $patch;
+    }
+
+    $merge = $patch;
+    unset($merge['hiddenFields'], $merge['hiddenEntities']);
+
+    $hidden = [];
+
+    if (is_array($hiddenEntities)) {
+        foreach ($hiddenEntities as $entity) {
+            if (!is_string($entity) || $entity === '') {
+                continue;
+            }
+            if (!isset($hidden[$entity]) || !is_array($hidden[$entity])) {
+                $hidden[$entity] = [];
+            }
+            $hidden[$entity]['read'] = false;
+        }
+    }
+
+    if (is_array($hiddenFields)) {
+        foreach ($hiddenFields as $entity => $fields) {
+            if (!is_string($entity) || $entity === '' || !is_array($fields)) {
+                continue;
+            }
+            if (!isset($hidden[$entity]) || !is_array($hidden[$entity])) {
+                $hidden[$entity] = [];
+            }
+            if (!isset($hidden[$entity]['fields']) || !is_array($hidden[$entity]['fields'])) {
+                $hidden[$entity]['fields'] = [];
+            }
+            foreach ($fields as $field) {
+                if (!is_string($field) || $field === '') {
+                    continue;
+                }
+                if (!isset($hidden[$entity]['fields'][$field]) || !is_array($hidden[$entity]['fields'][$field])) {
+                    $hidden[$entity]['fields'][$field] = [];
+                }
+                $hidden[$entity]['fields'][$field]['select'] = false;
+            }
+        }
+    }
+
+    return smart_array_merge_recursive($hidden, $merge);
+}
+
+/**
  * Introspect DB + preserve stable relation names + optional patch merge.
  *
  * @return array{structure: array, warnings: list<array>}
@@ -393,7 +449,7 @@ function structure_build_from_database($db, string $dbName, array $oldStructure 
     }
 
     if (is_array($patch) && count($patch)) {
-        $structure = smart_array_merge_recursive($structure, $patch);
+        $structure = smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
     }
 
     return ['structure' => $structure, 'warnings' => $warnings];

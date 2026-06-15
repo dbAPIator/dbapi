@@ -4,7 +4,7 @@
 >
 > **Recommended placement:** `.cursor/rules/dbapi.md` or a dedicated section in `AGENTS.md`.
 >
-> **Full documentation (dbapi repo):** [README](../README.md) · [Docker deployment](docker_deployment.md) · [Management API](management_api.md) · [Using the API](using_the_api.md)
+> **Full documentation (dbapi repo):** [README](../README.md) · [Tutorials](tutorials/README.md) · [Docker deployment](docker_deployment.md) · [Management API](management_api.md) · [Using the API](using_the_api.md)
 
 ---
 
@@ -319,17 +319,39 @@ Content-Type: application/json
 
 ### Create with nested relationship
 
-```json
+Inbound (one-to-many) children are an array in `relationships.{name}.data`. Example: create an order with line items in one request (`order_lines` is the child table name from the schema).
+
+```http
+POST .../data/orders
+Content-Type: application/json
+
 {
   "data": {
-    "type": "customers",
-    "attributes": { "name": "Acme" },
+    "type": "orders",
+    "attributes": {
+      "customer_id": 1,
+      "status": "draft"
+    },
     "relationships": {
-      "orders": {
-        "data": {
-          "type": "orders",
-          "attributes": { "order_date": "2026-06-12", "status": "new" }
-        }
+      "order_lines": {
+        "data": [
+          {
+            "type": "order_lines",
+            "attributes": {
+              "product_id": 1,
+              "quantity": 2,
+              "unit_price": 9.99
+            }
+          },
+          {
+            "type": "order_lines",
+            "attributes": {
+              "product_id": 2,
+              "quantity": 1,
+              "unit_price": 4.50
+            }
+          }
+        ]
       }
     }
   }

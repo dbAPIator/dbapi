@@ -169,7 +169,7 @@ class SingleModeProvisioner
                 if (!function_exists('smart_array_merge_recursive')) {
                     $this->ci->load->helper('config_util');
                 }
-                $structure = smart_array_merge_recursive($structure, $patch);
+                $structure = smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
             }
         }
 

@@ -1,0 +1,37 @@
+---
+description: Decision order before writing code — YAGNI, stdlib, native, deps, one-liner, then minimum
+alwaysApply: true
+---
+
+# Implementation decisions
+
+Before adding code, ask in order:
+
+1. **Does this need to exist?** → No: skip it (YAGNI)
+2. **Stdlib does it?** → Use it
+3. **Native platform feature?** → Use it
+4. **Installed dependency?** → Use it
+5. **One line?** → One line
+6. **Only then:** the minimum that works
+
+**Before saving:** does it need refinement? If not, ship it.
+
+## Examples
+
+```javascript
+// ❌ Custom helper for something the runtime already has
+function isEmpty(arr) { return arr.length === 0; }
+
+// ✅ One line, built-in
+items.length === 0
+```
+
+```bash
+# ❌ New script when stdlib/tooling covers it
+python -c "import json; ..."
+
+# ✅ jq already in the stack
+jq '.field' file.json
+```
+
+Do not add abstractions, wrappers, or files “for later.” Prefer deleting over generalizing.

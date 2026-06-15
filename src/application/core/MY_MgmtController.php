@@ -197,7 +197,8 @@ class MY_MgmtController extends CI_Controller
         if (is_file($patchFile)) {
             $patch = @include $patchFile;
             if (is_array($patch)) {
-                $structure = smart_array_merge_recursive($structure, $patch);
+                $this->load->helper('config_util');
+                $structure = smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
             }
         }
         return $structure;

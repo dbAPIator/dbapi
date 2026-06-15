@@ -10,6 +10,7 @@ dbAPI introspects your database, generates configuration and OpenAPI, and serves
 |------|----------------|
 | Run the published container | [Docker deployment guide](docs/docker_deployment.md) |
 | Develop locally | [Quick start — Docker](#docker) (`docker compose up -d`) |
+| Learn step by step | [Tutorials](docs/tutorials/README.md) — getting started through advanced topics |
 | Build a client app | [Using the API](docs/using_the_api.md) · [AI integration guide](docs/ai_dbapi_guide.md) |
 | Provision and operate APIs | [Management API](docs/management_api.md) |
 | Cut a release | [Releasing](docs/releasing.md) |
@@ -360,6 +361,7 @@ GitHub Actions run on push/PR to `master` and on release tags:
 
 ## Documentation
 
+- [Tutorials](docs/tutorials/README.md) — hands-on learning path (beginner → advanced)
 - [Docker deployment guide](docs/docker_deployment.md) — GHCR image, `docker run`, Compose, env vars
 - [Management API](docs/management_api.md) — control plane reference
 - [Using the API](docs/using_the_api.md) — filters, pagination, relationships, writes

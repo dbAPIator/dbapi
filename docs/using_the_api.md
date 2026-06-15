@@ -1,6 +1,8 @@
 # Using the API
 Once you have created an API, you can use it to read, create, update and delete records from the database.
 
+**New to dbAPI?** Start with the [tutorial series](tutorials/README.md).
+
 The main API endpoint is ```http(s)://hostname/installation_path/api_name/data/```.
 
 The OpenAPI specification is generated when the API schema is built or rebuilt (stored as `openapi.json` in the API config directory). It is served without re-running the generator on each request:

@@ -144,6 +144,9 @@ trait DbapiQueryTrait
             if(!$this->apiDm->is_valid_field($request->resourceName,$fld)) {
                 throw new \dbAPI\API\Exception("Invalid field $fld of $request->resourceName for sparse field selection",404);
             }
+            if(!$this->apiDm->field_is_selectable($request->resourceName,$fld)) {
+                throw new \dbAPI\API\Exception("Field $fld of $request->resourceName is not available for selection",404);
+            }
         }
 
         // if no sparse field selection, get all fields to

@@ -152,4 +152,37 @@ class TestSwaggerGenerator extends TestCase
             @rmdir($dir);
         }
     }
+
+    public function testApiStructureForOpenapiMergesHiddenFields(): void
+    {
+        $dir = sys_get_temp_dir() . '/dbapi-swagger-test-' . bin2hex(random_bytes(4));
+        $this->assertTrue(mkdir($dir));
+
+        try {
+            file_put_contents($dir . '/structure.php', '<?php return ' . var_export([
+                'users' => [
+                    'type' => 'table',
+                    'keyFld' => 'id',
+                    'fields' => [
+                        'id' => ['type' => ['proto' => 'int'], 'required' => false, 'select' => true],
+                        'password' => ['type' => ['proto' => 'varchar'], 'required' => true, 'select' => true],
+                    ],
+                    'relations' => [],
+                ],
+            ], true) . ';');
+
+            file_put_contents($dir . '/patch.php', '<?php return ' . var_export([
+                'hiddenFields' => [
+                    'users' => ['password'],
+                ],
+            ], true) . ';');
+
+            $structure = api_structure_for_openapi($dir);
+            $this->assertFalse($structure['users']['fields']['password']['select']);
+        } finally {
+            @unlink($dir . '/structure.php');
+            @unlink($dir . '/patch.php');
+            @rmdir($dir);
+        }
+    }
 }

@@ -674,7 +674,7 @@ class Config
         $structure = DBWalk::parse($this->load->database($conn, true), $conn['database'])['structure'];
         $patch = @include $this->config->item("configs_dir") . "/$apiName/patch.php";
         $patch = $patch ? $patch : [];
-        $newStruct = smart_array_merge_recursive($structure, $patch);
+        $newStruct = smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
         $newStruct = smart_array_merge_recursive($newStruct, $data);
 
         // compute difference

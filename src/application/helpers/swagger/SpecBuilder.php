@@ -390,7 +390,11 @@ function api_structure_for_openapi(string $apiDir, ?array $structure = null): ar
         return $structure;
     }
 
-    return smart_array_merge_recursive($structure, $patch);
+    if (!function_exists('schema_patch_apply_overrides')) {
+        require_once APPPATH . 'helpers/config_util_helper.php';
+    }
+
+    return smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
 }
 
 function api_openapi_data_url(string $baseUrl, string $apiName): string
