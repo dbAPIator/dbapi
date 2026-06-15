@@ -81,6 +81,27 @@ class TestSwaggerGenerator extends TestCase
         putenv('DEPLOYMENT_MODE');
     }
 
+    public function testWithApiOpenapiServersUrlRewritesCachedServer(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        $spec = [
+            'openapi' => '3.0.2',
+            'servers' => [['url' => 'http://172.18.0.3/v1/data']],
+            'paths' => [],
+        ];
+        $out = with_api_openapi_servers_url($spec, 'default', 'http://localhost:8888');
+        $this->assertSame('http://localhost:8888/v1/data', $out['servers'][0]['url']);
+        putenv('DEPLOYMENT_MODE');
+    }
+
+    public function testApiPublicBaseUrlPrefersBaseUrlEnv(): void
+    {
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        putenv('BASE_URL=http://api.example.com');
+        $this->assertSame('http://api.example.com', api_public_base_url());
+        putenv('BASE_URL');
+    }
+
     public function testGenerateSwaggerProducesValidSpec(): void
     {
         $structure = self::sampleStructure();

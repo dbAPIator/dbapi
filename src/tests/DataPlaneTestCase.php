@@ -21,6 +21,10 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
             self::markTestSkipped($schemaError);
         }
 
+        if (!self::probeManagementApi(self::$client)) {
+            self::markTestSkipped(self::managementApiSkipMessage());
+        }
+
         self::$apiName = 'phpunit-data-' . bin2hex(random_bytes(4));
         self::provisionActiveApi();
     }

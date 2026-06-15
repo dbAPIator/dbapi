@@ -14,10 +14,12 @@
 
 There are **two separate planes**:
 
-| Plane | Used by | Response format | Purpose |
-|-------|---------|-----------------|---------|
-| **Control plane** (Management API) | operators, CI/CD, initial setup | plain JSON | create / configure / activate APIs |
-| **Data plane** | your app (SPA, mobile, scripts) | JSON:API | CRUD on DB rows |
+
+| Plane                              | Used by                         | Response format | Purpose                            |
+| ---------------------------------- | ------------------------------- | --------------- | ---------------------------------- |
+| **Control plane** (Management API) | operators, CI/CD, initial setup | plain JSON      | create / configure / activate APIs |
+| **Data plane**                     | your app (SPA, mobile, scripts) | JSON:API        | CRUD on DB rows                    |
+
 
 **Rule for AI:** consumer-project code should call the **data plane** almost exclusively. Use the Management API only for provisioning, policies, or schema rebuild — not in normal user flows.
 
@@ -45,11 +47,13 @@ DBAPI_CONFIG_KEY=                               # X-Api-Config-Key per API
 
 ### Deployment modes
 
-| Mode | Data plane URL | Management `apiId` | Swagger |
-|------|----------------|-------------------|---------|
-| **Multi-API** (standard) | `{base}/v1/apis/{apiId}/data/{resource}` | `{apiId}` chosen at create | `{base}/swagger.html?url=apis/{apiId}/swagger` |
-| **Single-mode** (Docker `DEPLOYMENT_MODE=single`) | `{base}/v1/data/{resource}` | fixed: `default` | `{base}/swagger.html?url=v1/swagger` |
-| **Legacy** (avoid in new code) | `{base}/apis/{apiId}/data/...` | — | `{base}/apis/{apiId}/swagger` |
+
+| Mode                                              | Data plane URL                           | Management `apiId`         | Swagger                                        |
+| ------------------------------------------------- | ---------------------------------------- | -------------------------- | ---------------------------------------------- |
+| **Multi-API** (standard)                          | `{base}/v1/apis/{apiId}/data/{resource}` | `{apiId}` chosen at create | `{base}/swagger.html?url=apis/{apiId}/swagger` |
+| **Single-mode** (Docker `DEPLOYMENT_MODE=single`) | `{base}/v1/data/{resource}`              | fixed: `default`           | `{base}/swagger.html?url=v1/swagger`           |
+| **Legacy** (avoid in new code)                    | `{base}/apis/{apiId}/data/...`           | —                          | `{base}/apis/{apiId}/swagger`                  |
+
 
 **Service discovery:** `GET {base}/` returns JSON with path hints.
 
@@ -61,10 +65,12 @@ DBAPI_CONFIG_KEY=                               # X-Api-Config-Key per API
 
 ### Data plane
 
-| `policies/auth.mode` | Behavior |
-|---------------------|----------|
-| `none` | No JWT; guest read may be allowed (also depends on IP/path ACLs) |
-| `dbAuth` | One or more named login methods (SQL) → JWT Bearer |
+
+| `policies/auth.mode` | Behavior                                                         |
+| -------------------- | ---------------------------------------------------------------- |
+| `none`               | No JWT; guest read may be allowed (also depends on IP/path ACLs) |
+| `dbAuth`             | One or more named login methods (SQL) → JWT Bearer               |
+
 
 Auth URLs (multi-API): `{base}/v1/apis/{apiId}/auth/...` — single-mode: `{base}/v1/auth/...`. Legacy `{base}/apis/{apiId}/auth/...` still works; prefer `/v1/` in new code.
 
@@ -91,7 +97,7 @@ When `mode: none`, `loginMethods` is an empty array.
 
 ### Login
 
-Login is always **`POST .../auth/login/{loginMethod}`** — the method name is part of the URL path, not the body. Send credentials as **`application/x-www-form-urlencoded`**; field names must match the method's `fields` from discovery (typically derived from `[[placeholder]]` names in the SQL query).
+Login is always `**POST .../auth/login/{loginMethod}**` — the method name is part of the URL path, not the body. Send credentials as `**application/x-www-form-urlencoded**`; field names must match the method's `fields` from discovery (typically derived from `[[placeholder]]` names in the SQL query).
 
 **Password login (multi-API):**
 
@@ -118,7 +124,7 @@ pin=1234
 - `POST .../auth/login` without a method name returns **404** — always include `{loginMethod}`.
 - Unknown method → **404**; missing/empty required field → **400**; invalid credentials → **404**.
 - `expires_in` in the token response may differ per method when the policy sets method-level `validity`.
-- APIs configured with a legacy single `loginQuery` expose one method named **`password`** (backward compatible).
+- APIs configured with a legacy single `loginQuery` expose one method named `**password`** (backward compatible).
 
 **Token response:**
 
@@ -138,10 +144,12 @@ Authorization: Bearer <access_token>
 
 ### Management API (ops only)
 
-| Header | Scope |
-|--------|-------|
-| `X-Management-Key` | instance — create/delete APIs |
+
+| Header             | Scope                                            |
+| ------------------ | ------------------------------------------------ |
+| `X-Management-Key` | instance — create/delete APIs                    |
 | `X-Api-Config-Key` | per-API — connection, schema, policies, activate |
+
 
 **Rule for AI:** do not expose management keys in the frontend. Do not hardcode secrets in source — use env / a secrets manager.
 
@@ -149,7 +157,7 @@ Authorization: Bearer <access_token>
 
 ## 4. API lifecycle (debugging context)
 
-An API must be **`active`** for the data plane to respond. Otherwise: **409 API not active**.
+An API must be `**active`** for the data plane to respond. Otherwise: **409 API not active**.
 
 Typical flow (Management API):
 
@@ -167,7 +175,7 @@ Quick-create (dev/CI): `POST /mgmt/v1/apis?provision=immediate` with `connection
 
 ## 5. JSON:API format — mandatory rules
 
-All write requests use **`Content-Type: application/json`**.
+All write requests use `**Content-Type: application/json**`.
 
 ### List response shape
 
@@ -191,11 +199,11 @@ All write requests use **`Content-Type: application/json`**.
 
 ### Critical rules
 
-1. **`type`** must match the resource name (= exposed table/view name).
-2. **`id`** in the URL and in the PATCH body must match.
-3. DB columns live in **`attributes`**, not at the root of the object.
+1. `**type**` must match the resource name (= exposed table/view name).
+2. `**id**` in the URL and in the PATCH body must match.
+3. DB columns live in `**attributes**`, not at the root of the object.
 4. Views without a PK: list OK, **GET by id → 404**, **POST → error**.
-5. Header **`X-Request-Id`**: send it for correlation; it also appears in errors (`meta.request_id`).
+5. Header `**X-Request-Id`**: send it for correlation; it also appears in errors (`meta.request_id`).
 
 ---
 
@@ -203,18 +211,20 @@ All write requests use **`Content-Type: application/json`**.
 
 Base: `{base}/v1/apis/{apiId}/data/` (or `{base}/v1/data/` in single-mode).
 
-| Operation | Method | URL |
-|-----------|--------|-----|
-| List / filter | GET | `.../data/{resource}` |
-| Single row | GET | `.../data/{resource}/{id}` |
-| Create | POST | `.../data/{resource}` |
-| Update one row | PATCH | `.../data/{resource}/{id}` |
-| Delete one row | DELETE | `.../data/{resource}/{id}` |
-| Bulk update | PATCH | `.../data/{resource}` (body: array `data`) |
-| Bulk delete | DELETE | `.../data/{resource}?filter=...` |
-| Relationship (list) | GET | `.../data/{resource}/{id}/{relation}` |
-| Create related | POST | `.../data/{resource}/{id}/{relation}` |
-| Stored procedure | POST | `.../data/__call__/{procedure_name}` |
+
+| Operation           | Method | URL                                        |
+| ------------------- | ------ | ------------------------------------------ |
+| List / filter       | GET    | `.../data/{resource}`                      |
+| Single row          | GET    | `.../data/{resource}/{id}`                 |
+| Create              | POST   | `.../data/{resource}`                      |
+| Update one row      | PATCH  | `.../data/{resource}/{id}`                 |
+| Delete one row      | DELETE | `.../data/{resource}/{id}`                 |
+| Bulk update         | PATCH  | `.../data/{resource}` (body: array `data`) |
+| Bulk delete         | DELETE | `.../data/{resource}?filter=...`           |
+| Relationship (list) | GET    | `.../data/{resource}/{id}/{relation}`      |
+| Create related      | POST   | `.../data/{resource}/{id}/{relation}`      |
+| Stored procedure    | POST   | `.../data/__call__/{procedure_name}`       |
+
 
 ---
 
@@ -224,15 +234,17 @@ Base: `{base}/v1/apis/{apiId}/data/` (or `{base}/v1/data/` in single-mode).
 
 Compact expression language; operators:
 
-| Operator | Meaning | Example |
-|----------|---------|---------|
-| `=` | equal | `city=London` |
-| `!=` | not equal | `status!=0` |
-| `>` `>=` `<` `<=` | comparisons | `qty>0` |
-| `=~` | starts with | `name=~John` |
-| `~=` | ends with | `file~=.pdf` |
-| `~=~` | contains | `note~=~urgent` |
-| `><` | one of (sep. `;`) | `status><1;2;3` |
+
+| Operator          | Meaning           | Example         |
+| ----------------- | ----------------- | --------------- |
+| `=`               | equal             | `city=London`   |
+| `!=`              | not equal         | `status!=0`     |
+| `>` `>=` `<` `<=` | comparisons       | `qty>0`         |
+| `=~`              | starts with       | `name=~John`    |
+| `~=`              | ends with         | `file~=.pdf`    |
+| `~=~`             | contains          | `note~=~urgent` |
+| `><`              | one of (sep. `;`) | `status><1;2;3` |
+
 
 **Combining:** `,` = AND (higher precedence), `||` = OR, `()` = grouping.
 
@@ -275,10 +287,12 @@ GET .../customers/1?include=orders,account_manager_id
 
 **Relationship names are part of the public contract** — do not guess pluralizations; check OpenAPI or the JSON response.
 
-| Direction | Default name |
-|-----------|--------------|
-| Outbound (FK) | FK column name (e.g. `account_manager_id`) |
-| Inbound (one-to-many) | child table name (e.g. `orders`) |
+
+| Direction             | Default name                               |
+| --------------------- | ------------------------------------------ |
+| Outbound (FK)         | FK column name (e.g. `account_manager_id`) |
+| Inbound (one-to-many) | child table name (e.g. `orders`)           |
+
 
 ---
 
@@ -412,14 +426,16 @@ Check OpenAPI for exact parameters for procedures in your schema.
 
 Respect instance limits (defaults, overridable via env):
 
-| Limit | Typical default |
-|-------|-----------------|
-| `page[limit]` max | 1000 |
+
+| Limit                    | Typical default |
+| ------------------------ | --------------- |
+| `page[limit]` max        | 1000            |
 | filter expression length | 4096 characters |
-| bulk insert | 100 |
-| bulk update | 50 |
-| request timeout | 60s |
-| `include` depth | 5 |
+| bulk insert              | 100             |
+| bulk update              | 50              |
+| request timeout          | 60s             |
+| `include` depth          | 5               |
+
 
 If you get 400/413/408, reduce payload size or simplify the filter — do not bypass limits.
 
@@ -469,7 +485,7 @@ Common codes: **404** missing resource/id, **409** conflict (unique, API inactiv
 
 ## 13. Recommended workflow when building a feature
 
-1. **`GET {base}/`** — confirm URL and mode (single vs multi).
+1. `**GET {base}/`** — confirm URL and mode (single vs multi).
 2. **Fetch OpenAPI** — identify resources, fields, relationships.
 3. **Probe read** — `GET .../data/{resource}?page[limit]=1`.
 4. **If auth = jwt** — `GET .../auth/login` for methods/fields, then `POST .../auth/login/{method}`; attach `Authorization`.
@@ -521,14 +537,16 @@ Generate types from `openapi.json` (openapi-typescript, orval, etc.) instead of 
 
 ## 15. Quick references
 
-| Resource | Location |
-|----------|----------|
-| Full Management API | [docs/management_api.md](management_api.md) |
-| Filtering, relationships, pagination | [docs/using_the_api.md](using_the_api.md) |
-| Tests / validation scenarios | [docs/data_plane_test_plan.md](data_plane_test_plan.md) |
-| Docker image (GHCR) | [docs/docker_deployment.md](docker_deployment.md) — `ghcr.io/dbapiator/dbapi` |
-| Local dev Docker Compose | [docker-compose.yml](../docker-compose.yml) — port 8888 |
-| Management OpenAPI spec | `src/public/management-openapi.yaml` |
+
+| Resource                             | Location                                                                      |
+| ------------------------------------ | ----------------------------------------------------------------------------- |
+| Full Management API                  | [docs/management_api.md](management_api.md)                                   |
+| Filtering, relationships, pagination | [docs/using_the_api.md](using_the_api.md)                                     |
+| Tests / validation scenarios         | [docs/data_plane_test_plan.md](data_plane_test_plan.md)                       |
+| Docker image (GHCR)                  | [docs/docker_deployment.md](docker_deployment.md) — `ghcr.io/dbapiator/dbapi` |
+| Local dev Docker Compose             | [docker-compose.yml](../docker-compose.yml) — port 8888                       |
+| Management OpenAPI spec              | `src/public/management-openapi.yaml`                                          |
+
 
 ---
 
@@ -549,3 +567,4 @@ dbapi:
     e.g. orders is an inbound relationship on customers;
     FK account_manager_id → users.
 ```
+

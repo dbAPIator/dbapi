@@ -53,13 +53,41 @@ class HttpResp{
 
 
     /**
+     * Clamp a raw status to the HTTP numeric range (100–599).
+     */
+    private static function normalizeHttpStatus($statusCode): int
+    {
+        $code = (int) $statusCode;
+        if ($code >= 100 && $code <= 599) {
+            return $code;
+        }
+        return 500;
+    }
+
+    /**
+     * Map an exception code to an HTTP response status.
+     * Application errors use their 2xx/4xx/5xx code; DB and other codes become 500.
+     */
+    public static function exceptionHttpStatus($exceptionCode): int
+    {
+        $code = (int) $exceptionCode;
+        if ($code >= 400 && $code <= 599) {
+            return $code;
+        }
+        if ($code >= 200 && $code < 300) {
+            return $code;
+        }
+        return 500;
+    }
+
+    /**
      * set response code
      * @param string|int $statusCode HTTP response code
      * @return HttpResp $this
      */
     public function &response_code($statusCode)
     {
-        $this->responseCode = $statusCode;
+        $this->responseCode = self::normalizeHttpStatus($statusCode);
         return $this;
     }
 
@@ -419,15 +447,12 @@ class HttpResp{
      */
     static function exception_out($e,$doExit=true)
     {
-        $code = (int) $e->getCode();
-        if ($code < 400 || $code > 599) {
-            $code = 500;
-        }
-        RequestContext::log($code >= 500 ? 'error' : 'debug', $e->getMessage(), [
-            'http_status' => $code,
+        $httpStatus = self::exceptionHttpStatus($e->getCode());
+        RequestContext::log($httpStatus >= 500 ? 'error' : 'debug', $e->getMessage(), [
+            'http_status' => $httpStatus,
             'exception' => get_class($e),
         ]);
-        HttpResp::json_out($code, self::errorPayload($e->getMessage(), $code, $code));
+        HttpResp::json_out($httpStatus, self::errorPayload($e->getMessage(), $e->getCode(), $httpStatus));
         if($doExit) exit();
     }
 

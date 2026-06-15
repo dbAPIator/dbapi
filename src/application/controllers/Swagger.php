@@ -16,7 +16,15 @@ class Swagger extends CI_Controller {
         $this->load->helper("swagger");
     }
 
-    public function index($configName) {
+    public function index($configName = null) {
+
+        if ($configName === null || $configName === '') {
+            HttpResp::exception_out(new Exception(
+                'Invalid usage. Use GET /v1/swagger',
+                400
+            ));
+        }
+
         $configDir = $this->config->item("configs_dir");
         $apiConfigDir = "$configDir/$configName";
 
@@ -32,6 +40,6 @@ class Swagger extends CI_Controller {
             ));
         }
 
-        HttpResp::json_out(200, $spec);
+        HttpResp::json_out(200, with_api_openapi_servers_url($spec, $configName));
     }
 }

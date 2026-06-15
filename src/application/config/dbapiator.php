@@ -48,7 +48,6 @@ $config["default_api_id"] = dbapi_env("DEFAULT_API_ID", "default");
 
 // path to where the APIs confingurations are stored
 $config["configs_dir"] = dbapi_env("CONFIGS_DIR", "/var/www/html/dbapi/dbconfigs");
-$config["links_dir"] = dbapi_env("LINKS_DIR", "/app/api_links");
 
 
 // default linked resources set page size

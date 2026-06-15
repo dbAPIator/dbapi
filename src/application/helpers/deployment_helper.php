@@ -22,6 +22,48 @@ function default_api_id(): string
 }
 
 /**
+ * Public base URL for links and OpenAPI servers (no trailing slash).
+ *
+ * Prefers BASE_URL env, then the incoming HTTP Host (incl. X-Forwarded-*), then CI base_url.
+ */
+function api_public_base_url($config = null): string
+{
+    $fromEnv = getenv('BASE_URL');
+    if ($fromEnv !== false && $fromEnv !== '') {
+        return rtrim($fromEnv, '/');
+    }
+
+    if (PHP_SAPI !== 'cli' && !empty($_SERVER['HTTP_HOST'])) {
+        $host = $_SERVER['HTTP_HOST'];
+        if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+            $host = trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_HOST'])[0]);
+        }
+        $scheme = 'http';
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $scheme = strtolower(trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]));
+        } elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            $scheme = 'https';
+        } elseif (!empty($_SERVER['REQUEST_SCHEME'])) {
+            $scheme = (string) $_SERVER['REQUEST_SCHEME'];
+        }
+        return $scheme . '://' . $host;
+    }
+
+    if ($config === null && function_exists('get_instance')) {
+        $ci = get_instance();
+        $config = $ci->config ?? null;
+    }
+    if ($config !== null) {
+        $configured = $config->item('base_url');
+        if ($configured !== null && $configured !== '') {
+            return rtrim($configured, '/');
+        }
+    }
+
+    return 'http://localhost';
+}
+
+/**
  * Database connection parameters from Docker env vars (single-mode bootstrap).
  *
  * @return array<string,mixed>|null

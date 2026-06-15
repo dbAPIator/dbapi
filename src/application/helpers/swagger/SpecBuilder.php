@@ -409,6 +409,21 @@ function api_openapi_data_url(string $baseUrl, string $apiName): string
 }
 
 /**
+ * Replace servers[].url with the public data-plane base URL for the current request.
+ */
+function with_api_openapi_servers_url(array $spec, string $apiName, ?string $baseUrl = null): array
+{
+    if ($baseUrl === null) {
+        if (!function_exists('api_public_base_url')) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+        }
+        $baseUrl = api_public_base_url();
+    }
+    $spec['servers'] = [['url' => api_openapi_data_url($baseUrl, $apiName)]];
+    return $spec;
+}
+
+/**
  * Validate a generated data-plane OpenAPI document before persisting.
  *
  * @return array{valid:bool,errors:array<int,string>,warnings:array<int,string>,summary:array<string,mixed>}

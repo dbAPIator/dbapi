@@ -196,8 +196,8 @@ class SingleModeProvisioner
     {
         $dir = $this->store->getApiDir($apiId);
         $this->ci->load->helper('swagger');
-        $baseUrl = rtrim($this->ci->config->item('base_url') ?: '', '/');
-        write_api_openapi_spec($apiId, $dir, $baseUrl, $structure);
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        write_api_openapi_spec($apiId, $dir, api_public_base_url($this->ci->config), $structure);
         $meta = $this->store->loadMeta($apiId);
         $meta['schema']['openapiGeneratedAt'] = gmdate('Y-m-d\TH:i:s\Z');
         unset($meta['schema']['openapiError']);

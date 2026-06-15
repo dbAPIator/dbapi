@@ -1,6 +1,8 @@
 services:
   dbapi:
-    build: ./
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     ports:
       - "8888:80"
     volumes:
@@ -10,6 +12,7 @@ services:
       - mysql
       - redis
     environment:
+      - BASE_URL=http://localhost:8888
       - DEPLOYMENT_MODE=single
       - DB_HOST=mysql
       - DB_PORT=3306
@@ -38,7 +41,6 @@ services:
     volumes:
       - ./.docker_data/mysql:/var/lib/mysql
       - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
-      - ./src/tests/dataplane-schema-body.sql:/docker-entrypoint-initdb.d/dataplane-schema-body.sql:ro
 
   adminer:
     image: adminer:latest

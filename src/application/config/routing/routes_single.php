@@ -16,6 +16,7 @@ $route[$basePath . '/.*']['options'] = 'dbapi/options';
 
 // OpenAPI spec
 $route[$basePath . '/swagger']['get'] = "swagger/index/{$singleApiId}";
+// $route['^swagger']['get'] = "swagger/index/{$singleApiId}";
 
 // Auth
 $route[$apiAuthUrlPrefix . '/login']['get'] = "auth/login_methods/{$singleApiId}";

@@ -32,7 +32,6 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     needs: unit
-    continue-on-error: true
     services:
       mysql:
         image: mariadb:11
@@ -56,7 +55,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "7.4"
-          extensions: json, curl, mysqli
+          extensions: json, curl, mysqli, mbstring
           coverage: none
 
       - name: Install dependencies
@@ -75,7 +74,30 @@ jobs:
         run: |
           cp tests/connection.dataplane.example.json tests/connection.json
           cp tests/test.env.dataplane.example tests/test.env
+          sed -i 's|^BASE_URL=.*|BASE_URL=http://127.0.0.1:8080|' tests/test.env
 
-      - name: Integration tests (skip when no live dbAPI server)
+      - name: Start dbAPI server
+        working-directory: src
+        env:
+          CONFIGS_DIR: ${{ runner.temp }}/dbapi-configs
+          CONFIG_API_SECRET: myverysecuresecret
+          CONFIG_API_IPS_ACLS: '[{"allow":true,"ip":"0.0.0.0/0"}]'
+          CI_ENV: development
+        run: |
+          mkdir -p "$CONFIGS_DIR"
+          php -S 127.0.0.1:8080 -t public public/ci-router.php >> /tmp/dbapi-php.log 2>&1 &
+          echo $! > /tmp/dbapi-php.pid
+          for _ in $(seq 1 30); do
+            if curl -sf -H "X-Management-Key: myverysecuresecret" http://127.0.0.1:8080/mgmt/v1/apis >/dev/null; then
+              echo "dbAPI is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "dbAPI failed to start:" >&2
+          tail -20 /tmp/dbapi-php.log >&2 || true
+          exit 1
+
+      - name: Integration tests
         working-directory: src
         run: composer test:integration

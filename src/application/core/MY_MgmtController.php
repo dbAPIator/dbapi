@@ -175,7 +175,8 @@ class MY_MgmtController extends CI_Controller
 
     protected function baseUrl(): string
     {
-        return rtrim($this->config->item('base_url') ?: '', '/');
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        return api_public_base_url($this->config);
     }
 
     protected function generateStructure(string $apiId, $structure = null): array

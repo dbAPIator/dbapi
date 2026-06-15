@@ -18,6 +18,28 @@ abstract class IntegrationTestCase extends TestCase
         return getenv('MGMT_KEY') ?: 'myverysecuresecret';
     }
 
+    protected static function managementApiSkipMessage(): string
+    {
+        return 'dbAPI management API not reachable at ' . self::baseUri()
+            . ' — start the web server (Apache, Docker, or php -S with src/public/ci-router.php).';
+    }
+
+    protected static function probeManagementApi(?Client $client = null): bool
+    {
+        $client = $client ?? self::createHttpClient();
+        try {
+            $resp = $client->get('mgmt/v1/apis', [
+                'headers' => self::managementHeaders(),
+                'http_errors' => false,
+                'connect_timeout' => 2.0,
+                'timeout' => 5.0,
+            ]);
+            return $resp->getStatusCode() === 200;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     protected static function createHttpClient(): Client
     {
         return new Client([

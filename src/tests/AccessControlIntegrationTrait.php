@@ -19,6 +19,9 @@ trait AccessControlIntegrationTrait
         if ($schemaError = self::probeDataplaneDatabase($this->accessConnection)) {
             $this->markTestSkipped($schemaError);
         }
+        if (!self::probeManagementApi($this->accessClient)) {
+            $this->markTestSkipped(self::managementApiSkipMessage());
+        }
         $this->accessApiName = 'phpunit-acl-' . bin2hex(random_bytes(4));
     }
 

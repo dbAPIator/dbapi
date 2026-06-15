@@ -471,5 +471,9 @@ $config['time_reference'] = 'local';
 */
 $config['proxy_ips'] = '';
 
+$baseUrlEnv = getenv('BASE_URL');
+if ($baseUrlEnv !== false && $baseUrlEnv !== '') {
+    $config['base_url'] = rtrim($baseUrlEnv, '/') . '/';
+}
 
 $config['allow_get_array'] = true;

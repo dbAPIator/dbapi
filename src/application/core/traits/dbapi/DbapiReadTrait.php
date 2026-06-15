@@ -57,7 +57,7 @@ trait DbapiReadTrait
             if($internal)
                 throw $exception;
             else
-                HttpResp::json_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+                HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
         // fetch records
@@ -68,7 +68,7 @@ trait DbapiReadTrait
             if($internal)
                 throw $exception;
             else
-                HttpResp::json_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+                HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
             die();
         }
 

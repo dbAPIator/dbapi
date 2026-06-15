@@ -16,6 +16,9 @@ class TestAuthLoginMethods extends IntegrationTestCase
     {
         parent::setUp();
         $this->client = self::createHttpClient();
+        if (!self::probeManagementApi($this->client)) {
+            $this->markTestSkipped(self::managementApiSkipMessage());
+        }
         $this->connection = self::loadConnection();
         $this->apiName = 'phpunit-auth-' . bin2hex(random_bytes(4));
         $this->provisionApiWithMultiLogin();

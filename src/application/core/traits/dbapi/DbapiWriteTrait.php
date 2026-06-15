@@ -98,7 +98,7 @@ trait DbapiWriteTrait
         try {
             ApiSafety::assertBulkUpdateCount(count($updateRecords));
         } catch (Exception $e) {
-            HttpResp::json_out($e->getCode(), HttpResp::errorPayload($e->getMessage(), $e->getCode(), $e->getCode()));
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($e->getCode()), HttpResp::errorPayload($e->getMessage(), $e->getCode(), HttpResp::exceptionHttpStatus($e->getCode())));
             return;
         }
 
@@ -211,7 +211,7 @@ trait DbapiWriteTrait
         catch (Exception $e) {
             if($internal) throw $e;
 
-            HttpResp::json_out($e->getCode(),
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($e->getCode()),
                 JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
             );
         }
@@ -245,7 +245,7 @@ trait DbapiWriteTrait
             $this->apiDb->trans_rollback();
             if($internal) // bubble up error to higher level
                 throw $exception;
-            HttpResp::jsonapi_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception));
+            HttpResp::jsonapi_out(HttpResp::exceptionHttpStatus($exception->getCode()), Document::from_exception($this->JsonApiDocOptions,$exception));
         }
 
         return $recId;
@@ -419,7 +419,7 @@ trait DbapiWriteTrait
             HttpResp::no_content(204);
         }
         catch (Exception $exception) {
-            HttpResp::json_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
     }
 

@@ -39,7 +39,7 @@ trait DbapiDiscoveryTrait
                 404
             ));
         }
-        HttpResp::json_out(200, $spec);
+        HttpResp::json_out(200, with_api_openapi_servers_url($spec, $configName));
     }
 
     /**

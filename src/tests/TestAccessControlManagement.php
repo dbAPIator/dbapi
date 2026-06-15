@@ -21,6 +21,9 @@ class TestAccessControlManagement extends IntegrationTestCase
         if ($schemaError = self::probeDataplaneDatabase($this->accessConnection)) {
             $this->markTestSkipped($schemaError);
         }
+        if (!self::probeManagementApi($this->mgmtClient)) {
+            $this->markTestSkipped(self::managementApiSkipMessage());
+        }
         $this->mgmtApiName = 'phpunit-acl-mgmt-' . bin2hex(random_bytes(4));
     }
 

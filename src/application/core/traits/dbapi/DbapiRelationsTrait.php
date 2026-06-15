@@ -37,7 +37,7 @@ trait DbapiRelationsTrait
             }
         }
         catch (Exception $exception) {
-            HttpResp::json_out($exception->getCode(),
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()),
                 Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
@@ -48,7 +48,7 @@ trait DbapiRelationsTrait
             $rel = $this->apiDm->get_relationship($resourceName,$relationName);
         }
         catch (Exception $exception) {
-            HttpResp::json_out($exception->getCode(),
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()),
                 Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
@@ -65,7 +65,7 @@ trait DbapiRelationsTrait
 //            $this->recs->deleteByWhere($rel["table"],$paras["filter"]);
         }
         catch (Exception $exception) {
-            HttpResp::json_out($exception->getCode(), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()), Document::from_exception($this->JsonApiDocOptions,$exception)->json_data());
         }
 
     }
@@ -92,7 +92,7 @@ trait DbapiRelationsTrait
             $rel = $this->apiDm->get_relationship($resourceName,$relationName);
         }
         catch (Exception $e) {
-            HttpResp::json_out($e->getCode(),
+            HttpResp::json_out(HttpResp::exceptionHttpStatus($e->getCode()),
                 JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
             );
         }
@@ -202,7 +202,7 @@ trait DbapiRelationsTrait
                 throw $exception;
             }
             else {
-                HttpResp::json_out($exception->getCode(), $doc->json_data());
+                HttpResp::json_out(HttpResp::exceptionHttpStatus($exception->getCode()), $doc->json_data());
             }
         }
 

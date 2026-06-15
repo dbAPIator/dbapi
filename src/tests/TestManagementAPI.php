@@ -23,6 +23,9 @@ class TestManagementAPI extends IntegrationTestCase
     {
         parent::setUp();
         $this->client = self::createHttpClient();
+        if (!self::probeManagementApi($this->client)) {
+            $this->markTestSkipped(self::managementApiSkipMessage());
+        }
         $this->apiName = 'phpunit-mgmt-' . bin2hex(random_bytes(4));
         $this->connection = self::loadConnection();
     }
