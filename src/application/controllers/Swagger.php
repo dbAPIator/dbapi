@@ -46,7 +46,7 @@ class Swagger extends CI_Controller {
     public function management_json()
     {
         try {
-            $spec = with_mgmt_openapi_servers_url(read_mgmt_openapi_spec());
+            $spec = prepare_mgmt_openapi_spec();
         } catch (RuntimeException $e) {
             HttpResp::exception_out(new Exception($e->getMessage(), 404));
         }

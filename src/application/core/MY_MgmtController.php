@@ -137,7 +137,8 @@ class MY_MgmtController extends CI_Controller
         if ($base && $base !== '/' && strpos($path, $base) === 0) {
             $path = substr($path, strlen($base)) ?: '/';
         }
-        return $path;
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        return mgmt_openapi_canonical_path($path);
     }
 
     protected function validatePayload(): object

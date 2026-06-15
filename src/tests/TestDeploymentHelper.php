@@ -13,7 +13,6 @@ class TestDeploymentHelper extends TestCase
     protected function tearDown(): void
     {
         putenv('DEPLOYMENT_MODE');
-        putenv('DEFAULT_API_ID');
         putenv('DB_HOST');
         putenv('DB_NAME');
     }
@@ -34,10 +33,8 @@ class TestDeploymentHelper extends TestCase
 
     public function testDefaultApiId(): void
     {
-        putenv('DEFAULT_API_ID');
         $this->assertSame('default', default_api_id());
-        putenv('DEFAULT_API_ID=custom');
-        $this->assertSame('custom', default_api_id());
+        $this->assertSame(DBAPI_DEFAULT_API_ID, default_api_id());
     }
 
     public function testSingleModeConnectionFromEnv(): void
@@ -63,5 +60,31 @@ class TestDeploymentHelper extends TestCase
         putenv('DB_HOST');
         putenv('DB_NAME');
         $this->assertNull(single_mode_connection_from_env());
+    }
+
+    public function testMgmtApiPathSingleModeOmitsDefaultApiId(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        $this->assertSame('/mgmt/v1', mgmt_api_path());
+        $this->assertSame('/mgmt/v1/connection', mgmt_api_path('connection'));
+        $this->assertSame('/mgmt/v1:activate', mgmt_api_path(':activate'));
+        $this->assertSame('/mgmt/v1/schema:sync', mgmt_api_path('schema:sync'));
+    }
+
+    public function testMgmtApiPathMultiModeIncludesApiId(): void
+    {
+        putenv('DEPLOYMENT_MODE');
+        $this->assertSame('/mgmt/v1/apis/demo', mgmt_api_path('', 'demo'));
+        $this->assertSame('/mgmt/v1/apis/demo/connection', mgmt_api_path('connection', 'demo'));
+        $this->assertSame('/mgmt/v1/apis/demo:activate', mgmt_api_path(':activate', 'demo'));
+    }
+
+    public function testMgmtOpenapiCanonicalPathMapsSingleModeUrls(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        $this->assertSame('/mgmt/v1/apis/default', mgmt_openapi_canonical_path('/mgmt/v1'));
+        $this->assertSame('/mgmt/v1/apis/default/connection', mgmt_openapi_canonical_path('/mgmt/v1/connection'));
+        $this->assertSame('/mgmt/v1/apis/default:activate', mgmt_openapi_canonical_path('/mgmt/v1:activate'));
+        $this->assertSame('/mgmt/v1/apis', mgmt_openapi_canonical_path('/mgmt/v1/apis'));
     }
 }

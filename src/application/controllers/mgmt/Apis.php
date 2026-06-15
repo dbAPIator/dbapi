@@ -56,7 +56,8 @@ class Apis extends MY_MgmtController
         $this->store->scaffoldDraft($apiId, $meta);
         $admin = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/{$this->configFiles['admin_config']}");
         $api = $this->store->buildApiResource($apiId);
-        $location = $this->baseUrl() . '/mgmt/v1/apis/' . rawurlencode($apiId);
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        $location = $this->baseUrl() . mgmt_api_path('', $apiId);
         HttpResp::json_out(201, [
             'api' => $api,
             'managementCredential' => [
@@ -184,7 +185,7 @@ class Apis extends MY_MgmtController
                     'header' => 'X-Api-Config-Key',
                     'note' => 'Shown only once. Store securely.',
                 ],
-            ], ['Location' => $this->baseUrl() . '/mgmt/v1/apis/' . rawurlencode($apiId)]);
+            ], ['Location' => $this->baseUrl() . mgmt_api_path('', $apiId)]);
         } catch (Exception $e) {
             if ($this->store->apiExists($apiId)) {
                 $this->store->deleteApi($apiId);

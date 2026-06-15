@@ -6,8 +6,16 @@ info:
     Control-plane API for dbAPI instance resources.
     Documentation: docs/management_api.md
 
+    **Multi-API mode** (default): paths use `/mgmt/v1/apis/{apiId}/...`.
+    **Single-mode** (`DEPLOYMENT_MODE=single`): the default API uses `/mgmt/v1/...`
+    (e.g. `GET /mgmt/v1`, `PUT /mgmt/v1/connection`, `POST /mgmt/v1:activate`).
+    `GET /mgmt/v1/apis` remains the list endpoint. Long-form `/mgmt/v1/apis/default/...`
+    URLs are accepted as aliases.
+
+    The served spec sets `servers[0].url` from `BASE_URL` or the request host.
+
 servers:
-  - url: http://localhost/dbapi/src
+  - url: http://localhost
 
 tags:
   - name: APIs

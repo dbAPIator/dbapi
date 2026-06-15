@@ -8,10 +8,14 @@ $route['translate_uri_dashes'] = false;
 // Management API (sole control plane)
 include 'routing/routes_mgmt.php';
 
+require_once APPPATH . 'helpers/deployment_helper.php';
+
+if (is_single_deployment_mode()) {
+    include 'routing/routes_mgmt_single.php';
+}
+
 // Legacy Admin API paths → 410 Gone (see errors/deprecated_admin)
 include 'routing/routes_deprecated_admin.php';
-
-require_once APPPATH . 'helpers/deployment_helper.php';
 
 if (is_single_deployment_mode()) {
     include 'routing/routes_single.php';

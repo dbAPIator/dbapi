@@ -462,8 +462,94 @@ function with_mgmt_openapi_servers_url(array $spec, ?string $baseUrl = null): ar
     return $spec;
 }
 
+/**
+ * @param array<string,mixed> $pathItem
+ * @return array<string,mixed>
+ */
+function mgmt_openapi_strip_api_id_param(array $pathItem): array
+{
+    $strip = static function (array $params): array {
+        return array_values(array_filter($params, static function ($p): bool {
+            if (!is_array($p)) {
+                return true;
+            }
+            if (isset($p['$ref']) && strpos((string) $p['$ref'], 'ApiId') !== false) {
+                return false;
+            }
+            return ($p['name'] ?? '') !== 'apiId' || ($p['in'] ?? '') !== 'path';
+        }));
+    };
+
+    if (isset($pathItem['parameters']) && is_array($pathItem['parameters'])) {
+        $pathItem['parameters'] = $strip($pathItem['parameters']);
+        if ($pathItem['parameters'] === []) {
+            unset($pathItem['parameters']);
+        }
+    }
+
+    foreach (['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as $method) {
+        if (!isset($pathItem[$method]['parameters']) || !is_array($pathItem[$method]['parameters'])) {
+            continue;
+        }
+        $pathItem[$method]['parameters'] = $strip($pathItem[$method]['parameters']);
+        if ($pathItem[$method]['parameters'] === []) {
+            unset($pathItem[$method]['parameters']);
+        }
+    }
+
+    return $pathItem;
+}
+
+/**
+ * In single-mode, expose /mgmt/v1/... paths (no /apis/{apiId}) in the served spec.
+ *
+ * @param array<string,mixed> $spec
+ * @return array<string,mixed>
+ */
+function with_mgmt_openapi_single_mode_paths(array $spec): array
+{
+    if (!function_exists('is_single_deployment_mode')) {
+        require_once APPPATH . 'helpers/deployment_helper.php';
+    }
+    if (!is_single_deployment_mode() || empty($spec['paths']) || !is_array($spec['paths'])) {
+        return $spec;
+    }
+
+    $paths = [];
+    foreach ($spec['paths'] as $path => $pathItem) {
+        if (!is_array($pathItem)) {
+            continue;
+        }
+        if ($path === '/mgmt/v1/apis') {
+            $paths[$path] = $pathItem;
+            continue;
+        }
+        if ($path === '/mgmt/v1/apis/{apiId}') {
+            $paths['/mgmt/v1'] = mgmt_openapi_strip_api_id_param($pathItem);
+            continue;
+        }
+        if (preg_match('#^/mgmt/v1/apis/\{apiId\}(.+)$#', (string) $path, $m)) {
+            $paths['/mgmt/v1' . $m[1]] = mgmt_openapi_strip_api_id_param($pathItem);
+        }
+    }
+    $spec['paths'] = $paths;
+    return $spec;
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function prepare_mgmt_openapi_spec(?string $baseUrl = null): array
+{
+    return with_mgmt_openapi_single_mode_paths(with_mgmt_openapi_servers_url(read_mgmt_openapi_spec(), $baseUrl));
+}
+
 function mgmt_openapi_yaml_with_servers(?string $baseUrl = null): string
 {
+    if (function_exists('yaml_emit')) {
+        return yaml_emit(prepare_mgmt_openapi_spec($baseUrl), YAML_UTF8_ENCODING);
+    }
+
     if ($baseUrl === null) {
         if (!function_exists('api_public_base_url')) {
             require_once APPPATH . 'helpers/deployment_helper.php';

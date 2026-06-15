@@ -30,15 +30,14 @@ abstract class SingleModeDataPlaneTestCase extends IntegrationTestCase
 
     protected static function ensureDefaultApiSchema(): void
     {
-        $apiId = getenv('DEFAULT_API_ID') ?: 'default';
-        $resp = self::$client->post('mgmt/v1/apis/' . $apiId . '/schema:rebuild', [
+        $resp = self::$client->post('mgmt/v1/schema:rebuild', [
             'headers' => self::managementHeaders(),
             'http_errors' => false,
         ]);
         if ($resp->getStatusCode() >= 400) {
             return;
         }
-        self::$client->post('mgmt/v1/apis/' . $apiId . ':activate', [
+        self::$client->post('mgmt/v1:activate', [
             'headers' => self::managementHeaders(),
             'http_errors' => false,
         ]);

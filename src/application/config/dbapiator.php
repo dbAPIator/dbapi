@@ -42,9 +42,13 @@ $config["default_field_access_select"] = true;
 $config["default_field_access_sort"] = true;
 $config["default_field_access_search"] = true;
 
+if (!defined('DBAPI_DEFAULT_API_ID')) {
+    require_once APPPATH . 'helpers/deployment_helper.php';
+}
+
 // deployment: "multi" (default) or "single" (Docker single-database onboarding)
 $config["deployment_mode"] = dbapi_env("DEPLOYMENT_MODE", "multi");
-$config["default_api_id"] = dbapi_env("DEFAULT_API_ID", "default");
+$config["default_api_id"] = DBAPI_DEFAULT_API_ID;
 
 // path to where the APIs confingurations are stored
 $config["configs_dir"] = dbapi_env("CONFIGS_DIR", "/var/www/html/dbapi/dbconfigs");

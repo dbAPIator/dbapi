@@ -116,7 +116,8 @@ The container listens on **port 80** internally. Map it to a host port (for exam
 | `CONFIG_API_SECRET` | Yes (production) | `myverysecuresecret` | Management API key → HTTP header **`X-Management-Key`** |
 | `CONFIG_API_IPS_ACLS` | No | `[{"allow":true,"ip":"0.0.0.0/0"}]` | JSON array restricting Management API by IP |
 | `DEPLOYMENT_MODE` | No | `multi` | Set to `single` for single-API auto-provision |
-| `DEFAULT_API_ID` | No | `default` | API id used in single mode |
+
+Single-mode always uses the fixed API id `default` (not configurable).
 
 ### Single-mode database connection
 

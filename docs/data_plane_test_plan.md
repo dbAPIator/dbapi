@@ -137,7 +137,6 @@ cd src && composer test:unit
 | `BASE_URL` | `http://localhost/dbapi/src/` | dbAPI base |
 | `MGMT_KEY` | `myverysecuresecret` | `X-Management-Key` |
 | `CONNECTION_JSON` | — | Inline connection JSON (overrides file) |
-| `DEFAULT_API_ID` | `default` | Single-mode API id for schema rebuild |
 
 ## Relationship to control-plane tests
 

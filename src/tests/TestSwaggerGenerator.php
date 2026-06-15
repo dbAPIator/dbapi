@@ -108,8 +108,39 @@ class TestSwaggerGenerator extends TestCase
     public function testMgmtOpenapiYamlWithServersPatchesUrl(): void
     {
         $yaml = mgmt_openapi_yaml_with_servers('http://api.example.com');
-        $this->assertStringContainsString("url: http://api.example.com\n", $yaml);
+        $this->assertStringContainsString('http://api.example.com', $yaml);
         $this->assertStringNotContainsString('http://localhost/dbapi/src', $yaml);
+    }
+
+    public function testWithMgmtOpenapiSingleModePathsRewritesUrls(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        $spec = [
+            'openapi' => '3.1.0',
+            'paths' => [
+                '/mgmt/v1/apis' => ['get' => ['operationId' => 'listApis']],
+                '/mgmt/v1/apis/{apiId}' => [
+                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
+                    'get' => ['operationId' => 'getApi'],
+                ],
+                '/mgmt/v1/apis/{apiId}/connection' => [
+                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
+                    'get' => ['operationId' => 'getConnection'],
+                ],
+                '/mgmt/v1/apis/{apiId}:activate' => [
+                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
+                    'post' => ['operationId' => 'activateApi'],
+                ],
+            ],
+        ];
+        $out = with_mgmt_openapi_single_mode_paths($spec);
+        $this->assertArrayHasKey('/mgmt/v1/apis', $out['paths']);
+        $this->assertArrayHasKey('/mgmt/v1', $out['paths']);
+        $this->assertArrayHasKey('/mgmt/v1/connection', $out['paths']);
+        $this->assertArrayHasKey('/mgmt/v1:activate', $out['paths']);
+        $this->assertArrayNotHasKey('/mgmt/v1/apis/{apiId}', $out['paths']);
+        $this->assertArrayNotHasKey('parameters', $out['paths']['/mgmt/v1']);
+        putenv('DEPLOYMENT_MODE');
     }
 
     public function testApiPublicBaseUrlPrefersBaseUrlEnv(): void

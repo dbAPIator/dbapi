@@ -4,6 +4,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 /**
  * Deployment mode helpers (single-database Docker vs multi-API hosting).
  */
+if (!defined('DBAPI_DEFAULT_API_ID')) {
+    define('DBAPI_DEFAULT_API_ID', 'default');
+}
+
 function deployment_mode(): string
 {
     $raw = strtolower((string) (getenv('DEPLOYMENT_MODE') ?: 'multi'));
@@ -17,8 +21,56 @@ function is_single_deployment_mode(): bool
 
 function default_api_id(): string
 {
-    $fromEnv = getenv('DEFAULT_API_ID');
-    return ($fromEnv !== false && $fromEnv !== '') ? $fromEnv : 'default';
+    return DBAPI_DEFAULT_API_ID;
+}
+
+/**
+ * Management API path for an API (single-mode omits /apis/{apiId} for the default API).
+ */
+function mgmt_api_path(string $suffix = '', ?string $apiId = null): string
+{
+    if ($apiId === null) {
+        $apiId = default_api_id();
+    }
+    if (is_single_deployment_mode() && $apiId === default_api_id()) {
+        if ($suffix === '') {
+            return '/mgmt/v1';
+        }
+        if ($suffix[0] === ':') {
+            return '/mgmt/v1' . $suffix;
+        }
+        return '/mgmt/v1/' . ltrim($suffix, '/');
+    }
+    $base = '/mgmt/v1/apis/' . rawurlencode($apiId);
+    if ($suffix === '') {
+        return $base;
+    }
+    if ($suffix[0] === ':') {
+        return $base . $suffix;
+    }
+    return $base . '/' . ltrim($suffix, '/');
+}
+
+/**
+ * Map single-mode /mgmt/v1/... request paths to canonical OpenAPI paths for validation.
+ */
+function mgmt_openapi_canonical_path(string $path): string
+{
+    if (!is_single_deployment_mode()) {
+        return $path;
+    }
+    $apiId = default_api_id();
+    if ($path === '/mgmt/v1' || $path === '/mgmt/v1/') {
+        return '/mgmt/v1/apis/' . $apiId;
+    }
+    if (strpos($path, '/mgmt/v1/apis') === 0) {
+        return $path;
+    }
+    if (strpos($path, '/mgmt/v1') === 0) {
+        $rest = substr($path, strlen('/mgmt/v1'));
+        return '/mgmt/v1/apis/' . $apiId . ($rest === '' ? '' : $rest);
+    }
+    return $path;
 }
 
 /**

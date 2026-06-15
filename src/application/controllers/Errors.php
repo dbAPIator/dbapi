@@ -16,11 +16,10 @@ class Errors extends CI_Controller {
     {
         $this->load->config('dbapiator');
         if (($this->config->item('deployment_mode') ?? 'multi') === 'single') {
-            $apiId = $this->config->item('default_api_id') ?: 'default';
             HttpResp::json_out(200, [
                 'service' => 'dbAPI',
                 'deploymentMode' => 'single',
-                'management' => '/mgmt/v1/apis/' . $apiId,
+                'management' => '/mgmt/v1',
                 'managementOpenApi' => '/management-openapi.yaml',
                 'data' => '/v1/data',
                 'auth' => '/v1/auth',
