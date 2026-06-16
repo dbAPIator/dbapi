@@ -47,4 +47,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Update Docker publish workflow to dynamically set image name
 
 
+## [1.2.6] - 2026-06-16
+
+- Enhance Docker setup for consumer projects. Refactor webhooks dispatcher in Docker setup
+
+
 ## [Unreleased]
