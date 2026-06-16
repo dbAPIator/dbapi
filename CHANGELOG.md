@@ -42,4 +42,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Enhance management API with single deployment mode support
 
 
+## [1.2.5] - 2026-06-16
+
+- Update Docker publish workflow to dynamically set image name
+
+
 ## [Unreleased]
