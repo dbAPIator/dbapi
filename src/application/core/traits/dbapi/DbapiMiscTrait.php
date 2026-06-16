@@ -108,14 +108,12 @@ trait DbapiMiscTrait
         self::log("[$configName/$resourceName] Publishing webhook event with data ".json_encode($data),LOG_INFO);
         try {
             $redis = new Redis();
-            if($redisUser && $redisPassword) {
+            $redis->connect($redisHost, $redisPort);
+            if ($redisUser && $redisPassword) {
                 $redis->auth($redisUser, $redisPassword);
-            }
-            elseif($redisPassword) {
+            } elseif ($redisPassword) {
                 $redis->auth($redisPassword);
             }
-
-            $redis->connect($redisHost, $redisPort);
 
             foreach ($webhooksConfig as $callbackUrl) {
                 $message = [

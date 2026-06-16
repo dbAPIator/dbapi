@@ -307,7 +307,8 @@ Data endpoints: `http://localhost:8888/v1/apis/demo/data/{resource}`
 | [`dbconfigs/`](dbconfigs/) | Generated per-API configuration |
 | [`docs/`](docs/) | Guides ([Docker](docs/docker_deployment.md), [Management API](docs/management_api.md), [Releasing](docs/releasing.md)) |
 | [`Dockerfile`](Dockerfile) | Production container image |
-| [`docker-compose.yml`](docker-compose.yml) | Local dev stack |
+| [`docker-compose.yml`](docker-compose.yml) | Local dev stack (build from source) |
+| [`docker/base/`](docker/base/) | Copy-paste Compose starter for consumer projects |
 | [`.github/workflows/`](.github/workflows/) | CI — tests, security audit, Docker publish |
 | [`scripts/release.sh`](scripts/release.sh) | Version bump, changelog, git tag |
 | [`tests/`](tests/) | Schemathesis harness (optional) |

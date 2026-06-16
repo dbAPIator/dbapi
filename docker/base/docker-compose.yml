@@ -1,0 +1,107 @@
+# Base stack for consumer projects using dbAPI.
+#
+# Copy this directory into your repo (e.g. docker/dbapi/) and run:
+#   cp .env.example .env   # edit credentials and secrets
+#   docker compose up -d
+#
+# Data plane (single-mode): http://localhost:${DBAPI_PORT}/v1/data/{resource}
+# Management API:          http://localhost:${DBAPI_PORT}/mgmt/v1/apis/default
+# Swagger UI:              http://localhost:${DBAPI_PORT}/swagger.html?url=v1/swagger
+#
+# Put .sql or .sh files in mysql-init/ to create your schema on first start.
+# Optional DB UI: docker compose --profile tools up -d
+# Webhooks: register hooks via Management API; webhooks-dispatcher delivers them from Redis.
+
+services:
+  dbapi:
+    image: ghcr.io/dbapiator/dbapi:${DBAPI_IMAGE_TAG}
+    ports:
+      - "${DBAPI_PORT}:80"
+    volumes:
+      - dbapi-configs:/app/apis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      BASE_URL: ${DBAPI_BASE_URL}
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE}
+      CONFIGS_DIR: /app/apis
+      CONFIG_API_SECRET: ${CONFIG_API_SECRET}
+      CONFIG_API_IPS_ACLS: ${CONFIG_API_IPS_ACLS}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_STREAM: ${REDIS_STREAM}
+      REDIS_GROUP: ${REDIS_GROUP}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_USER: ${REDIS_USER:-}
+      DEFAULT_PAGE_SIZE: ${DEFAULT_PAGE_SIZE}
+      MAX_PAGE_SIZE: ${MAX_PAGE_SIZE}
+      DEFAULT_RELATIONSHIPS_PAGE_SIZE: ${DEFAULT_RELATIONSHIPS_PAGE_SIZE}
+      API_TITLE: ${API_TITLE}
+      API_DESCRIPTION: ${API_DESCRIPTION}
+      API_VERSION: ${API_VERSION}
+    restart: unless-stopped
+
+  webhooks-dispatcher:
+    image: ghcr.io/dbapiator/dbapi:${DBAPI_IMAGE_TAG}
+    entrypoint: ["php", "/dispatcher/webhooks-dispatcher.php"]
+    volumes:
+      - ./webhooks-dispatcher.php:/dispatcher/webhooks-dispatcher.php:ro
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_STREAM: ${REDIS_STREAM}
+      REDIS_GROUP: ${REDIS_GROUP}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_USER: ${REDIS_USER:-}
+    restart: unless-stopped
+
+  mysql:
+    image: mariadb:${MARIADB_TAG}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:${REDIS_TAG}
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    profiles: ["tools"]
+    ports:
+      - "${ADMINER_PORT}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  dbapi-configs:
+  mysql-data:
+  redis-data:

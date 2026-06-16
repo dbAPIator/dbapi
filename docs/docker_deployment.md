@@ -4,6 +4,8 @@ Use the published dbAPI container image to run dbAPI without cloning the reposit
 
 For local development with live code mounts and a bundled MariaDB/Redis stack, use [`docker-compose.yml`](../docker-compose.yml) in the repository instead.
 
+For **consumer projects** (your app + database, published dbAPI image), copy [`docker/base/`](../docker/base/) into your repo, set `.env` from `.env.example`, add schema SQL under `mysql-init/`, and run `docker compose up -d`.
+
 ---
 
 ## Image location and tags
@@ -206,62 +208,17 @@ curl -sS http://localhost:8888/v1/swagger
 
 ## Single-API: Docker Compose (production-style)
 
-Save as `docker-compose.prod.yml` (or merge into your stack). Uses the published image with MariaDB and Redis:
-
-```yaml
-services:
-  dbapi:
-    image: ghcr.io/dbapiator/dbapi:1.0.0
-    ports:
-      - "8888:80"
-    volumes:
-      - dbapi-configs:/app/apis
-    depends_on:
-      - mysql
-      - redis
-    environment:
-      DEPLOYMENT_MODE: single
-      CONFIGS_DIR: /app/apis
-      CONFIG_API_SECRET: change-me-in-production
-      DB_HOST: mysql
-      DB_PORT: "3306"
-      DB_NAME: myapp
-      DB_USER: user
-      DB_PASSWORD: password
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_STREAM: dbapi_webhooks
-      REDIS_GROUP: dbapi_webhooks_group
-    restart: unless-stopped
-
-  mysql:
-    image: mariadb:11
-    environment:
-      MYSQL_DATABASE: myapp
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
-    volumes:
-      - mysql-data:/var/lib/mysql
-    restart: unless-stopped
-
-  redis:
-    image: redis:7
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-
-volumes:
-  dbapi-configs:
-  mysql-data:
-  redis-data:
-```
-
-Start:
+Use the copy-paste starter in [`docker/base/`](../docker/base/):
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+cp -r path/to/dbapi/docker/base ./docker/dbapi
+cd docker/dbapi
+cp .env.example .env   # set CONFIG_API_SECRET, DB credentials, DBAPI_IMAGE_TAG
+# optional: add mysql-init/*.sql for your schema
+docker compose up -d
 ```
+
+The stack uses the published GHCR image, named volumes for configs and data, MariaDB with `mysql-init/` hooks, Redis, a `webhooks-dispatcher` service that delivers registered webhooks from the Redis stream, and an optional Adminer UI (`docker compose --profile tools up -d`).
 
 Replace `change-me-in-production`, database credentials, and the image tag before using in production.
 
