@@ -50,10 +50,7 @@ services:
     restart: unless-stopped
 
   webhooks-dispatcher:
-    image: ghcr.io/dbapiator/dbapi:${DBAPI_IMAGE_TAG}
-    entrypoint: ["php", "/dispatcher/webhooks-dispatcher.php"]
-    volumes:
-      - ./webhooks-dispatcher.php:/dispatcher/webhooks-dispatcher.php:ro
+    build: ./webhooks-dispatcher
     depends_on:
       redis:
         condition: service_started

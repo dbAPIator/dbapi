@@ -96,7 +96,7 @@ REDIS_PORT=6379
 REDIS_STREAM=dbapi_webhooks
 ```
 
-`:validate` warns if hooks exist but Redis is unset. The [`docker/base/`](../docker/base/) stack includes a `webhooks-dispatcher` service; otherwise run [`docker/base/webhooks-dispatcher.php`](../docker/base/webhooks-dispatcher.php) (or [`other/webhooks-dispatcher.php`](../other/webhooks-dispatcher.php) for local dev).
+`:validate` warns if hooks exist but Redis is unset. The [`docker/base/`](../docker/base/) stack builds and runs a dedicated `webhooks-dispatcher` container; otherwise run [`docker/base/webhooks-dispatcher/webhooks-dispatcher.php`](../docker/base/webhooks-dispatcher/webhooks-dispatcher.php) (or [`other/webhooks-dispatcher.php`](../other/webhooks-dispatcher.php) for local dev).
 
 ---
 

@@ -218,7 +218,7 @@ cp .env.example .env   # set CONFIG_API_SECRET, DB credentials, DBAPI_IMAGE_TAG
 docker compose up -d
 ```
 
-The stack uses the published GHCR image, named volumes for configs and data, MariaDB with `mysql-init/` hooks, Redis, a `webhooks-dispatcher` service that delivers registered webhooks from the Redis stream, and an optional Adminer UI (`docker compose --profile tools up -d`).
+The stack uses the published GHCR image for dbAPI, a locally built `webhooks-dispatcher` image (PHP CLI worker), named volumes for configs and data, MariaDB with `mysql-init/` hooks, Redis, and an optional Adminer UI (`docker compose --profile tools up -d`).
 
 Replace `change-me-in-production`, database credentials, and the image tag before using in production.
 
