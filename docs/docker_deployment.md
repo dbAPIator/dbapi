@@ -63,11 +63,14 @@ dbAPI supports two hosting modes. Choose one before configuring environment vari
 
 On container start the entrypoint:
 
-1. Waits for MySQL/MariaDB at `DB_HOST`:`DB_PORT` (up to 60 seconds)
-2. Auto-provisions the **`default`** API from `DB_*` environment variables
-3. Writes configuration under `CONFIGS_DIR` (default in examples: `/app/apis`)
+1. Waits up to 60 seconds for MySQL/MariaDB at `DB_HOST`:`DB_PORT` (continues if unreachable)
+2. Scaffolds the **`default`** API in **draft** under `CONFIGS_DIR`
+3. Pre-fills `connection.php` from `DB_*` env when `DB_HOST` and `DB_NAME` are set (even if the DB is not yet reachable)
+4. When the database is reachable, runs connection test, schema build, and activation automatically
 
-No manual Management API call is required for the first API.
+No manual Management API call is required. Use `GET /mgmt/v1` to inspect status. OpenAPI spec: `/management-openapi-single.yaml` (also served at `/management-openapi.yaml` in single mode).
+
+Optional metadata env vars: `API_TITLE`, `API_DESCRIPTION`, `API_VERSION`, `API_TERMS_OF_SERVICE`, `API_LICENSE_NAME`, `API_LICENSE_URL`, `API_CONTACT_NAME`, `API_CONTACT_EMAIL`, `API_CONTACT_URL`, `API_CONTACT_PHONE`.
 
 ### Multi-API mode
 
@@ -130,6 +133,17 @@ Required when `DEPLOYMENT_MODE=single`:
 | `DB_NAME` | Yes | — | Database name |
 | `DB_USER` | Yes | — | Database user |
 | `DB_PASSWORD` | No | `""` | Database password |
+
+Optional metadata for the auto-provisioned API (written to `meta.php`):
+
+| Variable | Description |
+|----------|-------------|
+| `API_TITLE` | Display title (OpenAPI `info.title`) |
+| `API_DESCRIPTION` | Description |
+| `API_VERSION` | Version label (default `1.0.0`) |
+| `API_TERMS_OF_SERVICE` | Terms URL |
+| `API_LICENSE_NAME`, `API_LICENSE_URL` | License block |
+| `API_CONTACT_NAME`, `API_CONTACT_EMAIL`, `API_CONTACT_URL`, `API_CONTACT_PHONE` | Contact block |
 
 ### Pagination and limits
 

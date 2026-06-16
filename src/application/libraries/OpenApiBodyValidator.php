@@ -14,9 +14,16 @@ class OpenApiBodyValidator
             throw new RuntimeException("Cannot read OpenAPI spec: {$specPath}");
         }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException("OpenAPI spec is not valid JSON: {$specPath}");
+        if (preg_match('/\.ya?ml$/i', $specPath)) {
+            if (!function_exists('parse_mgmt_openapi_yaml')) {
+                require_once APPPATH . 'helpers/swagger/SpecBuilder.php';
+            }
+            $decoded = parse_mgmt_openapi_yaml($raw);
+        } else {
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                throw new RuntimeException("OpenAPI spec is not valid JSON: {$specPath}");
+            }
         }
 
         $this->spec = $decoded;

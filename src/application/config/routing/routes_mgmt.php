@@ -2,7 +2,11 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 $route['^management-openapi\.json$']['get'] = 'swagger/management_json';
+$route['^management-openapi-multi\.json$']['get'] = 'swagger/management_json/multi';
+$route['^management-openapi-single\.json$']['get'] = 'swagger/management_json/single';
 $route['^management-openapi\.yaml$']['get'] = 'swagger/management_yaml';
+$route['^management-openapi-multi\.yaml$']['get'] = 'swagger/management_yaml/multi';
+$route['^management-openapi-single\.yaml$']['get'] = 'swagger/management_yaml/single';
 
 $mgmt = '^mgmt/v1/apis';
 $mgmtApi = $mgmt . '/(:any)';

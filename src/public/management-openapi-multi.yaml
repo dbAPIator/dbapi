@@ -1,0 +1,977 @@
+openapi: 3.1.0
+info:
+  title: dbAPI Management API (multi mode)
+  version: 1.0.0
+  description: 'Control-plane API for dbAPI **multi-API mode** .
+
+    Create, list, and delete APIs under `/mgmt/v1/apis`; configure each at `/mgmt/v1/apis/{apiId}/...`.
+
+    Documentation: docs/management_api.md
+
+
+    The served spec sets `servers[0].url` from `BASE_URL` or the request host.
+
+    '
+servers:
+- url: http://localhost
+tags:
+- name: APIs
+- name: Connection
+- name: Policies
+- name: Schema
+- name: Hooks
+- name: Lifecycle
+security:
+- managementKey: []
+paths:
+  /mgmt/v1/apis:
+    get:
+      tags:
+      - APIs
+      operationId: listApis
+      security:
+      - managementKey: []
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiListResponse'
+    post:
+      tags:
+      - APIs
+      operationId: createApi
+      security:
+      - managementKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiCreateRequest'
+      parameters:
+      - name: provision
+        in: query
+        description: Set to `immediate` for quick-create (or use Prefer immediate-provision header)
+        schema:
+          type: string
+          enum:
+          - immediate
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiCreateResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Quick-create validation failed (API may remain in draft)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api:
+                    $ref: '#/components/schemas/Api'
+                  validation:
+                    $ref: '#/components/schemas/ValidateResult'
+  /mgmt/v1/apis/{apiId}:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - APIs
+      operationId: getApi
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Api'
+    patch:
+      tags:
+      - APIs
+      operationId: updateApi
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiUpdateRequest'
+      responses:
+        '200':
+          description: OK
+    delete:
+      tags:
+      - APIs
+      operationId: deleteApi
+      security:
+      - managementKey: []
+      parameters:
+      - name: force
+        in: query
+        schema:
+          type: boolean
+      responses:
+        '204':
+          description: Deleted
+  /mgmt/v1/apis/{apiId}:validate:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Lifecycle
+      operationId: validateApi
+      description: Dry-run preflight checks; optional before `:activate` (activate validates inline).
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResult'
+  /mgmt/v1/apis/{apiId}:activate:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Lifecycle
+      operationId: activateApi
+      description: Runs validation checks inline; `:validate` is optional (dry-run only).
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Api'
+        '409':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /mgmt/v1/apis/{apiId}:deactivate:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Lifecycle
+      operationId: deactivateApi
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Api'
+  /mgmt/v1/apis/{apiId}/management-credentials:rotate:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - APIs
+      operationId: rotateManagementCredential
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagementCredentialResponse'
+  /mgmt/v1/apis/{apiId}/connection:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Connection
+      operationId: getConnection
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionConfig'
+    put:
+      tags:
+      - Connection
+      operationId: setConnection
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionConfig'
+      responses:
+        '200':
+          description: OK
+  /mgmt/v1/apis/{apiId}/connection:test:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Connection
+      operationId: testConnection
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTestResult'
+  /mgmt/v1/apis/{apiId}/policies/config-network:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Policies
+      operationId: getConfigNetworkPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPolicy'
+    put:
+      tags:
+      - Policies
+      operationId: setConfigNetworkPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPolicy'
+      responses:
+        '200':
+          description: OK
+  /mgmt/v1/apis/{apiId}/policies/data-network:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Policies
+      operationId: getDataNetworkPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPolicy'
+    put:
+      tags:
+      - Policies
+      operationId: setDataNetworkPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPolicy'
+      responses:
+        '200':
+          description: OK
+  /mgmt/v1/apis/{apiId}/policies/auth:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Policies
+      operationId: getAuthPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          description: OK
+    put:
+      tags:
+      - Policies
+      operationId: setAuthPolicy
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthPolicy'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTestResult'
+  /mgmt/v1/apis/{apiId}/schema:introspect:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Schema
+      operationId: introspectSchema
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaIntrospectResult'
+  /mgmt/v1/apis/{apiId}/schema/introspected:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Schema
+      operationId: getIntrospectedSchema
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          description: Snapshot file or generated entity map
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/SchemaEntitiesResponse'
+                - type: object
+                  description: Raw entity map from schema_introspected.json
+  /mgmt/v1/apis/{apiId}/schema/effective:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Schema
+      operationId: getEffectiveSchema
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaEntitiesResponse'
+  /mgmt/v1/apis/{apiId}/schema/overrides:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Schema
+      operationId: getSchemaOverrides
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          description: OK
+    put:
+      tags:
+      - Schema
+      operationId: putSchemaOverrides
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+    patch:
+      tags:
+      - Schema
+      operationId: patchSchemaOverrides
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+  /mgmt/v1/apis/{apiId}/schema:sync:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    - name: activate
+      in: query
+      description: When `true`, validate and activate after sync
+      schema:
+        type: boolean
+        default: false
+    post:
+      tags:
+      - Schema
+      operationId: syncSchema
+      description: Introspect DB, write snapshot, rebuild structure.php (preserves relationship names).
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaSyncResult'
+        '409':
+          description: Sync succeeded but activation failed validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /mgmt/v1/apis/{apiId}/schema:rebuild:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    post:
+      tags:
+      - Schema
+      operationId: rebuildSchema
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaRebuildResult'
+  /mgmt/v1/apis/{apiId}/hooks:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    get:
+      tags:
+      - Hooks
+      operationId: listHooks
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '200':
+          description: OK
+    put:
+      tags:
+      - Hooks
+      operationId: replaceAllHooks
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+  /mgmt/v1/apis/{apiId}/hooks/{entityName}:
+    parameters:
+    - $ref: '#/components/parameters/ApiId'
+    - name: entityName
+      in: path
+      required: true
+      schema:
+        type: string
+    put:
+      tags:
+      - Hooks
+      operationId: upsertEntityHooks
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+    delete:
+      tags:
+      - Hooks
+      operationId: deleteEntityHooks
+      security:
+      - managementKey: []
+      - apiConfigKey: []
+      responses:
+        '204':
+          description: Deleted
+components:
+  securitySchemes:
+    managementKey:
+      type: apiKey
+      in: header
+      name: X-Management-Key
+      description: Instance secret. Aliases X-Admin-API-Key, X-Api-Key, x-api-key (query).
+    apiConfigKey:
+      type: apiKey
+      in: header
+      name: X-Api-Config-Key
+      description: Per-API secret from create/rotate. Aliases x-api-config-key, x-api-key, X-Api-Key.
+  parameters:
+    ApiId:
+      name: apiId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ApiCreateRequest:
+      type: object
+      required:
+      - name
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[a-zA-Z0-9_\-]+$
+        description:
+          type: string
+        contact:
+          $ref: '#/components/schemas/Contact'
+        connection:
+          $ref: '#/components/schemas/ConnectionConfig'
+        title: &id001
+          type: string
+          maxLength: 200
+          description: Display title (OpenAPI info.title). Defaults to the API name.
+        version: &id002
+          type: string
+          maxLength: 32
+          description: API version label (OpenAPI info.version). Default 1.0.0.
+        termsOfService: &id003
+          type: string
+          format: uri
+        license: &id004
+          $ref: '#/components/schemas/License'
+    ApiUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[a-zA-Z0-9_\-]+$
+        description:
+          type: string
+        contact:
+          $ref: '#/components/schemas/Contact'
+        title: *id001
+        version: *id002
+        termsOfService: *id003
+        license: *id004
+    Contact:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        url:
+          type: string
+          format: uri
+        phone:
+          type: string
+    ApiCreateResponse:
+      type: object
+      required:
+      - api
+      - managementCredential
+      properties:
+        api:
+          $ref: '#/components/schemas/Api'
+        managementCredential:
+          type: object
+          properties:
+            secret:
+              type: string
+            header:
+              type: string
+              enum:
+              - X-Api-Config-Key
+            note:
+              type: string
+    ManagementCredentialResponse:
+      type: object
+      properties:
+        managementCredential:
+          type: object
+          properties:
+            secret:
+              type: string
+            header:
+              type: string
+            note:
+              type: string
+    ConnectionTestResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - fail
+        at:
+          type: string
+          format: date-time
+        latencyMs:
+          type: number
+        message:
+          type: string
+          nullable: true
+    SchemaIntrospectResult:
+      type: object
+      properties:
+        introspectedAt:
+          type: string
+          format: date-time
+        entityCount:
+          type: integer
+    SchemaRebuildResult:
+      type: object
+      properties:
+        rebuiltAt:
+          type: string
+          format: date-time
+        entityCount:
+          type: integer
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+    SchemaSyncResult:
+      type: object
+      properties:
+        syncedAt:
+          type: string
+          format: date-time
+        introspectedAt:
+          type: string
+          format: date-time
+        entityCount:
+          type: integer
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+        activation:
+          type: object
+          properties:
+            activated:
+              type: boolean
+            status:
+              type: string
+            validation:
+              $ref: '#/components/schemas/ValidateResult'
+    SchemaEntitiesResponse:
+      type: object
+      properties:
+        entities:
+          type: object
+          additionalProperties: true
+    Api:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - inactive
+        description:
+          type: string
+        contact:
+          $ref: '#/components/schemas/Contact'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        connection:
+          type: object
+          properties:
+            configured:
+              type: boolean
+            lastTest:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - ok
+                  - fail
+                at:
+                  type: string
+                  format: date-time
+                message:
+                  type: string
+        policies:
+          type: object
+          properties:
+            configNetworkConfigured:
+              type: boolean
+            dataNetworkConfigured:
+              type: boolean
+        schema:
+          type: object
+          properties:
+            introspectedAt:
+              type: string
+              format: date-time
+            effectiveVersion:
+              type: string
+              nullable: true
+        title: *id001
+        version: *id002
+        termsOfService: *id003
+        license: *id004
+    ApiListResponse:
+      type: object
+      required:
+      - items
+      - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Api'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            total:
+              type: integer
+    ConnectionConfig:
+      type: object
+      required:
+      - driver
+      - host
+      - database
+      - username
+      - password
+      properties:
+        driver:
+          type: string
+          enum:
+          - mysql
+        host:
+          type: string
+        port:
+          type: integer
+        database:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+    NetworkPolicy:
+      type: object
+      properties:
+        defaultAction:
+          type: string
+          enum:
+          - allow
+          - deny
+        rules:
+          type: array
+          items:
+            type: object
+            properties:
+              cidr:
+                type: string
+              action:
+                type: string
+                enum:
+                - allow
+                - deny
+        path:
+          type: array
+          description: Data API path/method ACLs (stored in data_api_acls.php path rules)
+          items:
+            type: object
+            properties:
+              pattern:
+                type: string
+              methods:
+                type: string
+                description: HTTP method or * for all
+              allow:
+                type: boolean
+              when:
+                type: object
+                description: JWT claim conditions (all must match). Rule skipped when when fails.
+                additionalProperties:
+                  type: string
+    AuthPolicy:
+      type: object
+      required:
+      - mode
+      properties:
+        mode:
+          type: string
+          enum:
+          - none
+          - dbAuth
+        default_access_rule:
+          type: string
+          enum:
+          - public
+          - private
+          description: Default data access when path rules are empty. public = anonymous GET on public tables; private = JWT
+            required.
+        filterBypassRoles:
+          type: array
+          items:
+            type: string
+          description: JWT role values that skip mandatoryFilter / mandatoryAssign (e.g. admin).
+        dbAuth:
+          type: object
+          properties:
+            default_access_rule:
+              type: string
+              enum:
+              - public
+              - private
+            filterBypassRoles:
+              type: array
+              items:
+                type: string
+            login:
+              type: object
+              properties:
+                sql:
+                  type: string
+            validity:
+              type: integer
+    ValidateResult:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: string
+                enum:
+                - ok
+                - warn
+                - fail
+              message:
+                type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            details:
+              type: object
+    License:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri

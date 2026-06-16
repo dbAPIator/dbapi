@@ -79,12 +79,36 @@ class TestDeploymentHelper extends TestCase
         $this->assertSame('/mgmt/v1/apis/demo:activate', mgmt_api_path(':activate', 'demo'));
     }
 
-    public function testMgmtOpenapiCanonicalPathMapsSingleModeUrls(): void
+    public function testMgmtOpenapiCanonicalPathMapsSingleModeAliases(): void
     {
         putenv('DEPLOYMENT_MODE=single');
-        $this->assertSame('/mgmt/v1/apis/default', mgmt_openapi_canonical_path('/mgmt/v1'));
-        $this->assertSame('/mgmt/v1/apis/default/connection', mgmt_openapi_canonical_path('/mgmt/v1/connection'));
-        $this->assertSame('/mgmt/v1/apis/default:activate', mgmt_openapi_canonical_path('/mgmt/v1:activate'));
+        $this->assertSame('/mgmt/v1', mgmt_openapi_canonical_path('/mgmt/v1'));
+        $this->assertSame('/mgmt/v1/connection', mgmt_openapi_canonical_path('/mgmt/v1/connection'));
+        $this->assertSame('/mgmt/v1:activate', mgmt_openapi_canonical_path('/mgmt/v1:activate'));
+        $this->assertSame('/mgmt/v1/connection', mgmt_openapi_canonical_path('/mgmt/v1/apis/default/connection'));
         $this->assertSame('/mgmt/v1/apis', mgmt_openapi_canonical_path('/mgmt/v1/apis'));
+    }
+
+    public function testSingleModeMetaFromEnv(): void
+    {
+        putenv('API_TITLE=My API');
+        putenv('API_DESCRIPTION=Demo instance');
+        putenv('API_VERSION=2.0.0');
+        putenv('API_CONTACT_NAME=Ops');
+        putenv('API_CONTACT_EMAIL=ops@example.com');
+
+        $meta = single_mode_meta_from_env('default');
+        $this->assertSame('default', $meta['name']);
+        $this->assertSame('My API', $meta['title']);
+        $this->assertSame('Demo instance', $meta['description']);
+        $this->assertSame('2.0.0', $meta['version']);
+        $this->assertSame('Ops', $meta['contact']['name']);
+        $this->assertSame('ops@example.com', $meta['contact']['email']);
+
+        putenv('API_TITLE');
+        putenv('API_DESCRIPTION');
+        putenv('API_VERSION');
+        putenv('API_CONTACT_NAME');
+        putenv('API_CONTACT_EMAIL');
     }
 }

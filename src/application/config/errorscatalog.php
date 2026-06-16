@@ -69,6 +69,18 @@ $errorsCatalog["config"] = [
         "code"=>"3010",
         "message"=>"Single deployment mode: the default API is auto-provisioned; creating additional APIs is not supported"
     ],
+    "single_mode_no_list"=>[
+        "code"=>"3011",
+        "message"=>"Single deployment mode: use GET /mgmt/v1 for the instance API; listing APIs is not supported"
+    ],
+    "single_mode_no_delete"=>[
+        "code"=>"3012",
+        "message"=>"Single deployment mode: deleting the instance API is not supported"
+    ],
+    "single_mode_no_rename"=>[
+        "code"=>"3013",
+        "message"=>"Single deployment mode: the API id is fixed; renaming is not supported"
+    ],
 
 ];
 

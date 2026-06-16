@@ -8,6 +8,9 @@ class Apis extends MY_MgmtController
     public function list_apis()
     {
         $this->requireManagementKey();
+        if ($this->isSingleDeploymentMode()) {
+            $this->mgmtError(404, $this->errorsCatalog['config']['single_mode_no_list']);
+        }
         $limit = min(200, max(1, (int) ($this->input->get('limit') ?: 50)));
         $offset = max(0, (int) ($this->input->get('offset') ?: 0));
         $ids = $this->store->listApiIds();
@@ -26,7 +29,7 @@ class Apis extends MY_MgmtController
     public function create()
     {
         $this->requireManagementKey();
-        if (($this->config->item('deployment_mode') ?? 'multi') === 'single') {
+        if ($this->isSingleDeploymentMode()) {
             $this->mgmtError(409, $this->errorsCatalog['config']['single_mode_no_create']);
         }
         $payload = $this->readCreatePayload();
@@ -45,14 +48,13 @@ class Apis extends MY_MgmtController
 
         $id = $this->utilities->short_uuid();
         $now = gmdate('Y-m-d\TH:i:s\Z');
-        $meta = [
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        $meta = array_merge([
             'id' => $id,
             'name' => $apiId,
-            'description' => $payload->description ?? null,
-            'contact' => json_decode(json_encode($payload->contact ?? null), true),
             'createdAt' => $now,
             'updatedAt' => $now,
-        ];
+        ], mgmt_meta_from_payload($payload));
         $this->store->scaffoldDraft($apiId, $meta);
         $admin = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/{$this->configFiles['admin_config']}");
         $api = $this->store->buildApiResource($apiId);
@@ -78,8 +80,12 @@ class Apis extends MY_MgmtController
     {
         $this->requireApiAccess($apiId);
         $payload = $this->validatePayload();
+        if ($this->isSingleDeploymentMode() && isset($payload->name) && $payload->name !== $apiId) {
+            $this->mgmtError(409, $this->errorsCatalog['config']['single_mode_no_rename']);
+        }
         $meta = $this->store->loadMeta($apiId);
-        $merged = smart_array_merge_recursive($meta, json_decode(json_encode($payload), true));
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        $merged = smart_array_merge_recursive($meta, mgmt_meta_from_payload($payload));
         if (isset($payload->name) && $payload->name !== $apiId) {
             $newId = $payload->name;
             if ($this->store->apiExists($newId)) {
@@ -96,6 +102,9 @@ class Apis extends MY_MgmtController
     public function delete($apiId)
     {
         $this->requireManagementKey();
+        if ($this->isSingleDeploymentMode()) {
+            $this->mgmtError(409, $this->errorsCatalog['config']['single_mode_no_delete']);
+        }
         if (!$this->store->apiExists($apiId)) {
             $this->mgmtError(404, $this->errorsCatalog['config']['api_not_found']);
         }
@@ -149,12 +158,13 @@ class Apis extends MY_MgmtController
     protected function provisionImmediate(string $apiId, object $payload): void
     {
         $now = gmdate('Y-m-d\TH:i:s\Z');
-        $meta = [
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        $meta = array_merge([
             'id' => $this->utilities->short_uuid(),
             'name' => $apiId,
             'createdAt' => $now,
             'updatedAt' => $now,
-        ];
+        ], mgmt_meta_from_payload($payload));
         try {
             $this->store->scaffoldDraft($apiId, $meta);
             if (isset($payload->connection)) {

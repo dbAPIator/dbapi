@@ -4,8 +4,12 @@
 </IfModule>
 
 RewriteEngine On
-RewriteRule ^management-openapi\.yaml$ index.php/swagger/management_yaml [L,QSA]
 RewriteRule ^management-openapi\.json$ index.php/swagger/management_json [L,QSA]
+RewriteRule ^management-openapi-multi\.json$ index.php/swagger/management_json/multi [L,QSA]
+RewriteRule ^management-openapi-single\.json$ index.php/swagger/management_json/single [L,QSA]
+RewriteRule ^management-openapi\.yaml$ index.php/swagger/management_yaml [L,QSA]
+RewriteRule ^management-openapi-multi\.yaml$ index.php/swagger/management_yaml/multi [L,QSA]
+RewriteRule ^management-openapi-single\.yaml$ index.php/swagger/management_yaml/single [L,QSA]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php/$1 [L]

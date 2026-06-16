@@ -2,6 +2,7 @@
     "require": {
         "firebase/php-jwt": "~6.10.0",
         "ext-json": "*",
+        "ext-yaml": "*",
         "predis/predis": "^2.3",
         "guzzlehttp/guzzle": "^7.9",
         "ext-curl": "*",

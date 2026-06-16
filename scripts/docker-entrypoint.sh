@@ -27,8 +27,10 @@ if [ "${DEPLOYMENT_MODE:-multi}" = "single" ]; then
     echo "Installing PHP dependencies (vendor/ missing — dev volume mount)..."
     composer install --no-dev --no-interaction --optimize-autoloader
   fi
-  wait_for_mysql
-  php /app/public/index.php cli/provision run
+  if ! wait_for_mysql; then
+    echo "Warning: continuing with draft provisioning (database not reachable)." >&2
+  fi
+  php /app/public/index.php cli/provision run || echo "Warning: auto-provision reported an error (instance may remain in draft)." >&2
   if [ -d "/app/apis/default" ]; then
     chown -R www-data:www-data /app/apis/default
     chmod 644 /app/apis/default/openapi.json 2>/dev/null || true

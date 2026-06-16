@@ -29,8 +29,26 @@ All examples below use `http://localhost/dbapi/src`.
 
 **OpenAPI & Swagger:**
 
-- Spec: [`src/public/management-openapi.yaml`](../src/public/management-openapi.yaml) (JSON: [`management-openapi.json`](../src/public/management-openapi.json))
+- Mode-specific source files (served dynamically with the correct `servers[0].url`):
+  - Multi: `management-openapi-multi.yaml` → `GET {base}/management-openapi.yaml` (multi mode) or `{base}/management-openapi-multi.yaml`
+  - Single: `management-openapi-single.yaml` → `GET {base}/management-openapi.yaml` (single mode) or `{base}/management-openapi-single.yaml`
+- JSON: append `.json` instead of `.yaml` on the same paths
 - UI: `{base}/swagger.html?url=management-openapi.yaml`
+
+---
+
+## Deployment modes
+
+| | Multi-API (default) | Single-API (`DEPLOYMENT_MODE=single`) |
+|---|---------------------|----------------------------------------|
+| **Use case** | Host many APIs on one instance | One database, one fixed API (`default`) |
+| **Management base** | `/mgmt/v1/apis` (collection) + `/mgmt/v1/apis/{apiId}/...` | `/mgmt/v1` (instance) + `/mgmt/v1/connection`, etc. |
+| **Data plane** | `/v1/apis/{apiId}/data/...` | `/v1/data/...` |
+| **Create / list / delete APIs** | Yes | **No** — default API is auto-provisioned on startup |
+| **Get instance API** | `GET /mgmt/v1/apis/{apiId}` | `GET /mgmt/v1` |
+| **Bootstrap** | Manual via Management API | Draft scaffold on launch; `DB_*` env pre-fills `connection.php` even if DB is down |
+
+In single mode, `GET /mgmt/v1/apis`, `POST /mgmt/v1/apis`, and `DELETE` return **404/409**. Renaming (`PATCH` with a new `name`) is not allowed.
 
 ---
 
@@ -66,7 +84,43 @@ Instance IP restrictions apply via `config_api_ips_acls`. Per-API config updates
 - **`apiId`** — Path segment and directory name under `configs_dir` (e.g. `demo`). Same id is used in the Data API: `/v1/apis/demo/data/...`. Must match `^[a-zA-Z0-9_\-]+$`.
 - **`id`** — Stable UUID in `meta.php` (metadata only).
 
-Renaming: `PATCH /mgmt/v1/apis/{apiId}` with body field `name` set to a new id renames the config directory when the new name is free.
+Renaming: `PATCH /mgmt/v1/apis/{apiId}` with body field `name` set to a new id renames the config directory when the new name is free. **Not supported in single mode** (id is fixed to `default`).
+
+---
+
+## API metadata (`meta.php`)
+
+Each API stores descriptive metadata in `meta.php`. It is returned on `GET` (list items and single API resource) and can be set at create time or updated with `PATCH`.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Stable UUID (read-only, set on create) |
+| `name` | Directory / path id (`apiId`); required on create in multi mode |
+| `title` | Display title for the data-plane OpenAPI `info.title` (defaults to `name`) |
+| `description` | Human-readable summary |
+| `version` | Version label for data-plane OpenAPI `info.version` (default `1.0.0`) |
+| `termsOfService` | URL |
+| `contact` | `{ name, email, url, phone }` |
+| `license` | `{ name, url }` |
+| `createdAt`, `updatedAt` | Timestamps |
+
+Create/update accept the same flat fields as the `Api` resource (except read-only `id`, `createdAt`, `updatedAt`, and operational summaries):
+
+```json
+{
+  "name": "demo",
+  "title": "Demo Shop API",
+  "description": "Customer and order data",
+  "version": "1.2.0",
+  "termsOfService": "https://example.com/terms",
+  "contact": { "name": "API Team", "email": "api@example.com" },
+  "license": { "name": "MIT", "url": "https://opensource.org/licenses/MIT" }
+}
+```
+
+**Single-mode Docker env** (optional, applied at auto-provision): `API_TITLE`, `API_DESCRIPTION`, `API_VERSION`, `API_TERMS_OF_SERVICE`, `API_LICENSE_NAME`, `API_LICENSE_URL`, `API_CONTACT_NAME`, `API_CONTACT_EMAIL`, `API_CONTACT_URL`, `API_CONTACT_PHONE`.
+
+Metadata is copied into each API's generated `openapi.json` (`info` block) when the schema is rebuilt.
 
 ---
 
@@ -152,7 +206,7 @@ Returned by list items, `GET/PATCH .../apis/{apiId}`, and lifecycle activate/dea
 
 | Field | Description |
 |-------|-------------|
-| `id`, `name`, `description`, `contact`, `createdAt`, `updatedAt` | Metadata |
+| `id`, `name`, `title`, `description`, `version`, `termsOfService`, `contact`, `license`, `createdAt`, `updatedAt` | Metadata (`title`, `version`, etc. from `meta.php`) |
 | `status` | `draft`, `active`, or `inactive` |
 | `connection.configured` | Whether `connection.php` has a database |
 | `connection.lastTest` | `{ status, at, message }` after `connection:test` |
@@ -534,6 +588,8 @@ Environment variables (optional):
 | `CONFIG_API_SECRET` | Instance `X-Management-Key` value |
 | `CONFIG_API_IPS_ACLS` | JSON array of IP ACL rules for instance |
 | `CONFIGS_DIR` | API config root directory |
+| `API_TITLE`, `API_DESCRIPTION`, `API_VERSION` | Single-mode default API metadata (optional) |
+| `API_CONTACT_*`, `API_LICENSE_*`, `API_TERMS_OF_SERVICE` | Single-mode contact/license metadata (optional) |
 | `REDIS_HOST`, `REDIS_PORT`, … | Hooks / streams |
 
 ---

@@ -15,7 +15,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "7.4"
-          extensions: json, curl, mysqli
+          extensions: json, curl, mysqli, yaml
           coverage: none
 
       - name: Install dependencies
@@ -55,7 +55,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "7.4"
-          extensions: json, curl, mysqli, mbstring
+          extensions: json, curl, mysqli, yaml, mbstring
           coverage: none
 
       - name: Install dependencies

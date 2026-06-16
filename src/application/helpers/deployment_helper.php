@@ -52,7 +52,7 @@ function mgmt_api_path(string $suffix = '', ?string $apiId = null): string
 }
 
 /**
- * Map single-mode /mgmt/v1/... request paths to canonical OpenAPI paths for validation.
+ * Normalize request paths for OpenAPI validation (mode-specific spec files).
  */
 function mgmt_openapi_canonical_path(string $path): string
 {
@@ -60,17 +60,83 @@ function mgmt_openapi_canonical_path(string $path): string
         return $path;
     }
     $apiId = default_api_id();
-    if ($path === '/mgmt/v1' || $path === '/mgmt/v1/') {
-        return '/mgmt/v1/apis/' . $apiId;
+    $prefix = '/mgmt/v1/apis/' . $apiId;
+    if ($path === $prefix || $path === $prefix . '/') {
+        return '/mgmt/v1';
     }
-    if (strpos($path, '/mgmt/v1/apis') === 0) {
-        return $path;
-    }
-    if (strpos($path, '/mgmt/v1') === 0) {
-        $rest = substr($path, strlen('/mgmt/v1'));
-        return '/mgmt/v1/apis/' . $apiId . ($rest === '' ? '' : $rest);
+    if (strpos($path, $prefix) === 0) {
+        return '/mgmt/v1' . substr($path, strlen($prefix));
     }
     return $path;
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function mgmt_meta_from_payload(object $payload): array
+{
+    $meta = [];
+    foreach (['title', 'description', 'version', 'termsOfService'] as $key) {
+        if (isset($payload->$key)) {
+            $meta[$key] = $payload->$key;
+        }
+    }
+    if (isset($payload->contact)) {
+        $meta['contact'] = json_decode(json_encode($payload->contact), true);
+    }
+    if (isset($payload->license)) {
+        $meta['license'] = json_decode(json_encode($payload->license), true);
+    }
+    return $meta;
+}
+
+/**
+ * Bootstrap meta.php fields from env (single-mode Docker).
+ *
+ * @return array<string,mixed>
+ */
+function single_mode_meta_from_env(string $apiId): array
+{
+    $now = gmdate('Y-m-d\TH:i:s\Z');
+    $meta = [
+        'name' => $apiId,
+        'createdAt' => $now,
+        'updatedAt' => $now,
+    ];
+    $envString = static function (string $key): ?string {
+        $v = getenv($key);
+        return ($v !== false && $v !== '') ? $v : null;
+    };
+    if ($title = $envString('API_TITLE')) {
+        $meta['title'] = $title;
+    }
+    if ($desc = $envString('API_DESCRIPTION')) {
+        $meta['description'] = $desc;
+    }
+    if ($version = $envString('API_VERSION')) {
+        $meta['version'] = $version;
+    }
+    if ($tos = $envString('API_TERMS_OF_SERVICE')) {
+        $meta['termsOfService'] = $tos;
+    }
+    $contact = array_filter([
+        'name' => $envString('API_CONTACT_NAME'),
+        'email' => $envString('API_CONTACT_EMAIL'),
+        'url' => $envString('API_CONTACT_URL'),
+        'phone' => $envString('API_CONTACT_PHONE'),
+    ], static fn ($v) => $v !== null);
+    if ($contact !== []) {
+        $meta['contact'] = $contact;
+    }
+    $licenseName = $envString('API_LICENSE_NAME');
+    $licenseUrl = $envString('API_LICENSE_URL');
+    if ($licenseName !== null || $licenseUrl !== null) {
+        $meta['license'] = array_filter([
+            'name' => $licenseName,
+            'url' => $licenseUrl,
+        ], static fn ($v) => $v !== null);
+    }
+    return $meta;
 }
 
 /**

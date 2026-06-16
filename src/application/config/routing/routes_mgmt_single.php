@@ -6,7 +6,7 @@ require_once APPPATH . 'helpers/deployment_helper.php';
 $apiId = default_api_id();
 $mgmt = '^mgmt/v1';
 
-// Single API resource (collection list remains GET /mgmt/v1/apis)
+// Single API resource at GET/PATCH /mgmt/v1 (no collection endpoints in single mode)
 $route[$mgmt]['get'] = "mgmt/apis/get/{$apiId}";
 $route[$mgmt]['patch'] = "mgmt/apis/patch/{$apiId}";
 

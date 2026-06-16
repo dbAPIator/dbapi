@@ -51,54 +51,78 @@ class SingleModeProvisioner
             return ['provisioned' => false, 'message' => 'Default API already active', 'apiId' => $apiId];
         }
 
+        $provisioned = false;
+        if (!$this->store->apiExists($apiId)) {
+            $this->store->scaffoldDraft($apiId, $this->buildInitialMeta($apiId));
+            $provisioned = true;
+        }
+
         $connection = single_mode_connection_from_env();
+        if ($connection !== null) {
+            $this->store->saveConnection($apiId, $connection);
+            $provisioned = true;
+        }
+
         if ($connection === null) {
-            throw new RuntimeException('DB_HOST and DB_NAME must be set for single-mode auto-provision');
+            return [
+                'provisioned' => $provisioned,
+                'message' => 'Default API provisioned (draft): set DB_HOST and DB_NAME or PUT /mgmt/v1/connection',
+                'apiId' => $apiId,
+            ];
         }
 
-        if ($this->store->apiExists($apiId)) {
-            $this->store->deleteApi($apiId);
+        try {
+            $this->runConnectionTest($apiId);
+        } catch (Throwable $e) {
+            return [
+                'provisioned' => $provisioned,
+                'message' => 'Default API provisioned (draft): database not reachable (' . $e->getMessage() . ')',
+                'apiId' => $apiId,
+            ];
         }
 
-        $now = gmdate('Y-m-d\TH:i:s\Z');
-        $meta = [
-            'id' => $this->utilities->short_uuid(),
-            'name' => $apiId,
-            'description' => 'Auto-provisioned default API (single deployment mode)',
-            'createdAt' => $now,
-            'updatedAt' => $now,
-        ];
-
-        $this->store->scaffoldDraft($apiId, $meta);
-        $this->store->saveConnection($apiId, $connection);
-        $this->runConnectionTest($apiId);
-
-        $structure = $this->generateStructure($apiId);
-        $this->saveStructure($apiId, $structure);
+        try {
+            $structure = $this->generateStructure($apiId);
+            $this->saveStructure($apiId, $structure);
+        } catch (Throwable $e) {
+            return [
+                'provisioned' => $provisioned,
+                'message' => 'Default API provisioned (draft): schema build failed (' . $e->getMessage() . ')',
+                'apiId' => $apiId,
+            ];
+        }
 
         if (count($structure) === 0) {
             $this->store->setStatus($apiId, 'draft');
             return [
-                'provisioned' => true,
-                'message' => 'Default API provisioned (draft): no tables or views found; add schema and POST .../schema:rebuild',
+                'provisioned' => $provisioned,
+                'message' => 'Default API provisioned (draft): no tables or views found; POST /mgmt/v1/schema:rebuild when ready',
                 'apiId' => $apiId,
             ];
         }
 
         $result = $this->lifecycle->validate($apiId);
         if (!$result['ready']) {
-            $failed = array_values(array_filter($result['checks'], static function ($c) {
-                return ($c['status'] ?? '') === 'fail';
-            }));
-            $messages = array_map(static function ($c) {
-                return ($c['id'] ?? 'check') . ': ' . ($c['message'] ?? 'failed');
-            }, $failed);
-            throw new RuntimeException('Default API validation failed: ' . implode('; ', $messages));
+            $this->store->setStatus($apiId, 'draft');
+            return [
+                'provisioned' => $provisioned,
+                'message' => 'Default API provisioned (draft): validation incomplete; complete setup via Management API',
+                'apiId' => $apiId,
+            ];
         }
 
         $this->store->setStatus($apiId, 'active');
-
         return ['provisioned' => true, 'message' => 'Default API provisioned and activated', 'apiId' => $apiId];
+    }
+
+    private function buildInitialMeta(string $apiId): array
+    {
+        $meta = single_mode_meta_from_env($apiId);
+        $meta['id'] = $this->utilities->short_uuid();
+        if (!isset($meta['description'])) {
+            $meta['description'] = 'Auto-provisioned default API (single deployment mode)';
+        }
+        return $meta;
     }
 
     private function isReady(string $apiId): bool

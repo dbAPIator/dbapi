@@ -112,35 +112,59 @@ class TestSwaggerGenerator extends TestCase
         $this->assertStringNotContainsString('http://localhost/dbapi/src', $yaml);
     }
 
-    public function testWithMgmtOpenapiSingleModePathsRewritesUrls(): void
+    public function testMgmtOpenapiSpecPathDependsOnDeploymentMode(): void
+    {
+        putenv('DEPLOYMENT_MODE');
+        $this->assertStringEndsWith('management-openapi-multi.yaml', mgmt_openapi_spec_path());
+
+        putenv('DEPLOYMENT_MODE=single');
+        $this->assertStringEndsWith('management-openapi-single.yaml', mgmt_openapi_spec_path());
+        putenv('DEPLOYMENT_MODE');
+    }
+
+    public function testMgmtOpenapiYamlPathExplicitVariant(): void
+    {
+        $this->assertStringEndsWith('management-openapi-multi.yaml', mgmt_openapi_yaml_path('multi'));
+        $this->assertStringEndsWith('management-openapi-single.yaml', mgmt_openapi_yaml_path('single'));
+    }
+
+    public function testPrepareMgmtOpenapiSpecUsesModeSpecificFile(): void
     {
         putenv('DEPLOYMENT_MODE=single');
-        $spec = [
-            'openapi' => '3.1.0',
-            'paths' => [
-                '/mgmt/v1/apis' => ['get' => ['operationId' => 'listApis']],
-                '/mgmt/v1/apis/{apiId}' => [
-                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
-                    'get' => ['operationId' => 'getApi'],
-                ],
-                '/mgmt/v1/apis/{apiId}/connection' => [
-                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
-                    'get' => ['operationId' => 'getConnection'],
-                ],
-                '/mgmt/v1/apis/{apiId}:activate' => [
-                    'parameters' => [['$ref' => '#/components/parameters/ApiId']],
-                    'post' => ['operationId' => 'activateApi'],
-                ],
-            ],
-        ];
-        $out = with_mgmt_openapi_single_mode_paths($spec);
-        $this->assertArrayHasKey('/mgmt/v1/apis', $out['paths']);
-        $this->assertArrayHasKey('/mgmt/v1', $out['paths']);
-        $this->assertArrayHasKey('/mgmt/v1/connection', $out['paths']);
-        $this->assertArrayHasKey('/mgmt/v1:activate', $out['paths']);
-        $this->assertArrayNotHasKey('/mgmt/v1/apis/{apiId}', $out['paths']);
-        $this->assertArrayNotHasKey('parameters', $out['paths']['/mgmt/v1']);
+        $spec = prepare_mgmt_openapi_spec('http://api.example.com');
+        $this->assertSame('http://api.example.com', $spec['servers'][0]['url']);
+        $this->assertArrayHasKey('/mgmt/v1', $spec['paths']);
+        $this->assertArrayNotHasKey('/mgmt/v1/apis', $spec['paths']);
         putenv('DEPLOYMENT_MODE');
+    }
+
+    public function testApiOpenapiInfoFromMeta(): void
+    {
+        $dir = sys_get_temp_dir() . '/dbapi-meta-' . getmypid();
+        mkdir($dir);
+        file_put_contents($dir . '/meta.php', <<<'PHP'
+<?php
+return [
+    'name' => 'demo',
+    'title' => 'Demo Shop',
+    'description' => 'Customer API',
+    'version' => '3.1.4',
+    'termsOfService' => 'https://example.com/tos',
+    'contact' => ['name' => 'Support', 'email' => 'support@example.com'],
+    'license' => ['name' => 'MIT', 'url' => 'https://opensource.org/licenses/MIT'],
+];
+PHP
+        );
+        $info = api_openapi_info_from_meta($dir, 'demo');
+        $this->assertSame('Demo Shop', $info['title']);
+        $this->assertSame('Customer API', $info['description']);
+        $this->assertSame('3.1.4', $info['version']);
+        $this->assertSame('Support', $info['contactName']);
+        $this->assertSame('support@example.com', $info['contactEmail']);
+        $this->assertSame('https://example.com/tos', $info['termsOfService']);
+        $this->assertSame('MIT', $info['license']['name']);
+        @unlink($dir . '/meta.php');
+        @rmdir($dir);
     }
 
     public function testApiPublicBaseUrlPrefersBaseUrlEnv(): void

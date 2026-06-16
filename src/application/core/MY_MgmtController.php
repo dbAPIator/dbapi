@@ -48,7 +48,13 @@ class MY_MgmtController extends CI_Controller
         $this->headers = function_exists('getallheaders') ? getallheaders() : [];
         $this->store = new MgmtConfigStore($this->configDir, $this->configFiles);
         $this->lifecycle = new MgmtLifecycle($this->store, $this->configFiles);
-        $this->openApiPath = APPPATH . '../public/management-openapi.json';
+        require_once APPPATH . 'helpers/swagger_helper.php';
+        $this->openApiPath = mgmt_openapi_spec_path();
+    }
+
+    protected function isSingleDeploymentMode(): bool
+    {
+        return ($this->config->item('deployment_mode') ?? 'multi') === 'single';
     }
 
     protected function headerValue(string ...$names): ?string

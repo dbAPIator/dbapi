@@ -21,6 +21,8 @@ class Errors extends CI_Controller {
                 'deploymentMode' => 'single',
                 'management' => '/mgmt/v1',
                 'managementOpenApi' => '/management-openapi.yaml',
+                'managementOpenApiMulti' => '/management-openapi-multi.yaml',
+                'managementOpenApiSingle' => '/management-openapi-single.yaml',
                 'data' => '/v1/data',
                 'auth' => '/v1/auth',
                 'openApi' => '/v1/swagger',
@@ -33,6 +35,8 @@ class Errors extends CI_Controller {
             'deploymentMode' => 'multi',
             'management' => '/mgmt/v1/apis',
             'managementOpenApi' => '/management-openapi.yaml',
+            'managementOpenApiMulti' => '/management-openapi-multi.yaml',
+            'managementOpenApiSingle' => '/management-openapi-single.yaml',
             'data' => '/v1/apis/{apiId}/data',
             'deprecated' => [
                 'adminApi' => 'Removed. Use /mgmt/v1/apis instead of /admin/apis.',

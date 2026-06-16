@@ -21,6 +21,7 @@ RUN apt-get update \
         php7.4-zip \
         php7.4-yaml \
         php7.4-curl \
+    && php -r "if (!extension_loaded('yaml')) { fwrite(STDERR, 'ext-yaml is required but not loaded\n'); exit(1); }" \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

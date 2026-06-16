@@ -423,25 +423,62 @@ function with_api_openapi_servers_url(array $spec, string $apiName, ?string $bas
     return $spec;
 }
 
-function mgmt_openapi_spec_path(): string
+function mgmt_openapi_resolve_mode(?string $variant): string
 {
-    return APPPATH . '../public/management-openapi.json';
+    if ($variant === 'multi' || $variant === 'single') {
+        return $variant;
+    }
+    if (!function_exists('is_single_deployment_mode')) {
+        require_once APPPATH . 'helpers/deployment_helper.php';
+    }
+    return is_single_deployment_mode() ? 'single' : 'multi';
+}
+
+function mgmt_openapi_yaml_path(?string $variant = null): string
+{
+    return APPPATH . '../public/management-openapi-' . mgmt_openapi_resolve_mode($variant) . '.yaml';
+}
+
+/** @deprecated Use mgmt_openapi_yaml_path(); YAML is the source of truth. */
+function mgmt_openapi_spec_path(?string $variant = null): string
+{
+    return mgmt_openapi_yaml_path($variant);
+}
+
+function require_yaml_extension(): void
+{
+    if (function_exists('yaml_parse') && function_exists('yaml_emit')) {
+        return;
+    }
+    throw new RuntimeException(
+        'The PHP yaml extension (ext-yaml) is required. Install php-yaml '
+        . '(e.g. apt install php7.4-yaml or php8.2-yaml).'
+    );
 }
 
 /**
  * @return array<string,mixed>
  */
-function read_mgmt_openapi_spec(): array
+function parse_mgmt_openapi_yaml(string $yaml): array
 {
-    $path = mgmt_openapi_spec_path();
+    require_yaml_extension();
+    $parsed = yaml_parse($yaml);
+    if (!is_array($parsed)) {
+        throw new RuntimeException('Management OpenAPI YAML is invalid');
+    }
+    return $parsed;
+}
+
+/**
+ * @return array<string,mixed>
+ */
+function read_mgmt_openapi_spec(?string $variant = null): array
+{
+    $path = mgmt_openapi_yaml_path($variant);
     if (!is_file($path)) {
-        throw new RuntimeException('Management OpenAPI spec not found');
+        throw new RuntimeException('Management OpenAPI spec not found: ' . basename($path));
     }
-    $spec = json_decode((string) file_get_contents($path), true);
-    if (!is_array($spec)) {
-        throw new RuntimeException('Management OpenAPI spec is invalid JSON');
-    }
-    return $spec;
+    return parse_mgmt_openapi_yaml((string) file_get_contents($path));
 }
 
 /**
@@ -463,115 +500,22 @@ function with_mgmt_openapi_servers_url(array $spec, ?string $baseUrl = null): ar
 }
 
 /**
- * @param array<string,mixed> $pathItem
  * @return array<string,mixed>
  */
-function mgmt_openapi_strip_api_id_param(array $pathItem): array
+function prepare_mgmt_openapi_spec(?string $baseUrl = null, ?string $variant = null): array
 {
-    $strip = static function (array $params): array {
-        return array_values(array_filter($params, static function ($p): bool {
-            if (!is_array($p)) {
-                return true;
-            }
-            if (isset($p['$ref']) && strpos((string) $p['$ref'], 'ApiId') !== false) {
-                return false;
-            }
-            return ($p['name'] ?? '') !== 'apiId' || ($p['in'] ?? '') !== 'path';
-        }));
-    };
-
-    if (isset($pathItem['parameters']) && is_array($pathItem['parameters'])) {
-        $pathItem['parameters'] = $strip($pathItem['parameters']);
-        if ($pathItem['parameters'] === []) {
-            unset($pathItem['parameters']);
-        }
-    }
-
-    foreach (['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as $method) {
-        if (!isset($pathItem[$method]['parameters']) || !is_array($pathItem[$method]['parameters'])) {
-            continue;
-        }
-        $pathItem[$method]['parameters'] = $strip($pathItem[$method]['parameters']);
-        if ($pathItem[$method]['parameters'] === []) {
-            unset($pathItem[$method]['parameters']);
-        }
-    }
-
-    return $pathItem;
+    return with_mgmt_openapi_servers_url(read_mgmt_openapi_spec($variant), $baseUrl);
 }
 
-/**
- * In single-mode, expose /mgmt/v1/... paths (no /apis/{apiId}) in the served spec.
- *
- * @param array<string,mixed> $spec
- * @return array<string,mixed>
- */
-function with_mgmt_openapi_single_mode_paths(array $spec): array
+function mgmt_openapi_yaml_with_servers(?string $baseUrl = null, ?string $variant = null): string
 {
-    if (!function_exists('is_single_deployment_mode')) {
-        require_once APPPATH . 'helpers/deployment_helper.php';
+    require_yaml_extension();
+    $spec = prepare_mgmt_openapi_spec($baseUrl, $variant);
+    $yaml = yaml_emit($spec, YAML_UTF8_ENCODING);
+    if (!is_string($yaml) || $yaml === '') {
+        throw new RuntimeException('Failed to emit management OpenAPI YAML');
     }
-    if (!is_single_deployment_mode() || empty($spec['paths']) || !is_array($spec['paths'])) {
-        return $spec;
-    }
-
-    $paths = [];
-    foreach ($spec['paths'] as $path => $pathItem) {
-        if (!is_array($pathItem)) {
-            continue;
-        }
-        if ($path === '/mgmt/v1/apis') {
-            $paths[$path] = $pathItem;
-            continue;
-        }
-        if ($path === '/mgmt/v1/apis/{apiId}') {
-            $paths['/mgmt/v1'] = mgmt_openapi_strip_api_id_param($pathItem);
-            continue;
-        }
-        if (preg_match('#^/mgmt/v1/apis/\{apiId\}(.+)$#', (string) $path, $m)) {
-            $paths['/mgmt/v1' . $m[1]] = mgmt_openapi_strip_api_id_param($pathItem);
-        }
-    }
-    $spec['paths'] = $paths;
-    return $spec;
-}
-
-/**
- * @return array<string,mixed>
- */
-function prepare_mgmt_openapi_spec(?string $baseUrl = null): array
-{
-    return with_mgmt_openapi_single_mode_paths(with_mgmt_openapi_servers_url(read_mgmt_openapi_spec(), $baseUrl));
-}
-
-function mgmt_openapi_yaml_with_servers(?string $baseUrl = null): string
-{
-    if (function_exists('yaml_emit')) {
-        return yaml_emit(prepare_mgmt_openapi_spec($baseUrl), YAML_UTF8_ENCODING);
-    }
-
-    if ($baseUrl === null) {
-        if (!function_exists('api_public_base_url')) {
-            require_once APPPATH . 'helpers/deployment_helper.php';
-        }
-        $baseUrl = api_public_base_url();
-    }
-    $path = APPPATH . '../public/management-openapi.yaml';
-    if (!is_file($path)) {
-        throw new RuntimeException('Management OpenAPI YAML not found');
-    }
-    $yaml = (string) file_get_contents($path);
-    $patched = preg_replace(
-        '/^(servers:\s*\n\s*- url: ).+$/m',
-        '${1}' . rtrim($baseUrl, '/'),
-        $yaml,
-        1,
-        $count
-    );
-    if ($count !== 1) {
-        throw new RuntimeException('Could not patch servers URL in management-openapi.yaml');
-    }
-    return $patched;
+    return $yaml;
 }
 
 /**
@@ -583,6 +527,33 @@ function validate_data_api_openapi_spec(array $spec): array
 {
     require_once APPPATH . 'libraries/OpenApiSpecValidator.php';
     return OpenApiSpecValidator::validate($spec);
+}
+
+/**
+ * @return array{title:string,description:string,version:string,contactName:string,contactEmail:string,termsOfService:?string,license:?array{name?:string,url?:string}}
+ */
+function api_openapi_info_from_meta(string $apiDir, string $apiName): array
+{
+    $metaPath = rtrim($apiDir, '/') . '/meta.php';
+    $meta = is_file($metaPath) ? @include $metaPath : [];
+    if (!is_array($meta)) {
+        $meta = [];
+    }
+    $contact = is_array($meta['contact'] ?? null) ? $meta['contact'] : [];
+    $license = is_array($meta['license'] ?? null) ? $meta['license'] : null;
+    if ($license === []) {
+        $license = null;
+    }
+
+    return [
+        'title' => (string) ($meta['title'] ?? $meta['name'] ?? $apiName),
+        'description' => (string) ($meta['description'] ?? $apiName . ' data API'),
+        'version' => (string) ($meta['version'] ?? '1.0.0'),
+        'contactName' => (string) ($contact['name'] ?? $meta['name'] ?? $apiName),
+        'contactEmail' => (string) ($contact['email'] ?? 'support@example.com'),
+        'termsOfService' => isset($meta['termsOfService']) ? (string) $meta['termsOfService'] : null,
+        'license' => $license,
+    ];
 }
 
 /**
@@ -610,14 +581,22 @@ function write_api_openapi_spec(string $apiName, string $apiDir, string $baseUrl
     }
 
     $dm = \dbAPI\API\Datamodel::init($structure);
+    $info = api_openapi_info_from_meta($apiDir, $apiName);
     $spec = generate_swagger(
         api_openapi_data_url($baseUrl, $apiName),
         $dm->get_dataModel(),
-        "{$apiName} Spec",
-        "{$apiName} spec",
-        $apiName,
-        'test@user.com'
+        $info['description'],
+        $info['title'],
+        $info['contactName'],
+        $info['contactEmail']
     );
+    $spec['info']['version'] = $info['version'];
+    if (!empty($info['termsOfService'])) {
+        $spec['info']['termsOfService'] = $info['termsOfService'];
+    }
+    if (!empty($info['license'])) {
+        $spec['info']['license'] = $info['license'];
+    }
 
     $validation = validate_data_api_openapi_spec($spec);
     if (!$validation['valid']) {
