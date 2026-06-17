@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+if [[ -n "${LOCAL_UID:-}" && -n "${LOCAL_GID:-}" ]]; then
+  FILE_OWNER="${LOCAL_UID}:${LOCAL_GID}"
+else
+  FILE_OWNER="www-data:www-data"
+fi
+
+maybe_chown() { [[ "$(id -u)" -eq 0 ]] && chown "$@"; }
+
 wait_for_mysql() {
   local host="${DB_HOST:-mysql}"
   local port="${DB_PORT:-3306}"
@@ -26,13 +34,14 @@ if [ "${DEPLOYMENT_MODE:-multi}" = "single" ]; then
   if [ ! -f /app/vendor/autoload.php ]; then
     echo "Installing PHP dependencies (vendor/ missing — dev volume mount)..."
     composer install --no-dev --no-interaction --optimize-autoloader
+    maybe_chown -R "${FILE_OWNER}" /app/vendor
   fi
   if ! wait_for_mysql; then
     echo "Warning: continuing with draft provisioning (database not reachable)." >&2
   fi
   php /app/public/index.php cli/provision run || echo "Warning: auto-provision reported an error (instance may remain in draft)." >&2
   if [ -d "/app/apis/default" ]; then
-    chown -R www-data:www-data /app/apis/default
+    maybe_chown -R "${FILE_OWNER}" /app/apis/default
     chmod 644 /app/apis/default/openapi.json 2>/dev/null || true
   fi
 fi

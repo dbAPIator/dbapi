@@ -107,6 +107,16 @@ class AccessControl
         return $userData;
     }
 
+    public static function methodMatchesRule(string $method, string $ruleMethod): bool
+    {
+        $method = strtoupper($method);
+        $ruleMethod = strtoupper($ruleMethod);
+        if (strpos($ruleMethod, ',') !== false) {
+            return in_array($method, array_map('trim', explode(',', $ruleMethod)), true);
+        }
+        return (bool) preg_match('/^' . str_replace('*', '.*', $ruleMethod) . '$/i', $method);
+    }
+
     public static function whenMatches(array $when, \stdClass $payload): bool
     {
         foreach ($when as $claim => $expected) {
@@ -151,11 +161,8 @@ class AccessControl
             }
 
             $ruleMethod = $rule['method'] ?? $rule['methods'] ?? null;
-            if ($ruleMethod) {
-                $methodPattern = '/^' . strtoupper(str_replace('*', '.*', $ruleMethod)) . '$/i';
-                if (!preg_match($methodPattern, $method)) {
-                    continue;
-                }
+            if ($ruleMethod && !self::methodMatchesRule($method, (string) $ruleMethod)) {
+                continue;
             }
 
             return (bool) ($rule['allow'] ?? false);

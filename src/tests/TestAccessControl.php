@@ -17,6 +17,24 @@ use PHPUnit\Framework\TestCase;
 
 class TestAccessControl extends TestCase
 {
+    public function testMethodMatchesRuleSupportsCommaSeparatedMethods(): void
+    {
+        $this->assertTrue(AccessControl::methodMatchesRule('GET', 'GET,OPTIONS'));
+        $this->assertTrue(AccessControl::methodMatchesRule('OPTIONS', 'GET,OPTIONS'));
+        $this->assertFalse(AccessControl::methodMatchesRule('POST', 'GET,OPTIONS'));
+        $this->assertTrue(AccessControl::methodMatchesRule('PATCH', '*'));
+    }
+
+    public function testEvaluatePathRulesAllowsGetFromCommaSeparatedMethods(): void
+    {
+        $rules = [
+            ['pattern' => '/*', 'methods' => 'GET,OPTIONS', 'allow' => true],
+            ['pattern' => '/*', 'methods' => '*', 'allow' => false],
+        ];
+        $payload = new stdClass();
+        $this->assertTrue(AccessControl::evaluatePathRules($rules, '/config_default_options', 'GET', [], $payload));
+    }
+
     public function testWhenSkipsRuleWhenClaimMismatch(): void
     {
         $payload = (object) ['role' => 'user', 'userId' => 5];
