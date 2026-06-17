@@ -27,14 +27,21 @@ trait DbapiQueryTrait
         // fetch include
         set_para("include", $inputs,$fqResName, $request);
         if($request->include) {
-            $request->include = explode(",",$request->include);
-            foreach ($request->include as $key=>$relName) {
+            $tree = parse_include_tree($request->include);
+            $request->include = [];
+            foreach ($tree as $relName => $nested) {
+                if ($nested) {
+                    merge_include_for_resource(
+                        $inputs,
+                        "$fqResName/$relName",
+                        flatten_include_paths($nested)
+                    );
+                }
                 $request->include[$relName] = $this->process_query_parameters(
                     "$fqResName/$relName",
                     $inputs,
                     $includeDepth + 1
                 );
-                unset($request->include[$key]);
             }
         }
 

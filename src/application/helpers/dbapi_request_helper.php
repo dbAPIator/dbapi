@@ -34,6 +34,58 @@ function custom_where($str) {
  * @param string $resourceName
  * @param DBAPIRequest $request
  */
+/**
+ * Build a nested tree from comma-separated dot-notation include paths.
+ *
+ * @return array<string, array>
+ */
+function parse_include_tree(string $include): array
+{
+    $tree = [];
+    foreach (array_filter(array_map('trim', explode(',', $include))) as $path) {
+        $node = &$tree;
+        foreach (explode('.', $path) as $part) {
+            if (!isset($node[$part])) {
+                $node[$part] = [];
+            }
+            $node = &$node[$part];
+        }
+    }
+    return $tree;
+}
+
+/**
+ * @return list<string>
+ */
+function flatten_include_paths(array $tree, string $prefix = ''): array
+{
+    $paths = [];
+    foreach ($tree as $rel => $children) {
+        $path = $prefix === '' ? $rel : "$prefix.$rel";
+        $paths[] = $path;
+        if ($children) {
+            $paths = array_merge($paths, flatten_include_paths($children, $path));
+        }
+    }
+    return $paths;
+}
+
+function merge_include_for_resource(array &$inputs, string $fqResName, array $paths): void
+{
+    if (!$paths) {
+        return;
+    }
+    $value = implode(',', $paths);
+    if (!isset($inputs['include'])) {
+        $inputs['include'] = [];
+    }
+    if (!empty($inputs['include'][$fqResName])) {
+        $inputs['include'][$fqResName] .= ',' . $value;
+    } else {
+        $inputs['include'][$fqResName] = $value;
+    }
+}
+
 function set_para(string $param, array &$inputs, string $resourceName, DBAPIRequest &$request,$default=null) {
     if(!isset($inputs[$param])) {
         return;

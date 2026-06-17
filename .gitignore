@@ -2,6 +2,7 @@
 .cursor
 src/apis/*
 src/vendor/
+src/.phpunit.result.cache
 */**/test.php
 data/*
 build.sh
@@ -10,3 +11,4 @@ dbconfigs
 .docker_data/
 CodeIgniter-3.1.13.zip
 docs/planning/*
+external_api
