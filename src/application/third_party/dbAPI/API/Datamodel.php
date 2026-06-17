@@ -348,7 +348,7 @@ class Datamodel {
 
         $mysqlTypes = [
             "numeric"=>[
-                "int","tinyint","smallint","mediumint","int","bigint","decimal","float","double","real","bit","boolean","serial"
+                "int","tinyint","smallint","mediumint","bigint","decimal","float","double","real","bit","boolean","serial"
             ],
             "date"=>[
                 "date","datetime","timestamp","time","year"
@@ -374,6 +374,8 @@ class Datamodel {
                 $value = null;
             elseif (in_array($fields[$fieldName]["type"]["proto"],$mysqlTypes["date"]))
                 $value = null;
+            elseif (in_array($fields[$fieldName]["type"]["proto"],$mysqlTypes["json"]))
+                $value = null;
         }
 
         // ToDO: implement length check
@@ -386,11 +388,16 @@ class Datamodel {
 
         if(is_object($value)) {
             $fk = $this->get_field_foreign_key($tableName, $fieldName);
-            if ($fk !== null && $fk["table"] == $value->data->type) {
+            if ($fk !== null && isset($value->data->type) && $fk["table"] == $value->data->type) {
                 return $value;
             }
             throw new \Exception("Invalid object as field value for  $tableName.$fieldName",400);
 
+        }
+
+        // reaching here with null means a required field has no value
+        if(is_null($value)) {
+            throw new \Exception("Field $tableName.$fieldName is required",400);
         }
 
         switch($fields[$fieldName]["type"]["proto"]) {
@@ -399,16 +406,26 @@ class Datamodel {
             case "smallint":
             case "mediumint":
             case "int":
-            case "bigint":
-            case "decimal":
             case "tinyint":
                 if(preg_match("/^-?\d+$/",$value)) {
                     return $value*1;
                 }
                 break;
+            // bigint kept as string to avoid PHP int overflow / precision loss
+            case "bigint":
+                if(preg_match("/^-?\d+$/",$value)) {
+                    return (string)$value;
+                }
+                break;
             case "bit":
-                if(preg_match("/^[0,1]+$/",$value)) {
-                    return floatval($value);
+                if(preg_match("/^[01]+$/",$value)) {
+                    return $value;
+                }
+                break;
+            // decimal kept as string to preserve precision/scale
+            case "decimal":
+                if(preg_match("/^-?\d+(\.\d+)?$/",$value)) {
+                    return (string)$value;
                 }
                 break;
             case "real":
@@ -446,11 +463,12 @@ class Datamodel {
                     return $value;
                 break;
             case "time":
-                if(preg_match("/^-?\d{2,3}:\d{2}:\d{2}$/i",$value))
+                if(preg_match("/^-?\d{1,3}:\d{2}:\d{2}(\.\d+)?$/",$value))
                     return $value;
                 break;
             case "year":
-                if(is_numeric($value) && ($value*1)<9999)
+                // MySQL YEAR accepts integer 1901-2155 (or 0)
+                if(preg_match("/^\d{1,4}$/",$value) && ($value*1)<=2155)
                     return $value;
                 break;
             case "json":
@@ -459,34 +477,34 @@ class Datamodel {
                     return $value;
                 }
                 break;
-            // TEXT
+            // TEXT & BINARY
             case "char":
-                return $value;
             case "varchar":
-                return $value;
             case "tinytext":
-                return $value;
             case "text":
-                return $value;
             case "mediumtext":
-                return $value;
             case "longtext":
-                return $value;
             case "binary":
-                return $value;
             case "varbinary":
-                return $value;
             case "tinyblob":
-                return $value;
             case "mediumblob":
-                return $value;
             case "blob":
-                return $value;
             case "longblob":
                 return $value;
-            // SET
+            // SPATIAL (accepted as WKT/GeoJSON string, passed through to the DB)
+            case "geometry":
+            case "point":
+            case "linestring":
+            case "polygon":
+            case "multipoint":
+            case "multilinestring":
+            case "multipolygon":
+            case "geometrycollection":
+                return $value;
+            // SET (may contain multiple comma-separated members)
             case "set":
-                if(in_array($value,$fields[$fieldName]["type"]["vals"]))
+                $members = $value === "" ? [] : explode(",", $value);
+                if(count(array_diff($members,$fields[$fieldName]["type"]["vals"])) === 0)
                     return $value;
                 break;
             case "enum":
@@ -768,4 +786,5 @@ class Datamodel {
 
 function array_key_exists_and_has_value($array,$key,$value) {
     return array_key_exists($key,$array) && $array[$key] = $value;
+}
 }
