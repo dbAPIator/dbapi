@@ -104,3 +104,11 @@ $config["files"] = [
     "structure" => "structure.php",
     "openapi" => "openapi.json",
 ];
+
+// debug: write JSON mirrors for structure.php/patch.php on rebuild/patch writes
+$config["schema_debug_json"] = in_array(
+    strtolower((string) dbapi_env("SCHEMA_DEBUG_JSON", "0")),
+    ["1", "true", "yes", "on"],
+    true
+);
+$config["schema_debug_json"]  = true;

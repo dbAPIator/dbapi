@@ -279,4 +279,41 @@ PHP
             @rmdir($dir);
         }
     }
+
+    public function testGenerateSwaggerSkipsFieldsWithoutType(): void
+    {
+        $structure = [
+            'items' => [
+                'type' => 'table',
+                'keyFld' => 'id',
+                'fields' => [
+                    'id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => false,
+                    ],
+                    'removed_secret' => [
+                        'select' => false,
+                    ],
+                ],
+                'relations' => [],
+            ],
+        ];
+
+        $dm = \dbAPI\API\Datamodel::init($structure);
+        $spec = generate_swagger(
+            api_openapi_data_url('http://localhost', 'demo'),
+            $dm->get_dataModel(),
+            'demo Spec',
+            'demo spec',
+            'demo',
+            'test@example.com'
+        );
+
+        $attrs = $spec['components']['schemas']['items_ResourceObject']['properties']['attributes']['properties'];
+        $this->assertArrayHasKey('id', $attrs);
+        $this->assertArrayNotHasKey('removed_secret', $attrs);
+
+        $validation = validate_data_api_openapi_spec($spec);
+        $this->assertTrue($validation['valid'], implode('; ', $validation['errors']));
+    }
 }

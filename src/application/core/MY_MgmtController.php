@@ -185,6 +185,49 @@ class MY_MgmtController extends CI_Controller
         return $this->input->get('activate') === 'true' || $this->input->get('activate') === '1';
     }
 
+    protected function requireSchemaDevelopment(string $apiId): void
+    {
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        if (api_is_production_environment($this->store->loadMeta($apiId))) {
+            $this->mgmtError(409, $this->errorsCatalog['config']['schema_production_locked']);
+        }
+    }
+
+    /**
+     * @return array{rebuiltAt: string, entityCount: int, warnings: array}
+     */
+    protected function rebuildAndSaveStructure(string $apiId): array
+    {
+        $built = $this->rebuildStructureFromDatabase($apiId);
+        $this->saveStructure($apiId, $built['structure']);
+        $meta = $this->store->loadMeta($apiId);
+        $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
+        $this->store->saveMeta($apiId, $meta);
+
+        return [
+            'rebuiltAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            'entityCount' => count($built['structure']),
+            'warnings' => $built['warnings'] ?? [],
+        ];
+    }
+
+    /**
+     * @return array{patch: array, rebuild?: array}
+     */
+    protected function savePatchOverrides(string $apiId, array $patch): array
+    {
+        $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $patch);
+        $result = ['patch' => $patch];
+        require_once APPPATH . 'helpers/deployment_helper.php';
+        if (!api_is_production_environment($this->store->loadMeta($apiId))) {
+            $result['rebuild'] = $this->rebuildAndSaveStructure($apiId);
+        } else {
+            $this->writeSchemaDebugJson($apiId);
+        }
+        $this->store->touchUpdated($apiId);
+        return $result;
+    }
+
     /**
      * @return array{structure: array, warnings: array}
      */
@@ -281,12 +324,41 @@ class MY_MgmtController extends CI_Controller
             "{$this->store->getApiDir($apiId)}/{$this->configFiles['structure']}",
             $structure
         );
+        $this->writeSchemaDebugJson($apiId, $structure);
         $meta = $this->store->loadMeta($apiId);
         $meta['schema']['introspectedAt'] = gmdate('Y-m-d\TH:i:s\Z');
         $meta['schema']['effectiveVersion'] = (string) ((int) ($meta['schema']['effectiveVersion'] ?? 0) + 1);
         $this->store->saveMeta($apiId, $meta);
         $this->store->touchUpdated($apiId);
         $this->regenerateOpenApiSpec($apiId, $structure);
+    }
+
+    protected function writeSchemaDebugJson(string $apiId, ?array $structure = null): void
+    {
+        if (!$this->config->item('schema_debug_json')) {
+            return;
+        }
+
+        $apiDir = $this->store->getApiDir($apiId);
+
+        if ($structure === null) {
+            $structurePath = "{$apiDir}/{$this->configFiles['structure']}";
+            $structure = is_file($structurePath) ? @include $structurePath : [];
+        }
+        if (is_array($structure)) {
+            @file_put_contents(
+                "{$apiDir}/structure.debug.json",
+                json_encode($structure, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            );
+        }
+
+        $patch = $this->store->loadPhp("{$apiDir}/{$this->configFiles['patch']}");
+        if (is_array($patch)) {
+            @file_put_contents(
+                "{$apiDir}/patch.debug.json",
+                json_encode($patch, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            );
+        }
     }
 
     /**

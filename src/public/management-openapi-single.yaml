@@ -500,6 +500,13 @@ components:
           format: uri
         license: &id004
           $ref: '#/components/schemas/License'
+        environment:
+          type: string
+          enum:
+          - development
+          - production
+          default: development
+          description: development allows schema introspection/rebuild; production locks schema mutations (deploy config files instead).
     ApiUpdateRequest:
       type: object
       additionalProperties: false
@@ -512,6 +519,11 @@ components:
         version: *id002
         termsOfService: *id003
         license: *id004
+        environment:
+          type: string
+          enum:
+          - development
+          - production
     Contact:
       type: object
       additionalProperties: false
@@ -646,6 +658,11 @@ components:
           - draft
           - active
           - inactive
+        environment:
+          type: string
+          enum:
+          - development
+          - production
         description:
           type: string
         contact:

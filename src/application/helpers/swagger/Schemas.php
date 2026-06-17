@@ -10,6 +10,21 @@ function resource_relations(array $resourceSpecifications): array
 {
     return $resourceSpecifications['relations'] ?? [];
 }
+
+/**
+ * Fields with a DB type — skips patch-only permission stubs (e.g. orphan hiddenFields).
+ */
+function swagger_typed_fields(array $resourceSpecifications): array
+{
+    $fields = [];
+    foreach ($resourceSpecifications['fields'] ?? [] as $fldName => $fldSpec) {
+        if (!is_array($fldSpec) || !isset($fldSpec['type']) || !is_array($fldSpec['type'])) {
+            continue;
+        }
+        $fields[$fldName] = $fldSpec;
+    }
+    return $fields;
+}
 /**
  * create 3 schema components to be used as references along the spec:
  * - resourceObject - specifies the structure of a JSONAPI Resource Object (https://jsonapi.org/format/#document-resource-objects) as when originating on the server
@@ -47,11 +62,11 @@ function add_components($resourceName, $resourceSpecification)
 
     // extract attributes
     $reqAttrs = [];
-    foreach ($resourceSpecification["fields"] as $fldName=>$fldSpec) {
-        $resourceSchema["properties"]["attributes"]["properties"][$fldName] = typeMap($fldSpec["type"]);
-        $attrs[$fldName] = typeMap($fldSpec["type"]);
-        if($fldSpec["required"])
+    foreach (swagger_typed_fields($resourceSpecification) as $fldName => $fldSpec) {
+        $resourceSchema["properties"]["attributes"]["properties"][$fldName] = typeMap($fldSpec['type']);
+        if (!empty($fldSpec['required'])) {
             $reqAttrs[] = $fldName;
+        }
     }
     if(count($reqAttrs))
         $resourceSchema["properties"]["attributes"]["required"] = $reqAttrs;
@@ -106,6 +121,10 @@ function add_components($resourceName, $resourceSpecification)
  */
 function typeMap($typeSpec)
 {
+    if (!is_array($typeSpec)) {
+        return ['type' => 'string', 'description' => 'Unknown field type'];
+    }
+
     $mysqlTypes = [
         "int"=>[
             "type"=>"integer"
@@ -157,9 +176,10 @@ function typeMap($typeSpec)
         ]
 
     ];
-    $res = isset($mysqlTypes[$typeSpec["proto"]]) ? $mysqlTypes[$typeSpec["proto"]] : ["type"=>"string", "description"=>"MySQL type ".$typeSpec["proto"]];
-    if(in_array($typeSpec["proto"],["enum","set"])) {
-        $res["enum"] = $typeSpec["vals"];
+    $proto = $typeSpec['proto'] ?? 'unknown';
+    $res = isset($mysqlTypes[$proto]) ? $mysqlTypes[$proto] : ['type' => 'string', 'description' => 'MySQL type ' . $proto];
+    if (in_array($proto, ['enum', 'set'], true)) {
+        $res['enum'] = $typeSpec['vals'] ?? [];
     }
     return $res;
 }
@@ -339,7 +359,7 @@ function create_param_filter($resourceName,$resourceSpecifications) {
  * @return array
  */
 function create_param_fields($resourceName,$resourceSpecifications) {
-    $fieldNames = array_keys($resourceSpecifications["fields"]);
+    $fieldNames = array_keys(swagger_typed_fields($resourceSpecifications));
     $fieldNamesList = implode("|",$fieldNames);
     return  [
         "name"=>"fields[{$resourceName}]",
@@ -361,7 +381,7 @@ function create_param_fields($resourceName,$resourceSpecifications) {
 function create_param_sort($resourceName,$resourceSpecifications) {
     //print_r($resourceSpecifications["fields"]);
 
-    $fieldNames = array_keys($resourceSpecifications["fields"]);
+    $fieldNames = array_keys(swagger_typed_fields($resourceSpecifications));
     $fieldNamesList = implode("|",$fieldNames);
     return  [
         "name"=>"sort[{$resourceName}]",
@@ -408,7 +428,7 @@ function create_param_pagination_limit($resourceName,$resourceSpecifications) {
 }
 
 function create_param_onduplicate_update($resourceName,$resourceSpecifications) {
-    $fieldsList = implode("|",array_keys($resourceSpecifications["fields"]));
+    $fieldsList = implode("|", array_keys(swagger_typed_fields($resourceSpecifications)));
     return [
         "name"=>"update",
         "in"=>"query",

@@ -28,6 +28,7 @@ services:
       - DEFAULT_RELATIONSHIPS_PAGE_SIZE=10
       - DEFAULT_PAGE_SIZE=100
       - MAX_PAGE_SIZE=10000
+      - SCHEMA_DEBUG_JSON=1
       - CONFIG_API_SECRET=myverysecuresecret
       - CONFIG_API_IPS_ACLS=[{"allow":true,"ip":"0.0.0.0/0"}]
       

@@ -290,9 +290,14 @@ function structure_apply_inbound_relations(array &$structure, array $edges, ?arr
 /**
  * Preserve public relation names from the previous effective schema on regen.
  *
+ * @param array<string, array<string, bool>> $protectedRelationsByEntity
  * @return array{structure: array, warnings: list<array{code:string, message:string, entity?:string, relation?:string}>}
  */
-function structure_merge_preserved_relations(array $oldStructure, array $newStructure): array
+function structure_merge_preserved_relations(
+    array $oldStructure,
+    array $newStructure,
+    array $protectedRelationsByEntity = []
+): array
 {
     $warnings = [];
 
@@ -353,15 +358,19 @@ function structure_merge_preserved_relations(array $oldStructure, array $newStru
         }
 
         foreach ($oldByEdge as $edgeId => $info) {
-            $warnings[] = [
-                'code' => 'ORPHAN_RELATION',
-                'message' => "Relation '{$info['name']}' on '{$parent}' no longer exists in the database; kept for API compatibility",
-                'entity' => $parent,
-                'relation' => $info['name'],
-            ];
-            if (!isset($usedNames[$info['name']])) {
-                $merged[$info['name']] = $info['spec'];
-                $usedNames[$info['name']] = true;
+            $relationName = $info['name'];
+            $isProtected = isset($protectedRelationsByEntity[$parent][$relationName]);
+            if (!$isProtected) {
+                $warnings[] = [
+                    'code' => 'ORPHAN_RELATION',
+                    'message' => "Relation '{$relationName}' on '{$parent}' no longer exists in the database; kept for API compatibility",
+                    'entity' => $parent,
+                    'relation' => $relationName,
+                ];
+            }
+            if (!isset($usedNames[$relationName])) {
+                $merged[$relationName] = $info['spec'];
+                $usedNames[$relationName] = true;
             }
         }
 
@@ -442,14 +451,40 @@ function structure_build_from_database($db, string $dbName, array $oldStructure 
     $structure = $parsed['structure'];
     $warnings = $parsed['warnings'] ?? [];
 
+    $patchExpanded = null;
+    if (is_array($patch) && count($patch)) {
+        // Used to suppress misleading ORPHAN_RELATION warnings for relations
+        // explicitly defined by overrides (e.g. via views).
+        $patchExpanded = schema_patch_apply_overrides($patch);
+    }
+
     if (count($oldStructure)) {
-        $merge = structure_merge_preserved_relations($oldStructure, $structure);
+        $protectedRelationsByEntity = [];
+        if (is_array($patchExpanded)) {
+            foreach ($patchExpanded as $entity => $patchEntity) {
+                if (!is_string($entity) || $entity === '' || !is_array($patchEntity)) {
+                    continue;
+                }
+                $rels = $patchEntity['relations'] ?? null;
+                if (!is_array($rels)) {
+                    continue;
+                }
+                foreach ($rels as $relName => $relSpec) {
+                    if (!is_string($relName) || $relName === '' || !is_array($relSpec)) {
+                        continue;
+                    }
+                    $protectedRelationsByEntity[$entity][$relName] = true;
+                }
+            }
+        }
+
+        $merge = structure_merge_preserved_relations($oldStructure, $structure, $protectedRelationsByEntity);
         $structure = $merge['structure'];
         $warnings = array_merge($warnings, $merge['warnings']);
     }
 
-    if (is_array($patch) && count($patch)) {
-        $structure = smart_array_merge_recursive($structure, schema_patch_apply_overrides($patch));
+    if (is_array($patchExpanded)) {
+        $structure = smart_array_merge_recursive($structure, $patchExpanded);
     }
 
     return ['structure' => $structure, 'warnings' => $warnings];

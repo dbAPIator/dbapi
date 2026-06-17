@@ -73,10 +73,25 @@ function mgmt_openapi_canonical_path(string $path): string
 /**
  * @return array<string,mixed>
  */
+/**
+ * API config lifecycle: development allows schema introspection/rebuild/patch;
+ * production serves copied config only (no live DB schema mutations).
+ */
+function api_environment(array $meta): string
+{
+    $env = $meta['environment'] ?? 'development';
+    return in_array($env, ['development', 'production'], true) ? $env : 'development';
+}
+
+function api_is_production_environment(array $meta): bool
+{
+    return api_environment($meta) === 'production';
+}
+
 function mgmt_meta_from_payload(object $payload): array
 {
     $meta = [];
-    foreach (['title', 'description', 'version', 'termsOfService'] as $key) {
+    foreach (['title', 'description', 'version', 'termsOfService', 'environment'] as $key) {
         if (isset($payload->$key)) {
             $meta[$key] = $payload->$key;
         }
@@ -100,6 +115,7 @@ function single_mode_meta_from_env(string $apiId): array
     $now = gmdate('Y-m-d\TH:i:s\Z');
     $meta = [
         'name' => $apiId,
+        'environment' => 'development',
         'createdAt' => $now,
         'updatedAt' => $now,
     ];
@@ -135,6 +151,10 @@ function single_mode_meta_from_env(string $apiId): array
             'name' => $licenseName,
             'url' => $licenseUrl,
         ], static fn ($v) => $v !== null);
+    }
+    $env = $envString('API_ENVIRONMENT');
+    if ($env !== null && in_array($env, ['development', 'production'], true)) {
+        $meta['environment'] = $env;
     }
     return $meta;
 }

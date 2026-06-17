@@ -127,9 +127,14 @@ class MgmtConfigStore
         $conn = @include "{$dir}/connection.php";
         $configured = is_array($conn) && !empty($conn['database'] ?? null);
 
+        if (!function_exists('api_environment')) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+        }
+
         return array_merge($meta, [
             'id' => $meta['id'] ?? $apiId,
             'name' => $meta['name'] ?? $apiId,
+            'environment' => api_environment($meta),
             'status' => $this->getStatus($apiId),
             'connection' => [
                 'configured' => $configured,

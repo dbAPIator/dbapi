@@ -8,6 +8,7 @@ class Schema extends MY_MgmtController
     public function introspect($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         try {
             $structure = $this->generateStructure($apiId);
             $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
@@ -29,6 +30,12 @@ class Schema extends MY_MgmtController
         $this->requireApiAccess($apiId);
         $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
         if (!is_file($snapPath)) {
+            require_once APPPATH . 'helpers/deployment_helper.php';
+            if (api_is_production_environment($this->store->loadMeta($apiId))) {
+                $this->mgmtError(404, $this->errorsCatalog['config']['api_not_found'], [
+                    'reason' => 'schema_introspected.json missing; introspection is disabled in production',
+                ]);
+            }
             try {
                 $structure = $this->generateStructure($apiId);
                 HttpResp::json_out(200, ['entities' => $structure]);
@@ -50,27 +57,28 @@ class Schema extends MY_MgmtController
     public function put_overrides($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         $payload = $this->validatePayload();
         $data = json_decode(json_encode($payload), true);
-        $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $data);
-        $this->store->touchUpdated($apiId);
-        HttpResp::json_out(200, $data);
+        $result = $this->savePatchOverrides($apiId, $data);
+        HttpResp::json_out(200, $result);
     }
 
     public function patch_overrides($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         $payload = $this->validatePayload();
         $existing = $this->store->loadPhp("{$this->store->getApiDir($apiId)}/patch.php");
         $merged = smart_array_merge_recursive($existing, json_decode(json_encode($payload), true));
-        $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $merged);
-        $this->store->touchUpdated($apiId);
-        HttpResp::json_out(200, $merged);
+        $result = $this->savePatchOverrides($apiId, $merged);
+        HttpResp::json_out(200, $result);
     }
 
     public function get_effective($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         try {
             $structure = $this->generateStructure($apiId);
             HttpResp::json_out(200, ['entities' => $structure]);
@@ -82,18 +90,9 @@ class Schema extends MY_MgmtController
     public function rebuild($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         try {
-            $built = $this->rebuildStructureFromDatabase($apiId);
-            $this->saveStructure($apiId, $built['structure']);
-            $meta = $this->store->loadMeta($apiId);
-            $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
-            $this->store->saveMeta($apiId, $meta);
-
-            HttpResp::json_out(200, [
-                'rebuiltAt' => gmdate('Y-m-d\TH:i:s\Z'),
-                'entityCount' => count($built['structure']),
-                'warnings' => $built['warnings'] ?? [],
-            ]);
+            HttpResp::json_out(200, $this->rebuildAndSaveStructure($apiId));
         } catch (Exception $e) {
             $this->mgmtError(400, ['code' => 2003, 'message' => $e->getMessage()]);
         }
@@ -106,22 +105,20 @@ class Schema extends MY_MgmtController
     public function sync($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         try {
             $structure = $this->generateStructure($apiId);
             $snapPath = "{$this->store->getApiDir($apiId)}/schema_introspected.json";
             file_put_contents($snapPath, json_encode($structure, JSON_PRETTY_PRINT));
 
-            $built = $this->rebuildStructureFromDatabase($apiId);
-            $this->saveStructure($apiId, $built['structure']);
+            $rebuild = $this->rebuildAndSaveStructure($apiId);
             $meta = $this->store->loadMeta($apiId);
-            $meta['schema']['lastWarnings'] = $built['warnings'] ?? [];
-            $this->store->saveMeta($apiId, $meta);
 
             $result = [
                 'syncedAt' => gmdate('Y-m-d\TH:i:s\Z'),
                 'introspectedAt' => $meta['schema']['introspectedAt'] ?? null,
-                'entityCount' => count($built['structure']),
-                'warnings' => $built['warnings'] ?? [],
+                'entityCount' => $rebuild['entityCount'],
+                'warnings' => $rebuild['warnings'],
             ];
 
             if ($this->wantsActivate()) {
@@ -147,6 +144,7 @@ class Schema extends MY_MgmtController
     public function regenerate_openapi($apiId)
     {
         $this->requireApiAccess($apiId);
+        $this->requireSchemaDevelopment($apiId);
         $dir = $this->store->getApiDir($apiId);
         $structPath = "{$dir}/{$this->configFiles['structure']}";
         if (!is_file($structPath)) {

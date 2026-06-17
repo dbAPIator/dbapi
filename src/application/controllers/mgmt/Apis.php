@@ -52,6 +52,7 @@ class Apis extends MY_MgmtController
         $meta = array_merge([
             'id' => $id,
             'name' => $apiId,
+            'environment' => 'development',
             'createdAt' => $now,
             'updatedAt' => $now,
         ], mgmt_meta_from_payload($payload));
@@ -162,6 +163,7 @@ class Apis extends MY_MgmtController
         $meta = array_merge([
             'id' => $this->utilities->short_uuid(),
             'name' => $apiId,
+            'environment' => 'development',
             'createdAt' => $now,
             'updatedAt' => $now,
         ], mgmt_meta_from_payload($payload));

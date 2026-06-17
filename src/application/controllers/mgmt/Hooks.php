@@ -16,6 +16,7 @@ class Hooks extends MY_MgmtController
 
     private function saveStructure(string $apiId, array $structure): void
     {
+        $this->requireSchemaDevelopment($apiId);
         $this->store->savePhp(
             "{$this->store->getApiDir($apiId)}/{$this->configFiles['structure']}",
             $structure

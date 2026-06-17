@@ -81,6 +81,10 @@ $errorsCatalog["config"] = [
         "code"=>"3013",
         "message"=>"Single deployment mode: the API id is fixed; renaming is not supported"
     ],
+    "schema_production_locked"=>[
+        "code"=>"3014",
+        "message"=>"Schema introspection, overrides, and rebuild are disabled in production; deploy structure.php and patch.php from development or set environment to development"
+    ],
 
 ];
 

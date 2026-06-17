@@ -6,6 +6,7 @@
             <file>tests/TestOpenApiSpecValidator.php</file>
             <file>tests/TestSwaggerGenerator.php</file>
             <file>tests/TestDeploymentHelper.php</file>
+            <file>tests/TestStructureMergePreservedRelations.php</file>
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
             <file>tests/TestAccessControl.php</file>
