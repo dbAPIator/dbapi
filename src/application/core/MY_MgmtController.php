@@ -212,20 +212,21 @@ class MY_MgmtController extends CI_Controller
     }
 
     /**
-     * @return array{patch: array, rebuild?: array}
+     * Persist patch.php; in development also rebuilds structure.php.
+     *
+     * @return array Stored schema overrides (same shape as GET .../schema/overrides).
      */
     protected function savePatchOverrides(string $apiId, array $patch): array
     {
         $this->store->savePhp("{$this->store->getApiDir($apiId)}/patch.php", $patch);
-        $result = ['patch' => $patch];
         require_once APPPATH . 'helpers/deployment_helper.php';
         if (!api_is_production_environment($this->store->loadMeta($apiId))) {
-            $result['rebuild'] = $this->rebuildAndSaveStructure($apiId);
+            $this->rebuildAndSaveStructure($apiId);
         } else {
             $this->writeSchemaDebugJson($apiId);
         }
         $this->store->touchUpdated($apiId);
-        return $result;
+        return $patch;
     }
 
     /**
