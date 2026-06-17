@@ -51,10 +51,10 @@ class Datamodel {
     /**
      * check if $database exists and initializes the DB
      * @param array $structure
-     * @return Datamodel|null
+     * @return Datamodel
      */
     static function init($structure) {
-        return new Datamodel($structure) ?? null;
+        return new Datamodel($structure);
     }
 
     /**
@@ -293,7 +293,7 @@ class Datamodel {
     /**
      * @param $resName
      * @param $relName
-     * @return Response
+     * @return array|null
      * @throws \Exception
      */
     function get_outbound_relation($resName, $relName) {
@@ -544,13 +544,13 @@ class Datamodel {
 
                 // validate $relData & $relData->data to be objects
                 if(!is_object($relData) || !property_exists($relData,"data")) {
-                    unset($relations->$relName);
+                    unset($relations[$relName]);
                     break;
                 }
 
                 $relData = is_object($relData->data)?array($relData->data):(is_array($relData->data)?$relData->data:false);
                 if($relData===false) {
-                    unset($relations->$relName);
+                    unset($relations[$relName]);
                     break;
                 }
                 foreach($relData as $idx=>$rel) {
@@ -559,7 +559,7 @@ class Datamodel {
                             break;
                         }
                     }
-                    unset($relations->$relName->data[$idx]);
+                    unset($relations[$relName]->data[$idx]);
                 }
             }
         }
@@ -653,7 +653,7 @@ class Datamodel {
         if(!$res)
             return false;
 
-        return $this->dataModel->$resName->fields->$fieldName->iskey;
+        return $this->dataModel[$resName]["fields"][$fieldName]["iskey"];
     }
 
     /**
@@ -782,9 +782,4 @@ class Datamodel {
     }
 
 
-}
-
-function array_key_exists_and_has_value($array,$key,$value) {
-    return array_key_exists($key,$array) && $array[$key] = $value;
-}
 }
