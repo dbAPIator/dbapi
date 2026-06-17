@@ -18,29 +18,37 @@ abstract class SingleModeDataPlaneTestCase extends IntegrationTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = self::createHttpClient();
+        if (!self::probeManagementApi(self::$client)) {
+            self::markTestSkipped(self::managementApiSkipMessage());
+        }
         self::ensureDefaultApiSchema();
         self::$serverReady = self::probeDataPlane();
         if (!self::$serverReady) {
             self::markTestSkipped(
                 'Single-mode data plane not reachable at ' . self::baseUri()
-                . ' — start Docker (docker compose up -d) and reset MySQL volume if schema changed.'
+                . ' — start Docker (docker compose up -d), copy tests/test.env.single.example to tests/test.env,'
+                . ' and reset MySQL volume if schema changed.'
             );
         }
     }
 
     protected static function ensureDefaultApiSchema(): void
     {
-        $resp = self::$client->post('mgmt/v1/schema:rebuild', [
-            'headers' => self::managementHeaders(),
-            'http_errors' => false,
-        ]);
-        if ($resp->getStatusCode() >= 400) {
-            return;
+        try {
+            $resp = self::$client->post('mgmt/v1/schema:rebuild', [
+                'headers' => self::managementHeaders(),
+                'http_errors' => false,
+            ]);
+            if ($resp->getStatusCode() >= 400) {
+                return;
+            }
+            self::$client->post('mgmt/v1:activate', [
+                'headers' => self::managementHeaders(),
+                'http_errors' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // Not single-mode or transient error; probeDataPlane will skip.
         }
-        self::$client->post('mgmt/v1:activate', [
-            'headers' => self::managementHeaders(),
-            'http_errors' => false,
-        ]);
     }
 
     protected static function probeDataPlane(): bool
