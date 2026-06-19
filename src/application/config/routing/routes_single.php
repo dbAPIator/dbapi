@@ -43,4 +43,4 @@ $route[$dataApiPrefix . '/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_relate
 // Related record level
 $route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['get'] = "dbapi/get_related/{$singleApiId}/$1/$2/$3/$4";
 $route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_related/{$singleApiId}/$1/$2/$3/$4";
-$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['delete'] = "dbapi/deleteRelated/{$singleApiId}/$1/$2/$3/$4";
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['delete'] = "dbapi/delete_related/{$singleApiId}/$1/$2/$3/$4";
