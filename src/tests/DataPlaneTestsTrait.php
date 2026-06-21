@@ -497,6 +497,40 @@ trait DataPlaneTestsTrait
         $this->assertContains($del->getStatusCode(), [200, 204], 'delete customer');
     }
 
+    public function testPatchTinyintZeroValue(): void
+    {
+        $sku = 'ZERO-' . bin2hex(random_bytes(3));
+        $create = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'attributes' => [
+                        'sku' => $sku,
+                        'name' => 'Active Product',
+                        'price' => 1.00,
+                        'is_active' => 1,
+                    ],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'create product');
+        $id = $created['data']['id'];
+
+        $patch = $this->dataRequest('PATCH', $this->dataUrl('products', $id), [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'id' => $id,
+                    'attributes' => ['is_active' => '0'],
+                ],
+            ],
+        ]);
+        $updated = $this->assertHttpStatus($patch, 200, 'patch is_active to 0');
+        $this->assertEquals(0, (int) $updated['data']['attributes']['is_active']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('products', $id));
+    }
+
     public function testNestedCreateWithOrder(): void
     {
         $email = $this->uniqueEmail('nested');

@@ -186,6 +186,7 @@ async function apiGet(resource, token, query = {}) {
 - Discover login methods with `GET .../auth/login` before building UI.
 - POST credentials to `.../auth/login/{method}` as form-urlencoded.
 - Attach `Authorization: Bearer <token>` to data plane requests.
+- Validate a token with `GET .../auth/session` (same Bearer header; **204** if valid, **401** with empty body if not).
 - Configure auth via Management API `PUT .../policies/auth`.
 
 Path rules, scoped tables, and `mandatoryFilter` build on JWT claims — see [Tutorial 8](08-security-policies.md).

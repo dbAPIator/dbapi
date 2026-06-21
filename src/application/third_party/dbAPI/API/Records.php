@@ -699,8 +699,9 @@ class Records {
 
 //        print_r([$table,$attributes,$where]);
 //        $config = $this->dm->get_config($table);
-        foreach ($attributes as $key=>$val) {
-            if(!$this->dm->is_required($table,$key) && !$val) {
+        $attributes = $this->dm->validate_object_attributes($table, $attributes, "upd");
+        foreach ($attributes as $key => $val) {
+            if (!$this->dm->is_required($table, $key) && $val === '') {
                 $attributes[$key] = null;
             }
         }

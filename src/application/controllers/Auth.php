@@ -1,9 +1,13 @@
 <?php
 require_once(APPPATH."libraries/HttpResp.php");
 require_once (BASEPATH."/../vendor/autoload.php");
+require_once(APPPATH."third_party/dbAPI/Autoloader.php");
 
+use dbAPI\API\AccessControl;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+
+dbAPI\Autoloader::register();
 
 /**
  * Class Auth
@@ -211,6 +215,9 @@ class Auth extends CI_Controller {
                 'password' => ['loginQuery' => $auth['loginQuery']],
             ];
         }
+        if (empty($auth['jwt_key']) && !empty($auth['key'])) {
+            $auth['jwt_key'] = $auth['key'];
+        }
         return $auth;
     }
 
@@ -346,5 +353,30 @@ class Auth extends CI_Controller {
         else
             $this->generate_token($result,$auth);
 
+    }
+
+    /**
+     * Validate Bearer JWT. Success: 204 No Content. Failure: 401, no body.
+     *
+     * @param $configName
+     */
+    function session($configName) {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+            HttpResp::quick(405);
+        }
+
+        $auth = $this->load_auth_config($configName);
+        if (($auth['mode'] ?? null) === 'none') {
+            HttpResp::quick(401);
+        }
+
+        $headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
+        $jwt = AccessControl::decodeJwt($auth, $headers, $_SERVER);
+
+        if (!$jwt['valid']) {
+            HttpResp::quick(401);
+        }
+
+        HttpResp::no_content(204);
     }
 }
