@@ -194,7 +194,7 @@ function generate_swagger(string $url,array $dataModel,string $apiDescription,st
         $openApiSpec["paths"][$resourcesPath] = [];
         $openApiSpec["paths"][$resourcesPath]["summary"] = "CRUD operations on table **$resourceName** and related tables";
 
-        create_components($openApiSpec, $resourceName, $resourceSpecifications);
+        create_components($openApiSpec, $resourceName, $resourceSpecifications, $dataModel);
     }
 
     foreach ($resources as $resourceName) {
@@ -235,6 +235,10 @@ function generate_swagger(string $url,array $dataModel,string $apiDescription,st
             continue;
 
         foreach ($relations as $relName=>$relSpec) {
+            if (!swagger_relation_target_exists($relSpec, $dataModel)) {
+                continue;
+            }
+
             /************************************************
              * Related resources: /parent/{parentId}/relationName[/childId]
              ***********************************************/

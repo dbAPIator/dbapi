@@ -268,26 +268,9 @@ class Records {
                 // fld is requested in the includes => parse result row to generate Recods and add is a relation
                 $relationRecord = $this->parse_result_row($request->include[$fieldName],$row,$allRecs);
                 if(is_null($relationRecord->id)) {
+                    $emptyRelation = null;
+                    $rec->add_one2one_relation($fieldName, $emptyRelation);
                     continue;
-                }
-                $rec->add_one2one_relation($fieldName,$relationRecord);
-
-
-                // fld is requested to be included => it's data is included in the row => parse the row
-                if(isset($request->include[$fieldName])) {
-                    $relationRecord = $this->parse_result_row($request->include[$fieldName],$row,$allRecs);
-                    if(is_null($relationRecord->id)) {
-                        continue;
-                    }
-                    $rec->add_one2one_relation($fieldName,$relationRecord);
-                    continue;
-                }
-
-                // fld is not requested to be included => create an simple Record
-                $relRecId = $row[$request->fieldsIndexes[$fieldName]+$request->selectFieldsOffset];
-                $relationRecord = null;
-                if(!is_null($relRecId)) {
-                    $relationRecord = new \Record($relations[$fieldName]["table"],$relRecId);
                 }
                 $rec->add_one2one_relation($fieldName,$relationRecord);
             }
@@ -317,7 +300,7 @@ class Records {
                 $rec->add_one2many_relation($relName,$recordSet);
             }
 
-            if(isset($objIdx))
+            if(isset($objIdx) && $recId !== null)
                 $allRecs[$objIdx] = $rec;
         }
 

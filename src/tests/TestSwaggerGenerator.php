@@ -316,4 +316,48 @@ PHP
         $validation = validate_data_api_openapi_spec($spec);
         $this->assertTrue($validation['valid'], implode('; ', $validation['errors']));
     }
+
+    public function testGenerateSwaggerSkipsOrphanRelationsToRemovedTables(): void
+    {
+        $structure = [
+            'inventory' => [
+                'type' => 'table',
+                'keyFld' => 'id',
+                'fields' => [
+                    'id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => false,
+                        'select' => true,
+                    ],
+                ],
+                'relations' => [
+                    'inventory_smartbill' => [
+                        'type' => 'inbound',
+                        'table' => 'inventory_smartbill',
+                        'field' => 'inventory_id',
+                    ],
+                ],
+            ],
+        ];
+
+        $dm = \dbAPI\API\Datamodel::init($structure);
+        $spec = generate_swagger(
+            api_openapi_data_url('http://localhost', 'demo'),
+            $dm->get_dataModel(),
+            'demo Spec',
+            'demo spec',
+            'demo',
+            'test@example.com'
+        );
+
+        $this->assertArrayHasKey('/inventory', $spec['paths']);
+        $this->assertArrayHasKey('/inventory/{inventory_id}', $spec['paths']);
+        $this->assertArrayNotHasKey('/inventory/{inventory_id}/inventory_smartbill', $spec['paths']);
+
+        $relationships = $spec['components']['schemas']['inventory_ResourceObject']['properties']['relationships']['properties'] ?? [];
+        $this->assertArrayNotHasKey('inventory_smartbill', $relationships);
+
+        $validation = validate_data_api_openapi_spec($spec);
+        $this->assertTrue($validation['valid'], implode('; ', $validation['errors']));
+    }
 }

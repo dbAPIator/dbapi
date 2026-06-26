@@ -12,6 +12,15 @@ function resource_relations(array $resourceSpecifications): array
 }
 
 /**
+ * True when a relation points at an entity present in the effective schema.
+ */
+function swagger_relation_target_exists(array $relSpec, array $dataModel): bool
+{
+    $table = $relSpec['table'] ?? '';
+    return $table !== '' && isset($dataModel[$table]);
+}
+
+/**
  * Fields with a DB type — skips patch-only permission stubs (e.g. orphan hiddenFields).
  */
 function swagger_typed_fields(array $resourceSpecifications): array
@@ -32,9 +41,10 @@ function swagger_typed_fields(array $resourceSpecifications): array
  * - resourceIdentifierObject - specifies the structure of a JSONAPI Resourcer Identifier Object (https://jsonapi.org/format/#document-resource-identifier-objects)
  * @param $resourceName
  * @param $resourceSpecification
+ * @param array $dataModel effective schema (optional; skips orphan relation refs when set)
  * @return array
  */
-function add_components($resourceName, $resourceSpecification)
+function add_components($resourceName, $resourceSpecification, array $dataModel = [])
 {
     $baseSchema = [
         "type"=>"object",
@@ -78,6 +88,9 @@ function add_components($resourceName, $resourceSpecification)
             "properties"=>[]
         ];
         foreach ($resourceSpecification["relations"] as $relName=>$relSpec) {
+            if ($dataModel !== [] && !swagger_relation_target_exists($relSpec, $dataModel)) {
+                continue;
+            }
             if($relSpec["type"]=="inbound")
                 $resourceSchema["properties"]["relationships"]["properties"][$relName] = [
                     "type"=>"object",
@@ -443,9 +456,9 @@ function create_param_onduplicate_update($resourceName,$resourceSpecifications) 
 
 }
 
-function create_components(&$openApiSpec,$resourceName,$resourceSpecifications) {
+function create_components(&$openApiSpec,$resourceName,$resourceSpecifications,array $dataModel=[]) {
     //print_r(add_components($resourceName,$resourceSpecifications));
-    $openApiSpec["components"]["schemas"] = array_merge($openApiSpec["components"]["schemas"],add_components($resourceName,$resourceSpecifications));
+    $openApiSpec["components"]["schemas"] = array_merge($openApiSpec["components"]["schemas"],add_components($resourceName,$resourceSpecifications,$dataModel));
 
 
     // request body for create

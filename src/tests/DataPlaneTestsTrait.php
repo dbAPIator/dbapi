@@ -389,6 +389,18 @@ trait DataPlaneTestsTrait
         }
     }
 
+    public function testIncludeNullableOutboundRelationKeepsRelationship(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '3'), [
+            'query' => ['include' => 'account_manager_id'],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'include nullable account manager');
+        $this->assertArrayHasKey('relationships', $body['data']);
+        $this->assertArrayHasKey('account_manager_id', $body['data']['relationships']);
+        $this->assertArrayHasKey('data', $body['data']['relationships']['account_manager_id']);
+        $this->assertNull($body['data']['relationships']['account_manager_id']['data']);
+    }
+
     public function testRelatedRecordsEndpoint(): void
     {
         $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders'));
