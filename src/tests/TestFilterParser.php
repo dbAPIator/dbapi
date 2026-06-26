@@ -107,4 +107,68 @@ class TestFilterParser extends TestCase
         $this->expectException(\dbAPI\API\Exception::class);
         FilterParser::parse('a=1,b=2,c=3,d=4,e=5,f=6');
     }
+
+    public function testRelationalFieldParse(): void
+    {
+        $ast = FilterParser::parse('account_manager_id.full_name~=~Alice');
+        $this->assertSame('compare', $ast['type']);
+        $this->assertSame('account_manager_id.full_name', $ast['left']);
+        $this->assertSame('~=~', $ast['op']);
+        $this->assertSame('Alice', $ast['right']);
+    }
+
+    public function testRelationalCompileWithAliases(): void
+    {
+        $sql = FilterParser::compile(
+            FilterParser::parse('account_manager_id.full_name~=~Alice'),
+            'customers',
+            [
+                'account_manager_id.full_name' => [
+                    'alias' => 'customers_account_manager_id',
+                    'field' => 'full_name',
+                ],
+            ]
+        );
+        $this->assertStringContainsString('`customers_account_manager_id`.`full_name` LIKE (\'%Alice%\')', $sql);
+    }
+
+    public function testBuildRelationalJoins(): void
+    {
+        $dm = new \dbAPI\API\Datamodel([
+            'customers' => [
+                'fields' => [
+                    'account_manager_id' => ['select' => true],
+                ],
+                'relations' => [
+                    'account_manager_id' => [
+                        'type' => 'outbound',
+                        'table' => 'users',
+                        'field' => 'id',
+                    ],
+                ],
+            ],
+            'users' => [
+                'fields' => [
+                    'full_name' => ['select' => true],
+                ],
+            ],
+        ]);
+
+        $ast = FilterParser::parse('account_manager_id.full_name~=~Alice');
+        $built = FilterParser::buildRelationalJoins($dm, 'customers', $ast);
+
+        $this->assertCount(1, $built['joins']);
+        $this->assertStringContainsString('LEFT JOIN `users` AS `customers_account_manager_id`', $built['joins'][0]);
+        $this->assertSame(
+            ['alias' => 'customers_account_manager_id', 'field' => 'full_name'],
+            $built['fieldAliases']['account_manager_id.full_name']
+        );
+    }
+
+    public function testDedupeJoins(): void
+    {
+        $join = 'LEFT JOIN `users` AS `customers_account_manager_id` ON `customers_account_manager_id`.`id`=`customers`.`account_manager_id`';
+        $deduped = FilterParser::dedupeJoins([$join, $join]);
+        $this->assertCount(1, $deduped);
+    }
 }

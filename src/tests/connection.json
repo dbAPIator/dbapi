@@ -2,7 +2,7 @@
   "driver": "mysql",
   "host": "127.0.0.1",
   "port": 3308,
-  "database": "dbapi_dataplane",
-  "username": "dbapi",
-  "password": "dbapi"
+  "database": "myapp",
+  "username": "user",
+  "password": "password"
 }

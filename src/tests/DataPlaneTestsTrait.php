@@ -255,6 +255,29 @@ trait DataPlaneTestsTrait
         $this->assertContains('1', $ids);
     }
 
+    public function testFilterOnOutboundRelationshipField(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
+            'query' => [
+                'filter' => ['customers' => 'account_manager_id.full_name~=~Alice'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter on outbound relationship field');
+        $ids = array_map('strval', array_column($body['data'], 'id'));
+        $this->assertSame(['1'], $ids);
+    }
+
+    public function testFilterOnOutboundRelationshipFieldNoMatch(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
+            'query' => [
+                'filter' => ['customers' => 'account_manager_id.full_name~=~Nobody'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'filter on outbound relationship field no match');
+        $this->assertEmpty($body['data']);
+    }
+
     // --- Sorting ---
 
     public function testSortAscendingByLabel(): void

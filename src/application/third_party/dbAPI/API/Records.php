@@ -81,14 +81,13 @@ class Records {
 
 
     /**
-     * @param $filters
-     * @param $resName
+     * @param array<string, array{alias: string, field: string}> $fieldAliases
      * @return int|string
      * @throws \Exception
      */
-    private function generate_where_sql($filters,$alias)
+    private function generate_where_sql($filters, $alias, array $fieldAliases = [])
     {
-        return FilterParser::compile($filters, $alias);
+        return FilterParser::compile($filters, $alias, $fieldAliases);
     }
 
 
@@ -143,26 +142,37 @@ class Records {
 
         AccessControl::applyMandatoryFilter($request, $this->dm, $this->authConfig, $this->jwtPayload);
 
-        $whereStr = $this->generate_where_sql($request->filter,$request->resourceName);
-        if(empty($whereStr)) {
-            $whereStr = 1;
-        }
-
+        $filterAst = FilterParser::normalize($request->filter);
         if ($request->filter_advanced) {
             try {
                 $adv = is_string($request->filter_advanced)
                     ? FilterParser::parse($request->filter_advanced)
                     : FilterParser::normalize($request->filter_advanced);
-                $whereStr = FilterParser::compile(
-                    FilterParser::andNodes(FilterParser::normalize($request->filter), $adv),
-                    $request->resourceName
-                );
+                $filterAst = FilterParser::andNodes($filterAst, $adv);
             } catch (Exception $e) {
                 throw new Exception('Invalid filter_advanced: '.$e->getMessage(), 400);
             }
         }
 
+        try {
+            $relational = FilterParser::buildRelationalJoins($this->dm, $request->resourceName, $filterAst);
+        } catch (\dbAPI\API\Exception $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage(), $e->getCode() ?: 400);
+        }
+
+        $whereStr = $this->generate_where_sql(
+            $filterAst,
+            $request->resourceName,
+            $relational['fieldAliases']
+        );
+        if(empty($whereStr)) {
+            $whereStr = 1;
+        }
+
         list($select,$join) = $this->generate_select_sql_parts($request);
+        $join = FilterParser::dedupeJoins(array_merge($relational['joins'], $join));
 
         // extract total number of records matched by the query
         $countSql = "SELECT count(*) cnt FROM `$request->resourceName` "

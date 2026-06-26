@@ -185,15 +185,107 @@ class FilterParser
     }
 
     /**
+     * @param array<string, array{alias: string, field: string}> $fieldAliases
      * @throws Exception
      */
-    public static function compile(?array $ast, string $alias): string
+    public static function compile(?array $ast, string $alias, array $fieldAliases = []): string
     {
         $ast = self::normalize($ast);
         if ($ast === null) {
             return '1';
         }
-        return self::compileNode($ast, $alias);
+        return self::compileNode($ast, $alias, $fieldAliases);
+    }
+
+    /**
+     * @return array{rels: list<string>, field: string}|null
+     */
+    public static function parseRelationalPath(string $left): ?array
+    {
+        if (strpos($left, '.') === false) {
+            return null;
+        }
+        $parts = explode('.', $left);
+        $field = array_pop($parts);
+        if ($field === '' || $parts === []) {
+            return null;
+        }
+        return ['rels' => $parts, 'field' => $field];
+    }
+
+    /**
+     * Build LEFT JOINs for dotted filter paths (outbound relations only).
+     *
+     * @return array{joins: list<string>, fieldAliases: array<string, array{alias: string, field: string}>}
+     * @throws Exception
+     */
+    public static function buildRelationalJoins(Datamodel $dm, string $resourceName, ?array $filterAst): array
+    {
+        $joins = [];
+        $fieldAliases = [];
+        $joinAliases = [];
+
+        foreach (self::collectCompareFields($filterAst) as $left) {
+            $path = self::parseRelationalPath($left);
+            if ($path === null) {
+                continue;
+            }
+
+            $parentAlias = $resourceName;
+            $currentTable = $resourceName;
+            $aliasPrefix = $resourceName;
+
+            foreach ($path['rels'] as $relName) {
+                $relSpec = $dm->get_outbound_relation($currentTable, $relName);
+                if ($relSpec === null) {
+                    throw new Exception(
+                        "Invalid relational filter '$left': outbound relationship '$relName' not found on '$currentTable'",
+                        400
+                    );
+                }
+
+                $joinAlias = $aliasPrefix . '_' . $relName;
+                if (!isset($joinAliases[$joinAlias])) {
+                    $localColumn = function_exists('dbapi_outbound_local_column')
+                        ? dbapi_outbound_local_column($relName, $relSpec)
+                        : ($relSpec['fkfield'] ?? $relName);
+                    $joins[] = sprintf(
+                        'LEFT JOIN `%s` AS `%s` ON `%s`.`%s`=`%s`.`%s`',
+                        $relSpec['table'],
+                        $joinAlias,
+                        $joinAlias,
+                        $relSpec['field'],
+                        $parentAlias,
+                        $localColumn
+                    );
+                    $joinAliases[$joinAlias] = true;
+                }
+
+                $parentAlias = $joinAlias;
+                $currentTable = $relSpec['table'];
+                $aliasPrefix = $joinAlias;
+            }
+
+            if (!$dm->is_valid_field($currentTable, $path['field'])) {
+                throw new Exception(
+                    "Invalid relational filter '$left': field '{$path['field']}' not found on '$currentTable'",
+                    400
+                );
+            }
+            if (!$dm->field_is_selectable($currentTable, $path['field'])) {
+                throw new Exception(
+                    "Invalid relational filter '$left': field '{$path['field']}' is not selectable on '$currentTable'",
+                    400
+                );
+            }
+
+            $fieldAliases[$left] = [
+                'alias' => $parentAlias,
+                'field' => $path['field'],
+            ];
+        }
+
+        return ['joins' => $joins, 'fieldAliases' => $fieldAliases];
     }
 
     /**
@@ -326,7 +418,7 @@ class FilterParser
     private function parseComparisonNode(): array
     {
         $this->skipWs();
-        if (!preg_match('/^(\w+)/', substr($this->s, $this->i), $m)) {
+        if (!preg_match('/^(\w+(?:\.\w+)*)/', substr($this->s, $this->i), $m)) {
             throw new Exception('Invalid filter comparison near: ' .
                 substr($this->s, $this->i, 32), 400);
         }
@@ -418,20 +510,30 @@ class FilterParser
         }
     }
 
-    public static function compileCompare(string $left, string $op, string $right, string $alias): string
+    /**
+     * @param array<string, array{alias: string, field: string}> $fieldAliases
+     */
+    public static function compileCompare(string $left, string $op, string $right, string $alias, array $fieldAliases = []): string
     {
         return self::compileCompareObject((object) [
             'left' => $left,
             'op' => $op,
             'right' => $right,
-        ], $alias);
+        ], $alias, $fieldAliases);
     }
 
-    public static function compileCompareObject(object $where, string $alias): string
+    /**
+     * @param array<string, array{alias: string, field: string}> $fieldAliases
+     */
+    public static function compileCompareObject(object $where, string $alias, array $fieldAliases = []): string
     {
         if (!property_exists($where, 'left') || !property_exists($where, 'op')) {
             return 'FALSE';
         }
+
+        $target = $fieldAliases[$where->left] ?? ['alias' => $alias, 'field' => $where->left];
+        $colAlias = $target['alias'];
+        $colField = $target['field'];
 
         $validOps = ['!=', '=', '<', '<=', '>', '>=', '><', '~=', '!~=', '=~', '!=~', '<>', '!><', '~=~', '!~=~'];
         $where->right = ($where->right ?? '') === 'NULL' ? null : ($where->right ?? '');
@@ -440,48 +542,48 @@ class FilterParser
             case '><':
                 return sprintf(
                     '`%s`.`%s` IN (\'%s\')',
-                    $alias,
-                    $where->left,
+                    $colAlias,
+                    $colField,
                     str_replace(';', "','", $where->right)
                 );
             case '!><':
                 return sprintf(
                     '`%s`.`%s` NOT IN (\'%s\')',
-                    $alias,
-                    $where->left,
+                    $colAlias,
+                    $colField,
                     str_replace(';', "','", $where->right)
                 );
             case '~=':
-                return sprintf('`%s`.`%s` LIKE (\'%%%s\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` LIKE (\'%%%s\')', $colAlias, $colField, $where->right);
             case '!~=':
-                return sprintf('`%s`.`%s` NOT LIKE (\'%%%s\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` NOT LIKE (\'%%%s\')', $colAlias, $colField, $where->right);
             case '=~':
-                return sprintf('`%s`.`%s` LIKE (\'%s%%\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` LIKE (\'%s%%\')', $colAlias, $colField, $where->right);
             case '!=~':
-                return sprintf('`%s`.`%s` NOT LIKE (\'%s%%\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` NOT LIKE (\'%s%%\')', $colAlias, $colField, $where->right);
             case '~=~':
-                return sprintf('`%s`.`%s` LIKE (\'%%%s%%\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` LIKE (\'%%%s%%\')', $colAlias, $colField, $where->right);
             case '!~=~':
-                return sprintf('`%s`.`%s` NOT LIKE (\'%%%s%%\')', $alias, $where->left, $where->right);
+                return sprintf('`%s`.`%s` NOT LIKE (\'%%%s%%\')', $colAlias, $colField, $where->right);
             case '=':
                 if ($where->right === '__NULL__') {
-                    return sprintf('`%s`.`%s` IS NULL', $alias, $where->left);
+                    return sprintf('`%s`.`%s` IS NULL', $colAlias, $colField);
                 }
                 return sprintf(
                     '`%s`.`%s` %s %s',
-                    $alias,
-                    $where->left,
+                    $colAlias,
+                    $colField,
                     $where->op,
                     ($where->right !== '' ? "'".$where->right."'" : 'NULL')
                 );
             case '!=':
                 if ($where->right === '__NULL__') {
-                    return sprintf('`%s`.`%s` IS NOT NULL', $alias, $where->left);
+                    return sprintf('`%s`.`%s` IS NOT NULL', $colAlias, $colField);
                 }
                 return sprintf(
                     '`%s`.`%s` %s %s',
-                    $alias,
-                    $where->left,
+                    $colAlias,
+                    $colField,
                     $where->op,
                     ($where->right !== '' ? "'".$where->right."'" : 'NULL')
                 );
@@ -489,8 +591,8 @@ class FilterParser
                 if (in_array($where->op, $validOps, true)) {
                     return sprintf(
                         '`%s`.`%s` %s %s',
-                        $alias,
-                        $where->left,
+                        $colAlias,
+                        $colField,
                         $where->op,
                         ($where->right !== '' ? "'".$where->right."'" : 'NULL')
                     );
@@ -499,24 +601,47 @@ class FilterParser
         }
     }
 
-    private static function compileNode(array $node, string $alias): string
+    /**
+     * @param array<string, array{alias: string, field: string}> $fieldAliases
+     */
+    private static function compileNode(array $node, string $alias, array $fieldAliases = []): string
     {
         switch ($node['type']) {
             case 'compare':
-                return self::compileCompare($node['left'], $node['op'], $node['right'], $alias);
+                return self::compileCompare($node['left'], $node['op'], $node['right'], $alias, $fieldAliases);
             case 'and':
-                $parts = array_map(function ($child) use ($alias) {
-                    return self::compileNode($child, $alias);
+                $parts = array_map(function ($child) use ($alias, $fieldAliases) {
+                    return self::compileNode($child, $alias, $fieldAliases);
                 }, $node['children']);
                 return '(' . implode(' AND ', $parts) . ')';
             case 'or':
-                $parts = array_map(function ($child) use ($alias) {
-                    return self::compileNode($child, $alias);
+                $parts = array_map(function ($child) use ($alias, $fieldAliases) {
+                    return self::compileNode($child, $alias, $fieldAliases);
                 }, $node['children']);
                 return '(' . implode(' OR ', $parts) . ')';
             default:
                 return '1';
         }
+    }
+
+    /**
+     * @param list<string> $joins
+     * @return list<string>
+     */
+    public static function dedupeJoins(array $joins): array
+    {
+        $seen = [];
+        $result = [];
+        foreach ($joins as $join) {
+            if (preg_match('/AS `([^`]+)`/', $join, $m)) {
+                if (isset($seen[$m[1]])) {
+                    continue;
+                }
+                $seen[$m[1]] = true;
+            }
+            $result[] = $join;
+        }
+        return $result;
     }
 
     private static function pruneField(array $node, string $field): ?array
