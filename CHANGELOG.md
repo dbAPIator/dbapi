@@ -52,4 +52,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Enhance Docker setup for consumer projects. Refactor webhooks dispatcher in Docker setup
 
 
+## [1.3.0] - 2026-06-29
+
+- Implement sub-relation handling in API
+
+
 ## [Unreleased]
