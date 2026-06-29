@@ -74,8 +74,14 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         }
     }
 
-    protected function dataUrl(string $resource, ?string $id = null, ?string $relation = null, ?string $relId = null): string
-    {
+    protected function dataUrl(
+        string $resource,
+        ?string $id = null,
+        ?string $relation = null,
+        ?string $relId = null,
+        ?string $subRelation = null,
+        ?string $subRelId = null
+    ): string {
         $path = 'v1/apis/' . self::$apiName . '/data/' . $resource;
         if ($id !== null) {
             $path .= '/' . $id;
@@ -85,6 +91,12 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         }
         if ($relId !== null) {
             $path .= '/' . $relId;
+        }
+        if ($subRelation !== null) {
+            $path .= '/' . $subRelation;
+        }
+        if ($subRelId !== null) {
+            $path .= '/' . $subRelId;
         }
         return $path;
     }

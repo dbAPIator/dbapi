@@ -30,6 +30,7 @@ if (is_single_deployment_mode()) {
     include 'routing/routes_record_lvl.php';
     include 'routing/routes_relation_lvl.php';
     include 'routing/routes_related_record_lvl.php';
+    include 'routing/routes_sub_relation_lvl.php';
 
     // Legacy data plane (backward compatibility)
     $dataApiPrefix = '^apis/(:any)/data';
@@ -41,4 +42,5 @@ if (is_single_deployment_mode()) {
     include 'routing/routes_record_lvl.php';
     include 'routing/routes_relation_lvl.php';
     include 'routing/routes_related_record_lvl.php';
+    include 'routing/routes_sub_relation_lvl.php';
 }

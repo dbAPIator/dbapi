@@ -172,11 +172,78 @@ trait DbapiRelationsTrait
 
 
     }
-    function get_related_2nd($configName,$parent,$parentRecId,$parentRelName,$parentRelRecId,$relName,$relRecId=null,$internal=false) {
+    function get_related_2nd($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, $relationName, $relRecId = null, $internal = false)
+    {
+        $parent = $this->nested_relation_parent($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, $internal);
+        if ($parent === null) {
+            return null;
+        }
+        return $this->get_related($configName, $parent[0], $parent[1], $relationName, $relRecId, $internal);
+    }
+
+    function create_related_2nd($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, $relationName)
+    {
+        $parent = $this->nested_relation_parent($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, false);
+        if ($parent === null) {
+            return;
+        }
+        $this->create_related($configName, $parent[0], $parent[1], $relationName);
+    }
+
+    function update_related_2nd($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, $relationName, $relRecId = null)
+    {
+        $parent = $this->nested_relation_parent($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, false);
+        if ($parent === null) {
+            return;
+        }
+        $this->update_related($configName, $parent[0], $parent[1], $relationName, $relRecId);
+    }
+
+    function delete_related_2nd($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, $relationName, $relRecId)
+    {
+        $parent = $this->nested_relation_parent($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, false);
+        if ($parent === null) {
+            return;
+        }
+        $this->delete_related($configName, $parent[0], $parent[1], $relationName, $relRecId);
+    }
+
+    /**
+     * @return array{0:string,1:string}|null [intermediate table, intermediate record id]
+     */
+    private function nested_relation_parent(
+        $configName,
+        $parentResource,
+        $recId,
+        $parentRelName,
+        $parentRelRecId,
+        $internal
+    ): ?array {
         $this->_init($configName);
-        print_r(func_get_args());
 
+        try {
+            $intermediate = $this->get_related($configName, $parentResource, $recId, $parentRelName, $parentRelRecId, true);
+        } catch (Exception $exception) {
+            if ($internal) {
+                throw $exception;
+            }
+            HttpResp::json_out(
+                HttpResp::exceptionHttpStatus($exception->getCode()),
+                Document::from_exception($this->JsonApiDocOptions, $exception)->json_data()
+            );
+            return null;
+        }
 
+        if ($intermediate === null) {
+            if ($internal) {
+                return null;
+            }
+            HttpResp::not_found();
+            return null;
+        }
+
+        $rel = $this->apiDm->get_relationship($parentResource, $parentRelName);
+        return [$rel['table'], (string) $intermediate->id];
     }
 
     /**

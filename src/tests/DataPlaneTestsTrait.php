@@ -496,6 +496,87 @@ trait DataPlaneTestsTrait
         $this->dataRequest('DELETE', $this->dataUrl('orders', (string) $orderId));
     }
 
+    public function testSubRelatedRecordsEndpoint(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines'));
+        $body = $this->assertHttpStatus($resp, 200, 'customer order lines');
+        $this->assertArrayHasKey('data', $body);
+        $this->assertGreaterThanOrEqual(2, count($body['data']));
+        $lineIds = array_map('strval', array_column($body['data'], 'id'));
+        $this->assertNotEmpty(array_intersect($lineIds, ['1', '2']));
+    }
+
+    public function testSubRelatedRecordById(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines', '1'));
+        $body = $this->assertHttpStatus($resp, 200, 'single order line via nested path');
+        $this->assertEquals('1', (string) ($body['data']['id'] ?? ''));
+        $this->assertEquals(2, (int) ($body['data']['attributes']['quantity'] ?? 0));
+    }
+
+    public function testSubRelatedNotFoundWhenIntermediateNotUnderParent(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders', '3', 'order_lines'));
+        $this->assertContains($resp->getStatusCode(), [404, 400], 'order 3 belongs to customer 2');
+    }
+
+    public function testCreateSubRelatedOrderLine(): void
+    {
+        $create = $this->dataRequest('POST', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines'), [
+            'json' => [
+                'data' => [
+                    'type' => 'order_lines',
+                    'attributes' => [
+                        'product_id' => 1,
+                        'quantity' => 1,
+                        'unit_price' => 9.99,
+                    ],
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($create, 201, 'create nested order line');
+        $lineId = $body['data']['id'] ?? null;
+        $this->assertNotNull($lineId);
+
+        $get = $this->dataRequest('GET', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines', (string) $lineId));
+        $line = $this->assertHttpStatus($get, 200, 'verify nested order line');
+        $this->assertEquals('1', (string) ($line['data']['relationships']['order_id']['data']['id'] ?? ''));
+
+        $this->dataRequest('DELETE', $this->dataUrl('order_lines', (string) $lineId));
+    }
+
+    public function testUpdateSubRelatedOrderLine(): void
+    {
+        $create = $this->dataRequest('POST', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines'), [
+            'json' => [
+                'data' => [
+                    'type' => 'order_lines',
+                    'attributes' => [
+                        'product_id' => 2,
+                        'quantity' => 1,
+                        'unit_price' => 19.50,
+                    ],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'setup nested order line');
+        $lineId = $created['data']['id'];
+
+        $patch = $this->dataRequest('PATCH', $this->dataUrl('customers', '1', 'orders', '1', 'order_lines', (string) $lineId), [
+            'json' => [
+                'data' => [
+                    'type' => 'order_lines',
+                    'id' => $lineId,
+                    'attributes' => ['quantity' => 3],
+                ],
+            ],
+        ]);
+        $updated = $this->assertHttpStatus($patch, 200, 'update nested order line');
+        $this->assertEquals(3, (int) $updated['data']['attributes']['quantity']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('order_lines', (string) $lineId));
+    }
+
     // --- Create / update / delete ---
 
     public function testCreateAndDeleteCustomer(): void
@@ -891,7 +972,14 @@ trait DataPlaneTestsTrait
         $this->assertEquals('phpunit-req-1', $resp->getHeaderLine('X-Request-Id'));
     }
 
-    abstract protected function dataUrl(string $resource, ?string $id = null, ?string $relation = null, ?string $relId = null): string;
+    abstract protected function dataUrl(
+        string $resource,
+        ?string $id = null,
+        ?string $relation = null,
+        ?string $relId = null,
+        ?string $subRelation = null,
+        ?string $subRelId = null
+    ): string;
 
     abstract protected function dataRequest(string $method, string $uri, array $options = []);
 

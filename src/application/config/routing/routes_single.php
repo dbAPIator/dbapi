@@ -45,3 +45,13 @@ $route[$dataApiPrefix . '/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_relate
 $route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['get'] = "dbapi/get_related/{$singleApiId}/$1/$2/$3/$4";
 $route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_related/{$singleApiId}/$1/$2/$3/$4";
 $route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)']['delete'] = "dbapi/delete_related/{$singleApiId}/$1/$2/$3/$4";
+
+// Sub-relation level
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)']['get'] = "dbapi/get_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5";
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)']['post'] = "dbapi/create_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5";
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5";
+
+// Sub-related record level
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)/(:any)']['get'] = "dbapi/get_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5/$6";
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)/(:any)']['patch'] = "dbapi/update_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5/$6";
+$route[$dataApiPrefix . '/(:any)/(:any)/(:any)/(:any)/(:any)/(:any)']['delete'] = "dbapi/delete_related_2nd/{$singleApiId}/$1/$2/$3/$4/$5/$6";

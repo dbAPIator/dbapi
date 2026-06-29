@@ -331,6 +331,79 @@ function generate_swagger(string $url,array $dataModel,string $apiDescription,st
                         $nestedCtx
                     );
                 }
+
+                $subRelations = resource_relations($childSpec);
+                foreach ($subRelations as $subRelName => $subRelSpec) {
+                    if (!swagger_relation_target_exists($subRelSpec, $dataModel) || ($subRelSpec['type'] ?? '') === 'outbound') {
+                        continue;
+                    }
+
+                    $subChildResource = $subRelSpec['table'];
+                    $subChildSpec = $dataModel[$subChildResource];
+                    $subRelPath = "$nestedPath/$subRelName";
+                    $subRelCtx = $nestedCtx;
+                    $subRelTag = "{$nestedTag}/{$subRelName}";
+
+                    $openApiSpec["paths"][$subRelPath] = [];
+                    $openApiSpec["paths"][$subRelPath]["get"] = get_records(
+                        ["{$subRelTag}/{$subChildResource}"],
+                        $subChildResource,
+                        $subChildSpec,
+                        $dataModel,
+                        ["summary"=>"Get related {$subChildResource} records of {$childResource} under {$resourceName}"],
+                        $subRelCtx
+                    );
+
+                    if(($subChildSpec["type"] ?? '') === "table") {
+                        $openApiSpec["paths"][$subRelPath]["post"] = create_records(
+                            ["{$subRelTag}/{$subChildResource}"],
+                            $subChildResource,
+                            $subChildSpec,
+                            $dataModel,
+                            ["summary"=>"Create related {$subChildResource} records under {$childResource} of {$resourceName}"],
+                            $subRelCtx
+                        );
+                    }
+
+                    if(empty($subChildSpec["keyFld"])) {
+                        continue;
+                    }
+
+                    $subChildPathParam = swagger_path_param_name($subChildResource, $subChildSpec['keyFld']);
+                    $subNestedPath = $subRelPath . '/{' . $subChildPathParam . '}';
+                    $subNestedCtx = array_merge($subRelCtx, [[$subChildResource, $subChildSpec, $subChildPathParam]]);
+                    $subNestedTag = "{$subRelTag}/{$subChildResource}";
+
+                    $openApiSpec["paths"][$subNestedPath] = [];
+                    $openApiSpec["paths"][$subNestedPath]["get"] = get_record_by_id(
+                        [$subNestedTag],
+                        $subChildResource,
+                        $subChildSpec,
+                        $dataModel,
+                        ["summary"=>"Get one related {$subChildResource} record of {$childResource} under {$resourceName}"],
+                        $subNestedCtx
+                    );
+
+                    if(($subChildSpec["type"] ?? '') === "table") {
+                        $openApiSpec["paths"][$subNestedPath]["patch"] = update_single_record(
+                            [$subNestedTag],
+                            $subChildResource,
+                            $subChildSpec,
+                            $dataModel,
+                            ["summary"=>"Update one related {$subChildResource} record of {$childResource} under {$resourceName}"],
+                            $subNestedCtx
+                        );
+
+                        $openApiSpec["paths"][$subNestedPath]["delete"] = delete_single_record(
+                            [$subNestedTag],
+                            $subChildResource,
+                            $subChildSpec,
+                            $dataModel,
+                            ["summary"=>"Delete one related {$subChildResource} record of {$childResource} under {$resourceName}"],
+                            $subNestedCtx
+                        );
+                    }
+                }
             }
 
         }

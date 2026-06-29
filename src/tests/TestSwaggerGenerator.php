@@ -53,6 +53,29 @@ class TestSwaggerGenerator extends TestCase
                         'select' => true,
                     ],
                 ],
+                'relations' => [
+                    'order_lines' => [
+                        'type' => 'inbound',
+                        'table' => 'order_lines',
+                        'select' => true,
+                    ],
+                ],
+            ],
+            'order_lines' => [
+                'type' => 'table',
+                'keyFld' => 'id',
+                'fields' => [
+                    'id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => false,
+                        'select' => true,
+                    ],
+                    'order_id' => [
+                        'type' => ['proto' => 'int'],
+                        'required' => true,
+                        'select' => true,
+                    ],
+                ],
                 'relations' => [],
             ],
         ];
@@ -198,7 +221,10 @@ PHP
         $this->assertArrayHasKey('/customers/{customers_id}', $spec['paths']);
         $this->assertArrayHasKey('/customers/{customers_id}/orders', $spec['paths']);
         $this->assertArrayHasKey('/customers/{customers_id}/orders/{orders_id}', $spec['paths']);
+        $this->assertArrayHasKey('/customers/{customers_id}/orders/{orders_id}/order_lines', $spec['paths']);
+        $this->assertArrayHasKey('/customers/{customers_id}/orders/{orders_id}/order_lines/{order_lines_id}', $spec['paths']);
         $this->assertArrayHasKey('/orders/{orders_id}', $spec['paths']);
+        $this->assertArrayHasKey('/orders/{orders_id}/order_lines', $spec['paths']);
 
         $operations = 0;
         foreach ($spec['paths'] as $pathItem) {
@@ -208,8 +234,8 @@ PHP
                 }
             }
         }
-        $this->assertSame(6, count($spec['paths']));
-        $this->assertSame(15, $operations);
+        $this->assertSame(12, count($spec['paths']));
+        $this->assertSame(30, $operations);
     }
 
     public function testApiStructureForOpenapiMergesPatch(): void

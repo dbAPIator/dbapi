@@ -132,7 +132,15 @@ curl -sS -G 'http://localhost:8888/v1/data/orders/1' \
   --data-urlencode 'include=order_lines' | jq .
 ```
 
-For deeper graphs (e.g. shipments → supplier), follow relationship URLs or expand `include` per your OpenAPI spec.
+For deeper graphs, follow relationship URLs step by step:
+
+```bash
+curl -sS 'http://localhost:8888/v1/data/customers/1/orders/1/order_lines' | jq .
+```
+
+This third-level path verifies the full chain (order `1` belongs to customer `1`) before returning line items. You can also use `include` for multi-hop reads in one request — see your OpenAPI spec for exact include paths.
+
+For deeper graphs beyond three path segments (e.g. shipments → supplier), follow relationship URLs or expand `include` per your OpenAPI spec.
 
 ---
 
@@ -147,6 +155,7 @@ When you rebuild the schema after database changes, dbAPI **preserves existing r
 - Outbound FKs use the column name; inbound children use the table name.
 - `include` loads full related records into `included`.
 - Relationship URLs (`/customers/1/orders`) support the same query params as top-level resources.
+- Third-level URLs (`/customers/1/orders/1/order_lines`) traverse two relationship hops with path validation.
 - `filter[parent/child]=...` filters parents by child conditions.
 
 ---
