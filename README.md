@@ -197,7 +197,6 @@ POST ...:activate                     → data plane live
 ## Integration and extension
 
 - **Webhooks** — publish write events to Redis Streams for async dispatchers or downstream pipelines.
-- **Resource hooks** — PHP hook files under the API config (e.g. `before.insert.php`, `after.insert.php`) for custom logic.
 - **Schema overrides** — rename resources, hide tables, tune relationship names without forking generated structure by hand.
 - **OpenAPI everywhere** — management spec at `src/public/management-openapi.yaml`; per-API spec generated on rebuild and served from disk (no regeneration per request).
 - **Multi-API hosting** — dev, staging, and tenant-specific APIs as separate `apiId` directories under `dbconfigs/`.

@@ -58,3 +58,5 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 
 
 ## [Unreleased]
+
+- Remove PHP resource hooks (`hooks/<entity>/before.insert.php`, etc.); use Redis webhooks for side effects.

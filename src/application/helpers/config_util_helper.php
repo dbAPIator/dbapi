@@ -491,7 +491,7 @@ function structure_build_from_database($db, string $dbName, array $oldStructure 
 }
 
 /**
- * Copy per-resource hooks from a previous effective schema.
+ * Copy per-entity webhook config from a previous effective schema.
  */
 function structure_copy_hooks_from_old(array $oldStructure, array &$newStructure): void
 {

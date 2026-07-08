@@ -100,14 +100,6 @@ REDIS_STREAM=dbapi_webhooks
 
 ---
 
-## PHP resource hooks
-
-For logic inside the dbAPI process, add hook files under the API config directory (e.g. `before.insert.php`, `after.insert.php` per entity). These run synchronously around CRUD operations — use for validation, denormalization, or audit fields.
-
-Webhooks = async via Redis; PHP hooks = sync in-process. Pick based on latency and failure-isolation needs.
-
----
-
 ## Client application architecture
 
 ```text
@@ -220,7 +212,7 @@ Always note **`meta.request_id`** from error responses.
 ## What you learned
 
 - Multi-API hosting scales one installation across environments and tenants.
-- Webhooks + Redis decouple side effects; PHP hooks handle sync logic.
+- Webhooks + Redis decouple side effects from the data plane.
 - Consumer apps should target the data plane with generated types and server-side queries.
 - Operations revolve around introspect → rebuild → validate → activate.
 

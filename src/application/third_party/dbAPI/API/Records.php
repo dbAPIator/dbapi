@@ -502,21 +502,6 @@ class Records {
 
         $insertData = $this->validate_insert_data($table,$insertData);
 
-
-//        // call oninsert hook
-//        $tableConfig = $this->dm->get_config($table);
-//        if(isset($tableConfig["oninsert"]) && is_callable($tableConfig["oninsert"])) {
-//            $insertData = $tableConfig["oninsert"]($insertData,$tableConfig);
-//        }
-
-
-        // before insert hook
-        $beforeInsert = @include($this->configDir."/hooks/".$table."/before.insert.php");
-        if(is_callable($beforeInsert)) {
-            $insertData = $beforeInsert($this, $insertData);
-        }
-
-
         // check insert data for non-scalar values and throw error in case found
         foreach ($insertData as $key=>$value) {
             if($value!==null && !is_scalar($value)) {
@@ -607,10 +592,6 @@ class Records {
 
             $newRecId = $q->row()->$idFld;
         }
-
-        $afterInsert = @include($this->configDir."/hooks/".$table."/after.insert.php");
-        if(is_callable($afterInsert))
-            $afterInsert($this,$newRecId,$insertData);
 
         // create outbound relations
         if($newRecId && $one2nRelations) {
@@ -713,11 +694,6 @@ class Records {
             }
         }
 
-        // before insert hook
-        $beforeUpdate = @include($this->configDir."/hooks/".$table."/before.update.php");
-        if(is_callable($beforeUpdate))
-            $attributes = $beforeUpdate($this,$where,$attributes);
-
         // configure query
         $updateSql = $this->dbdrv
             ->where($where)
@@ -730,13 +706,6 @@ class Records {
         if($err["code"]){
             throw new \Exception($err["message"]." on query: $updateSql",$err["code"]);
         }
-
-        // perform update
-
-        // after insert hook
-        $afterUpdate = @include($this->configDir."/hooks/".$table."/after.update.php");
-        if(is_callable($afterUpdate))
-            $afterUpdate($this,$where,$attributes);
 
         return $this->dbdrv->affected_rows();
     }
