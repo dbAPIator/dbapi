@@ -174,8 +174,14 @@ class Records {
         list($select,$join) = $this->generate_select_sql_parts($request);
         $join = FilterParser::dedupeJoins(array_merge($relational['joins'], $join));
 
+        $priKey = $request->primaryKey;
+        $joinFanOut = count($join) > 0 && $priKey;
+        $countExpr = $joinFanOut
+            ? "count(DISTINCT `$request->resourceName`.`$priKey`)"
+            : "count(*)";
+
         // extract total number of records matched by the query
-        $countSql = "SELECT count(*) cnt FROM `$request->resourceName` "
+        $countSql = "SELECT $countExpr cnt FROM `$request->resourceName` "
             .implode(" ",$join)
             ." WHERE $whereStr";
 
@@ -220,9 +226,17 @@ class Records {
 
         // parse result
         $allRecs = [];
+        $seenRecIds = [];
 //        print_r($request);
         foreach ($rows as $row) {
             $newRec = $this->parse_result_row($request,$row,$allRecs);
+            if ($joinFanOut) {
+                $seenKey = $request->resourceName . '_' . $newRec->id;
+                if (isset($seenRecIds[$seenKey])) {
+                    continue;
+                }
+                $seenRecIds[$seenKey] = true;
+            }
             $recordSet->add_record($newRec);
         }
 

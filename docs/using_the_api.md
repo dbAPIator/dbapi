@@ -115,7 +115,7 @@ Examples:
 
 Use `><` when several values share the same field and operator; use `||` and `()` when combining different fields or conditions.
 
-Values that contain `,`, `||`, or `)` can be escaped with a backslash (e.g. `note~=~line\,two`).
+Values that contain `,`, `||`, or `)` can be escaped with a backslash (e.g. `note~=~line\,two`). Spaces are allowed in values (e.g. `name~=~ECO down`).
 
 When including relationships:
 ```shell

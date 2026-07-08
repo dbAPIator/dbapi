@@ -65,6 +65,22 @@ class TestFilterParser extends TestCase
         $this->assertSame('part,two', $ast['right']);
     }
 
+    public function testSpaceInContainsValue(): void
+    {
+        $ast = FilterParser::parse('name~=~ECO d');
+        $this->assertSame('ECO d', $ast['right']);
+        $sql = FilterParser::compile($ast, 'products');
+        $this->assertStringContainsString("LIKE ('%ECO d%')", $sql);
+    }
+
+    public function testSpaceInValueWithFollowingAnd(): void
+    {
+        $ast = FilterParser::parse('name~=~ECO d,active=1');
+        $this->assertSame('and', $ast['type']);
+        $this->assertSame('ECO d', $ast['children'][0]['right']);
+        $this->assertSame('active', $ast['children'][1]['left']);
+    }
+
     public function testAddCompareMergesWithExisting(): void
     {
         $ast = FilterParser::addCompare(

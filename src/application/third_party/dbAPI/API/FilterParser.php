@@ -451,7 +451,7 @@ class FilterParser
     {
         $value = '';
         while ($this->i < $this->len) {
-            if ($this->isDelimiterAt(0)) {
+            if ($this->isValueDelimiterAt()) {
                 break;
             }
             if ($this->s[$this->i] === '\\' && $this->i + 1 < $this->len) {
@@ -465,15 +465,17 @@ class FilterParser
         return $value;
     }
 
-    private function isDelimiterAt(int $parenDepth): bool
+    /** Delimiters between filter values; must not skip whitespace (spaces are valid in values). */
+    private function isValueDelimiterAt(): bool
     {
-        if ($parenDepth !== 0) {
-            return false;
-        }
-        if ($this->peek() === ',' || $this->peek() === ')') {
+        if ($this->i >= $this->len) {
             return true;
         }
-        return $this->match('||', false);
+        $ch = $this->s[$this->i];
+        if ($ch === ',' || $ch === ')') {
+            return true;
+        }
+        return substr($this->s, $this->i, 2) === '||';
     }
 
     private function peekComma(): bool
