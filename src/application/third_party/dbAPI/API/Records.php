@@ -1009,12 +1009,15 @@ function recursive_generate_select_and_joins(&$req, &$fields, &$join, $tableAlia
     }
 
 
-    $offset += count($req->fields);
+    $width = count($req->fields);
+    $offset += $width;
     foreach ($req->include as $relName=>$relReq) {
         if($relReq->relSpec["type"]=="outbound") {
-            $offset += recursive_generate_select_and_joins($relReq, $fields, $join,
+            $childWidth = recursive_generate_select_and_joins($relReq, $fields, $join,
                 $tableAlias . "_" . $relName, $tableAlias, $offset);
+            $width += $childWidth;
+            $offset += $childWidth;
         }
     }
-    return count($req->fields);
+    return $width;
 }

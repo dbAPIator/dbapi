@@ -10,6 +10,7 @@
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
             <file>tests/TestAccessControl.php</file>
+            <file>tests/TestSelectOffset.php</file>
         </testsuite>
         <testsuite name="integration">
             <file>tests/TestManagementAPI.php</file>
@@ -27,6 +28,7 @@
             <file>tests/TestApiSafety.php</file>
             <file>tests/TestDataplaneSchemaSync.php</file>
             <file>tests/TestAccessControl.php</file>
+            <file>tests/TestSelectOffset.php</file>
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestAuthLoginMethods.php</file>
             <file>tests/TestAccessControlManagement.php</file>
