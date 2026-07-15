@@ -32,6 +32,16 @@ trait DbapiReadTrait
         if(!is_null($recId)) {
             $request->offset = 0;
         }
+
+        if (!$internal) {
+            $outputFormat = $this->input->get("format");
+            $outputFormat = $outputFormat && in_array($outputFormat, ["csv", "xls", "json"], true)
+                ? $outputFormat
+                : "json";
+            if (in_array($outputFormat, ["csv", "xls"], true)) {
+                $request->include = [];
+            }
+        }
         
 
         // validation
@@ -106,18 +116,18 @@ trait DbapiReadTrait
         return null;
     }
 
-    static  private function record2csv($record,$fieldsNames,$relationsNames) {
+    static private function record2csv($record, array $selectedFields, array $fkFields) {
             $rec = [];
-            foreach ($fieldsNames as $fldName) {
-                $rec[] = $record->attributes->$fldName;
+            foreach ($selectedFields as $fldName) {
+                if (in_array($fldName, $fkFields, true)) {
+                    $rel = $record->relationships[$fldName] ?? null;
+                    $rec[] = ($rel && isset($rel->id)) ? $rel->id : null;
+                } else {
+                    $rec[] = $record->attributes->$fldName ?? null;
+                }
             }
 
-            foreach ($relationsNames as $relName) {
-                $rec[] = empty($record->relationships->$relName->data)?null:$record->relationships->$relName->data->id;
-            }
-
-            $str =  '"'.implode('","',$rec).'"';
-            return $str;
+            return '"'.implode('","',$rec).'"';
         }
     /**
      * @param string $resourceName
@@ -138,33 +148,22 @@ trait DbapiReadTrait
         $out = [];
 
         // extract fields
-        $fieldsNames = [];
-        $relationsNames = [];
         $fkFields = array_keys($this->apiDm->get_fk_fields($resourceName));
-        foreach ($this->apiDm->get_config($resourceName)["fields"] as $fldName => $spec) {
-            if (in_array($fldName, $fkFields, true)) {
-                $relationsNames[] = $fldName;
-            } else {
-                $fieldsNames[] = $fldName;
-            }
+        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
+        if (is_array($request->fields) && count($request->fields)) {
+            $selectedFields = $request->fields;
+        } elseif (is_string($request->fields) && $request->fields !== '') {
+            $selectedFields = explode(',', $request->fields);
         }
 
         $includeTHead = $this->input->get("includetablehead");
-        if($includeTHead && $includeTHead=="true") {
-            $tmp = $fieldsNames;
-            array_splice($tmp,-1,0,$relationsNames);
-            $out[] = '"'.implode('","',$tmp).'"';
-        }
-
-        if (is_array($request->fields) && count($request->fields)) {
-            $fieldsNames = $request->fields;
-        } elseif (is_string($request->fields) && $request->fields !== '') {
-            $fieldsNames = explode(',', $request->fields);
+        if ($includeTHead !== "false") {
+            $out[] = '"'.implode('","',$selectedFields).'"';
         }
 
 
         foreach ($records as $record) {
-            $out[] = self::record2csv($record,$fieldsNames,$relationsNames);
+            $out[] = self::record2csv($record, $selectedFields, $fkFields);
         }
         $out = implode("\n",$out);
 //        HttpResp::csv_out(200,implode("\n",$out));
@@ -199,15 +198,12 @@ trait DbapiReadTrait
         }
 
         // extract fields
-        $fieldsNames = [];
-        $relationsNames = [];
         $fkFields = array_keys($this->apiDm->get_fk_fields($resourceName));
-        foreach ($this->apiDm->get_config($resourceName)["fields"] as $fldName => $spec) {
-            if (in_array($fldName, $fkFields, true)) {
-                $relationsNames[] = $fldName;
-            } else {
-                $fieldsNames[] = $fldName;
-            }
+        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
+        if (is_array($request->fields) && count($request->fields)) {
+            $selectedFields = $request->fields;
+        } elseif (is_string($request->fields) && $request->fields !== '') {
+            $selectedFields = explode(',', $request->fields);
         }
         $xls = new \Vtiful\Kernel\Excel(["path"=>"/tmp"]);
         $this->load->helper('string');
@@ -216,15 +212,13 @@ trait DbapiReadTrait
 
         $includeTHead = $this->input->get("includetablehead");
         if($includeTHead && $includeTHead=="true") {
-            $header = $fieldsNames;
-            array_splice($header, -1, 0, $relationsNames);
-            $xlsFile->header($header);
+            $xlsFile->header($selectedFields);
         }
 
         $data = [];
 
         foreach ($recordSet as $record) {
-            $data[] = self::record2csv($record,$fieldsNames,$relationsNames);
+            $data[] = self::record2csv($record, $selectedFields, $fkFields);
         }
         $xlsFile->data($data)->output();
         $out = file_get_contents("/tmp/$fileName");

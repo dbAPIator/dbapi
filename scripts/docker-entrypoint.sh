@@ -9,6 +9,17 @@ fi
 
 maybe_chown() { [[ "$(id -u)" -eq 0 ]] && chown "$@"; }
 
+if [[ -n "${PHP_MEMORY_LIMIT:-}" ]]; then
+  for d in /etc/php/*/fpm/conf.d /etc/php/*/cli/conf.d; do
+    [[ -d "$d" ]] || continue
+    echo "memory_limit = ${PHP_MEMORY_LIMIT}" > "${d}/99-memory-limit.ini"
+  done
+  for f in /etc/php/*/fpm/pool.d/www.conf; do
+    [[ -f "$f" ]] || continue
+    sed -i '/php_admin_value\[memory_limit\]/d' "$f"
+  done
+fi
+
 wait_for_mysql() {
   local host="${DB_HOST:-mysql}"
   local port="${DB_PORT:-3306}"
