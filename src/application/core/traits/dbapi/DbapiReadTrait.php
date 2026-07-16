@@ -231,11 +231,32 @@ trait DbapiReadTrait
     }
 
     /**
+     * RFC 4180 CSV field: wrap in double quotes; internal quotes doubled.
+     */
+    static private function csv_field($value): string
+    {
+        if ($value === null) {
+            $value = '';
+        } elseif (!is_string($value)) {
+            $value = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+        }
+        return '"' . str_replace('"', '""', $value) . '"';
+    }
+
+    /**
+     * @param list<mixed> $fields
+     */
+    static private function csv_line(array $fields): string
+    {
+        return implode(',', array_map([self::class, 'csv_field'], $fields));
+    }
+
+    /**
      * @param list<array{header:string,path:list<string>}> $columnSpecs
      */
     static private function record2csv($record, array $columnSpecs): string
     {
-        return '"'.implode('","', self::record_values($record, $columnSpecs)).'"';
+        return self::csv_line(self::record_values($record, $columnSpecs));
     }
 
     /**
@@ -260,7 +281,7 @@ trait DbapiReadTrait
 
         $includeTHead = $this->input->get("includetablehead");
         if ($includeTHead !== "false") {
-            $out[] = '"'.implode('","',$headers).'"';
+            $out[] = self::csv_line($headers);
         }
 
 

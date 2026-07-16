@@ -1091,6 +1091,52 @@ trait DataPlaneTestsTrait
         $this->assertStringContainsString('alice@example.com', $body);
     }
 
+    public function testExportCsvEscapesSpecialCharacters(): void
+    {
+        $sku = 'CSV-ESC-' . bin2hex(random_bytes(3));
+        $name = "Line1\nLine2 \"quoted\", comma";
+        $create = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'attributes' => [
+                        'sku' => $sku,
+                        'name' => $name,
+                        'price' => 1.00,
+                    ],
+                ],
+            ],
+        ]);
+        $created = $this->assertHttpStatus($create, 201, 'create product with special chars');
+        $id = $created['data']['id'];
+
+        $resp = $this->dataRequest('GET', $this->dataUrl('products'), [
+            'query' => [
+                'format' => 'csv',
+                'includetablehead' => 'true',
+                'fields' => ['products' => 'sku,name'],
+                'filter' => ['products' => "id=$id"],
+            ],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'csv export special chars');
+
+        $fp = fopen('php://memory', 'r+');
+        fwrite($fp, (string) $resp->getBody());
+        rewind($fp);
+        $header = fgetcsv($fp, 0, ',', '"', '"');
+        $row = fgetcsv($fp, 0, ',', '"', '"');
+        fclose($fp);
+
+        $this->assertIsArray($header);
+        $this->assertIsArray($row);
+        $nameIdx = array_search('name', $header, true);
+        $this->assertNotFalse($nameIdx);
+        $this->assertEquals($sku, $row[0]);
+        $this->assertEquals($name, $row[$nameIdx]);
+
+        $this->dataRequest('DELETE', $this->dataUrl('products', $id));
+    }
+
     public function testExportCsvDropsInboundInclude(): void
     {
         $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
