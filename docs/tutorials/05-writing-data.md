@@ -180,6 +180,16 @@ head customers.csv
 
 Useful for spreadsheets, BI tools, and one-off reports. Filters and field selection apply to the export.
 
+Outbound (1:1) **`include`** relations are flattened into extra columns prefixed with the relationship name (`customer_id.name`). Inbound (1:n) includes are ignored for CSV/XLS because they cannot map to a single row. Limit related columns with path-keyed sparse fieldsets (`fields[{parent}/{relation}]`):
+
+```bash
+curl -sS -G 'http://localhost:8888/v1/data/orders' \
+  --data-urlencode 'include=customer_id' \
+  --data-urlencode 'fields[orders]=id,status,total,customer_id' \
+  --data-urlencode 'fields[orders/customer_id]=name,email' \
+  --data-urlencode 'format=csv' -o orders.csv
+```
+
 ---
 
 ## Create via relationship URL
@@ -209,7 +219,7 @@ curl -sS -X POST http://localhost:8888/v1/data/customers/1/notes \
 - Nested creates attach children in `relationships.{child_table}.data`.
 - Bulk insert, update, and filter-based delete have per-request limits.
 - `onduplicate` enables idempotent imports and upsert flows.
-- `format=csv` exports filtered, field-selected data.
+- `format=csv` exports filtered, field-selected data; outbound `include` relations become extra columns.
 
 ---
 

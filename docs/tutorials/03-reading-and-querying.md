@@ -134,6 +134,15 @@ curl -sS -G 'http://localhost:8888/v1/data/customers' \
   --data-urlencode 'fields[customers]=name,email' | jq '.data[0]'
 ```
 
+With `include`, key sparse fieldsets by each resource **type** (or by include path for a specific edge):
+
+```bash
+curl -sS -G 'http://localhost:8888/v1/data/customers/1' \
+  --data-urlencode 'include=orders' \
+  --data-urlencode 'fields[customers]=name,email' \
+  --data-urlencode 'fields[orders]=status,total' | jq '{customer: .data.attributes, orders: [.includes[]?.attributes]}'
+```
+
 Smaller payloads mean faster responses and simpler client code.
 
 ---

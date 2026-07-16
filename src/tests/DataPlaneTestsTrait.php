@@ -51,6 +51,107 @@ trait DataPlaneTestsTrait
         $this->assertArrayNotHasKey('country_code', $attrs);
     }
 
+    public function testSparseFieldsetOnInboundInclude(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers', '1'), [
+            'query' => [
+                'include' => 'orders',
+                'fields' => [
+                    'customers' => 'name,email',
+                    'orders' => 'status,total',
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sparse fields on inbound include');
+        $this->assertArrayNotHasKey('country_code', $body['data']['attributes']);
+        $included = $body['included'] ?? $body['includes'] ?? [];
+        $this->assertNotEmpty($included, 'expected included orders');
+        foreach ($included as $inc) {
+            if (($inc['type'] ?? '') !== 'orders') {
+                continue;
+            }
+            $attrs = $inc['attributes'] ?? [];
+            $this->assertArrayHasKey('status', $attrs);
+            $this->assertArrayHasKey('total', $attrs);
+            $this->assertArrayNotHasKey('customer_id', $attrs);
+            $this->assertArrayNotHasKey('ordered_at', $attrs);
+        }
+    }
+
+    public function testSparseFieldsetKeepsOutboundRelationshipLinkage(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('orders', '1'), [
+            'query' => [
+                'fields' => ['orders' => 'status,total'],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sparse fields keep outbound linkage');
+        $attrs = $body['data']['attributes'];
+        $this->assertArrayHasKey('status', $attrs);
+        $this->assertArrayNotHasKey('ordered_at', $attrs);
+        $this->assertArrayNotHasKey('customer_id', $attrs);
+        $this->assertArrayHasKey('customer_id', $body['data']['relationships']);
+        $this->assertSame('1', (string) $body['data']['relationships']['customer_id']['data']['id']);
+    }
+
+    public function testSparseFieldsetOnOutboundIncludeByType(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('orders', '1'), [
+            'query' => [
+                'include' => 'customer_id',
+                'fields' => [
+                    'orders' => 'status,total',
+                    'customers' => 'name,email',
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sparse fields on outbound include by type');
+        $this->assertArrayHasKey('status', $body['data']['attributes']);
+        $this->assertArrayNotHasKey('ordered_at', $body['data']['attributes'] ?? []);
+        $this->assertArrayNotHasKey('customer_id', $body['data']['attributes'] ?? []);
+        $this->assertArrayHasKey('customer_id', $body['data']['relationships']);
+        $included = $body['included'] ?? $body['includes'] ?? [];
+        $this->assertNotEmpty($included, 'expected included customer');
+        $customer = null;
+        foreach ($included as $inc) {
+            if (($inc['type'] ?? '') === 'customers') {
+                $customer = $inc;
+                break;
+            }
+        }
+        $this->assertNotNull($customer, 'included customer missing');
+        $attrs = $customer['attributes'] ?? [];
+        $this->assertArrayHasKey('name', $attrs);
+        $this->assertArrayHasKey('email', $attrs);
+        $this->assertArrayNotHasKey('country_code', $attrs);
+    }
+
+    public function testSparseFieldsetOnOutboundIncludeByPath(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('orders', '1'), [
+            'query' => [
+                'include' => 'customer_id',
+                'fields' => [
+                    'orders' => 'id,status,total,customer_id',
+                    'orders/customer_id' => 'name,email',
+                ],
+            ],
+        ]);
+        $body = $this->assertHttpStatus($resp, 200, 'sparse fields on outbound include by path');
+        $included = $body['included'] ?? $body['includes'] ?? [];
+        $customer = null;
+        foreach ($included as $inc) {
+            if (($inc['type'] ?? '') === 'customers') {
+                $customer = $inc;
+                break;
+            }
+        }
+        $this->assertNotNull($customer, 'included customer missing');
+        $attrs = $customer['attributes'] ?? [];
+        $this->assertArrayHasKey('name', $attrs);
+        $this->assertArrayNotHasKey('country_code', $attrs);
+    }
+
     public function testReadOnlyView(): void
     {
         $resp = $this->dataRequest('GET', $this->dataUrl('v_order_totals_by_day'));
@@ -942,6 +1043,53 @@ trait DataPlaneTestsTrait
         $body = (string) $resp->getBody();
         $this->assertStringContainsString('sku', strtolower($body));
         $this->assertStringContainsString('SKU-001', $body);
+    }
+
+    public function testExportCsvWithOutboundInclude(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('orders'), [
+            'query' => [
+                'format' => 'csv',
+                'includetablehead' => 'true',
+                'include' => 'customer_id',
+                'fields' => [
+                    'orders' => 'id,status,total,customer_id',
+                    'orders/customer_id' => 'name,email',
+                ],
+                'filter' => ['orders' => 'id=1'],
+            ],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'csv export with outbound include');
+        $body = (string) $resp->getBody();
+        $lines = preg_split("/\r\n|\n|\r/", trim($body));
+        $this->assertGreaterThanOrEqual(2, count($lines));
+        $header = $lines[0];
+        $this->assertStringContainsString('customer_id.name', $header);
+        $this->assertStringContainsString('customer_id.email', $header);
+        $this->assertStringNotContainsString('customer_id.orders', $header);
+        $this->assertStringContainsString('Alice Example', $body);
+        $this->assertStringContainsString('alice@example.com', $body);
+    }
+
+    public function testExportCsvDropsInboundInclude(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('customers'), [
+            'query' => [
+                'format' => 'csv',
+                'includetablehead' => 'true',
+                'include' => 'orders,account_manager_id',
+                'fields' => [
+                    'customers' => 'id,name,account_manager_id',
+                    'customers/account_manager_id' => 'full_name',
+                ],
+                'filter' => ['customers' => 'id=1'],
+            ],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'csv export drops inbound include');
+        $body = (string) $resp->getBody();
+        $header = preg_split("/\r\n|\n|\r/", trim($body))[0];
+        $this->assertStringNotContainsString('orders.', $header);
+        $this->assertStringContainsString('account_manager_id.full_name', $header);
     }
 
     // --- Stored procedures ---

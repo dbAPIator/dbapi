@@ -132,6 +132,15 @@ For the records to contain only certain fields, use the **`fields`** parameter a
 
 For example, by using **`fields=name,bdate`** all the returned records will contain only the fields `name` and `bdate`
 
+With includes, sparse fieldsets are keyed by **resource type** (JSON:API style). Path keys also work when you need to target a specific include edge. Outbound relationship linkages are always returned (FK columns are not stripped by `fields`); only attributes are sparse-filtered:
+
+```shell
+curl --location 'https://localhost/dbapi/apis/api_name/data/customers/1?include=orders&fields[customers]=name,email&fields[orders]=status,total'
+curl --location 'https://localhost/dbapi/apis/api_name/data/orders/1?include=customer_id&fields[orders]=status,total&fields[customers]=name,email'
+# equivalent path key for the outbound include:
+# fields[orders/customer_id]=name,email
+```
+
 #### Sorting <a id="sorting"></a>
 Sorting is performed using the **`sort`** paramenter and passing a comma separated list of fields on which to perform the sort. The default sorting direction is ascending. For sorting descending, prepend a - in front of the field name.
 

@@ -128,7 +128,7 @@ trait DbapiQueryTrait
      * @return DBAPIRequest
      * @throws \dbAPI\API\Exception
      */
-    function attach_configuration_2_request(DBAPIRequest $request, DBAPIRequest $parentRequest=null, string $relName=null) {
+    function attach_configuration_2_request(DBAPIRequest $request, DBAPIRequest $parentRequest=null, string $relName=null, array &$inputs=null) {
 
         if(is_null($parentRequest)) {
             // for top level resource check if is valid resource
@@ -143,6 +143,8 @@ trait DbapiQueryTrait
             $request->resourceName = $rel["table"];
             $request->relSpec = $rel;
             $request->relName = $relName;
+            // JSON:API fields[{type}] when path/rel-name keys did not match (e.g. customer_id → customers)
+            $this->apply_type_keyed_query_params($request, $inputs);
         }
 
 
@@ -169,6 +171,24 @@ trait DbapiQueryTrait
             }
         }
 
+        // Sparse fieldsets apply to attributes. Outbound FKs must stay selected so
+        // relationship linkages (and include hydration) still appear in the document.
+        foreach ($this->apiDm->get_all_relations($request->resourceName) as $relName => $relSpec) {
+            if (($relSpec['type'] ?? '') !== 'outbound') {
+                continue;
+            }
+            if (in_array($relName, $request->fields, true)) {
+                continue;
+            }
+            if (!$this->apiDm->is_valid_field($request->resourceName, $relName)) {
+                continue;
+            }
+            if (!$this->apiDm->field_is_selectable($request->resourceName, $relName)) {
+                continue;
+            }
+            $request->fields[] = $relName;
+        }
+
         $request->fields = array_values(array_filter(
             $request->fields,
             static function ($fld) {
@@ -191,15 +211,34 @@ trait DbapiQueryTrait
             $request->sort[$key] = "`{$matches[2]}`".($matches[1] ? " DESC" : "");
         }
 
-        foreach ($request->include as $relName=>$inclReq) {
-            $rel = $this->attach_configuration_2_request($inclReq,$request,$relName);
+        foreach ($request->include as $inclName=>$inclReq) {
+            $rel = $this->attach_configuration_2_request($inclReq,$request,$inclName, $inputs);
             if(is_null($rel))
-                throw new \dbAPI\API\Exception("Relationship $relName of $request->resourceName not found",404);
+                throw new \dbAPI\API\Exception("Relationship $inclName of $request->resourceName not found",404);
             else
-                $request->include[$relName] = $rel;
+                $request->include[$inclName] = $rel;
         }
 
         return $request;
+    }
+
+    /**
+     * Apply leftover fields[{type}] / sort[{type}] after an include resolves to its table name.
+     */
+    private function apply_type_keyed_query_params(DBAPIRequest $request, ?array &$inputs): void
+    {
+        if ($inputs === null) {
+            return;
+        }
+        $type = $request->resourceName;
+        if (!count($request->fields) && isset($inputs['fields'][$type])) {
+            $f = $inputs['fields'][$type];
+            $request->fields = is_string($f) ? explode(',', $f) : $f;
+        }
+        if ((!is_array($request->sort) || !count($request->sort)) && isset($inputs['sort'][$type])) {
+            $s = $inputs['sort'][$type];
+            $request->sort = is_string($s) ? explode(',', $s) : $s;
+        }
     }
 
     /**
@@ -222,7 +261,7 @@ trait DbapiQueryTrait
             }
         }
         $request = $this->process_query_parameters($resourceName,$inputs);
-        $request = $this->attach_configuration_2_request($request);
+        $request = $this->attach_configuration_2_request($request, null, null, $inputs);
 
         return $request;
         // resolve resourceNames to table names (for relations)

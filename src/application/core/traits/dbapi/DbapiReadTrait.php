@@ -38,8 +38,9 @@ trait DbapiReadTrait
             $outputFormat = $outputFormat && in_array($outputFormat, ["csv", "xls", "json"], true)
                 ? $outputFormat
                 : "json";
-            if (in_array($outputFormat, ["csv", "xls"], true)) {
-                $request->include = [];
+            // Tabular export: keep outbound (1:1) includes only — inbound (1:n) cannot flatten into a row.
+            if (in_array($outputFormat, ["csv", "xls"], true) && !empty($request->include)) {
+                $request->include = $this->filter_outbound_includes($request->include, $resourceName);
             }
         }
         
@@ -116,19 +117,131 @@ trait DbapiReadTrait
         return null;
     }
 
-    static private function record2csv($record, array $selectedFields, array $fkFields) {
-            $rec = [];
-            foreach ($selectedFields as $fldName) {
-                if (in_array($fldName, $fkFields, true)) {
-                    $rel = $record->relationships[$fldName] ?? null;
-                    $rec[] = ($rel && isset($rel->id)) ? $rel->id : null;
-                } else {
-                    $rec[] = $record->attributes->$fldName ?? null;
-                }
+    /**
+     * Drop inbound (1:n) includes; keep outbound (1:1), including nested outbound chains.
+     *
+     * @param array<string, DBAPIRequest> $includes
+     * @return array<string, DBAPIRequest>
+     */
+    private function filter_outbound_includes(array $includes, string $resourceName): array
+    {
+        $out = [];
+        foreach ($includes as $relName => $inclReq) {
+            try {
+                $rel = $this->apiDm->get_relationship($resourceName, $relName);
+            } catch (Exception $e) {
+                continue;
             }
-
-            return '"'.implode('","',$rec).'"';
+            if (($rel["type"] ?? "") !== "outbound") {
+                continue;
+            }
+            if (!empty($inclReq->include) && is_array($inclReq->include)) {
+                $inclReq->include = $this->filter_outbound_includes($inclReq->include, $rel["table"]);
+            }
+            $out[$relName] = $inclReq;
         }
+        return $out;
+    }
+
+    /**
+     * @return list<array{header:string,path:list<string>}>
+     */
+    private function csv_column_specs(string $resourceName, DBAPIRequest $request): array
+    {
+        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
+        if (is_array($request->fields) && count($request->fields)) {
+            $selectedFields = $request->fields;
+        } elseif (is_string($request->fields) && $request->fields !== '') {
+            $selectedFields = explode(',', $request->fields);
+        }
+
+        $specs = [];
+        foreach ($selectedFields as $fldName) {
+            $specs[] = ["header" => $fldName, "path" => [$fldName]];
+        }
+        if (!empty($request->include) && is_array($request->include)) {
+            $this->append_include_csv_columns($specs, [], $request->include);
+        }
+        return $specs;
+    }
+
+    /**
+     * @param list<array{header:string,path:list<string>}> $specs
+     * @param list<string> $pathPrefix
+     * @param array<string, DBAPIRequest> $includes
+     */
+    private function append_include_csv_columns(array &$specs, array $pathPrefix, array $includes): void
+    {
+        foreach ($includes as $relName => $inclReq) {
+            $relPath = array_merge($pathPrefix, [$relName]);
+            foreach ($inclReq->fields as $fld) {
+                $fieldPath = array_merge($relPath, [$fld]);
+                $specs[] = [
+                    "header" => implode(".", $fieldPath),
+                    "path" => $fieldPath,
+                ];
+            }
+            if (!empty($inclReq->include) && is_array($inclReq->include)) {
+                $this->append_include_csv_columns($specs, $relPath, $inclReq->include);
+            }
+        }
+    }
+
+    /**
+     * @param list<string> $path
+     * @return mixed
+     */
+    static private function csv_cell_value($record, array $path)
+    {
+        $current = $record;
+        $last = count($path) - 1;
+        for ($i = 0; $i <= $last; $i++) {
+            if ($current === null) {
+                return null;
+            }
+            $key = $path[$i];
+            if ($i < $last) {
+                $current = (isset($current->relationships) && array_key_exists($key, $current->relationships))
+                    ? $current->relationships[$key]
+                    : null;
+                continue;
+            }
+            if (isset($current->relationships) && array_key_exists($key, $current->relationships)) {
+                $rel = $current->relationships[$key];
+                if ($rel === null) {
+                    return null;
+                }
+                if (is_object($rel) && !($rel instanceof \RecordSet) && property_exists($rel, "id")) {
+                    return $rel->id;
+                }
+                return null;
+            }
+            return $current->attributes->$key ?? null;
+        }
+        return null;
+    }
+
+    /**
+     * @param list<array{header:string,path:list<string>}> $columnSpecs
+     * @return list<mixed>
+     */
+    static private function record_values($record, array $columnSpecs): array
+    {
+        $rec = [];
+        foreach ($columnSpecs as $spec) {
+            $rec[] = self::csv_cell_value($record, $spec["path"]);
+        }
+        return $rec;
+    }
+
+    /**
+     * @param list<array{header:string,path:list<string>}> $columnSpecs
+     */
+    static private function record2csv($record, array $columnSpecs): string
+    {
+        return '"'.implode('","', self::record_values($record, $columnSpecs)).'"';
+    }
+
     /**
      * @param string $resourceName
      * @param string $recId
@@ -146,24 +259,17 @@ trait DbapiReadTrait
 
         
         $out = [];
-
-        // extract fields
-        $fkFields = array_keys($this->apiDm->get_fk_fields($resourceName));
-        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
-        if (is_array($request->fields) && count($request->fields)) {
-            $selectedFields = $request->fields;
-        } elseif (is_string($request->fields) && $request->fields !== '') {
-            $selectedFields = explode(',', $request->fields);
-        }
+        $columnSpecs = $this->csv_column_specs($resourceName, $request);
+        $headers = array_column($columnSpecs, "header");
 
         $includeTHead = $this->input->get("includetablehead");
         if ($includeTHead !== "false") {
-            $out[] = '"'.implode('","',$selectedFields).'"';
+            $out[] = '"'.implode('","',$headers).'"';
         }
 
 
         foreach ($records as $record) {
-            $out[] = self::record2csv($record, $selectedFields, $fkFields);
+            $out[] = self::record2csv($record, $columnSpecs);
         }
         $out = implode("\n",$out);
 //        HttpResp::csv_out(200,implode("\n",$out));
@@ -197,14 +303,9 @@ trait DbapiReadTrait
             HttpResp::not_found();
         }
 
-        // extract fields
-        $fkFields = array_keys($this->apiDm->get_fk_fields($resourceName));
-        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
-        if (is_array($request->fields) && count($request->fields)) {
-            $selectedFields = $request->fields;
-        } elseif (is_string($request->fields) && $request->fields !== '') {
-            $selectedFields = explode(',', $request->fields);
-        }
+        $columnSpecs = $this->csv_column_specs($resourceName, $request);
+        $headers = array_column($columnSpecs, "header");
+
         $xls = new \Vtiful\Kernel\Excel(["path"=>"/tmp"]);
         $this->load->helper('string');
         $fileName = $fileName ? $fileName : random_string();
@@ -212,13 +313,12 @@ trait DbapiReadTrait
 
         $includeTHead = $this->input->get("includetablehead");
         if($includeTHead && $includeTHead=="true") {
-            $xlsFile->header($selectedFields);
+            $xlsFile->header($headers);
         }
 
         $data = [];
-
         foreach ($recordSet as $record) {
-            $data[] = self::record2csv($record, $selectedFields, $fkFields);
+            $data[] = self::record_values($record, $columnSpecs);
         }
         $xlsFile->data($data)->output();
         $out = file_get_contents("/tmp/$fileName");

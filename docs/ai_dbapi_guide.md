@@ -277,7 +277,11 @@ GET .../customers?include=orders&page[customers][offset]=0&page[orders][limit]=5
 
 ```http
 GET .../customers?fields[customers]=name,email
+GET .../customers/1?include=orders&fields[customers]=name,email&fields[orders]=status,total
+GET .../orders/1?include=customer_id&fields[orders]=status,total&fields[customers]=name,email
 ```
+
+Keys are resource **types** (table names). Path keys (`fields[orders/customer_id]`) also work for a specific include edge.
 
 ### Include relationships — `include`
 

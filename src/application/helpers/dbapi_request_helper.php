@@ -96,10 +96,22 @@ function set_para(string $param, array &$inputs, string $resourceName, DBAPIRequ
             $resourceName => $inputs[$param]
         ];
     }
-    if(!isset($inputs[$param][$resourceName])) {
+
+    // Prefer exact key: top-level resource or path-keyed include (e.g. fields[orders/customer_id])
+    if(isset($inputs[$param][$resourceName])) {
+        $request->$param = $inputs[$param][$resourceName];
+        unset($inputs[$param][$resourceName]);
         return;
     }
 
-    $request->$param = $inputs[$param][$resourceName];
-    unset($inputs[$param][$resourceName]);
+    // Nested include path: fall back to last segment (rel name), e.g. fields[orders] for customers/orders.
+    // Do not unset — JSON:API fields[type]/sort[type] apply to every occurrence of that type.
+    $slash = strrpos($resourceName, '/');
+    if ($slash === false) {
+        return;
+    }
+    $simple = substr($resourceName, $slash + 1);
+    if ($simple !== '' && isset($inputs[$param][$simple])) {
+        $request->$param = $inputs[$param][$simple];
+    }
 }
