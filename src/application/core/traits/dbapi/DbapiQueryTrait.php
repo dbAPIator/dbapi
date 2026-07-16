@@ -158,11 +158,20 @@ trait DbapiQueryTrait
             }
         }
 
-        // if no sparse field selection, get all fields to
-        if(!count($request->fields)) {
-            $request->fields = $this->apiDm->get_selectable_fields($request->resourceName);
-        }
+        $userFields = array_values(array_filter(
+            is_array($request->fields) ? $request->fields : [],
+            static function ($fld) {
+                return $fld !== null && $fld !== '';
+            }
+        ));
 
+        if (!count($userFields)) {
+            $request->exportFields = $this->apiDm->get_selectable_fields($request->resourceName);
+            $request->fields = $request->exportFields;
+        } else {
+            $request->exportFields = $userFields;
+            $request->fields = $userFields;
+        }
 
         $request->primaryKey = $this->apiDm->get_primary_key($request->resourceName);
         if ($this->apiDm->has_primary_key($request->resourceName)) {

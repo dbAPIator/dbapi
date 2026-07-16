@@ -33,6 +33,13 @@ class DBAPIRequest {
      */
     public $fields = [];                     // fields to fetch
 
+    /**
+     * Explicit sparse fieldset for tabular export (before PK/FK auto-selection).
+     * null means export all selectable fields.
+     * @var array|null
+     */
+    public $exportFields = null;
+
     public $fieldsIndexes = [];
     /**
      * array of includes

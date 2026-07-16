@@ -60,5 +60,6 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 ## [Unreleased]
 
 - Sparse fieldsets on `include`d resources honor `fields[{type}]` (JSON:API) and path keys `fields[{parent}/{rel}]`; outbound FK columns stay selected so relationship linkages and include hydration are not dropped when omitted from `fields`.
+- CSV/XLS export uses explicit sparse fieldsets (`exportFields`) so auto-added PK/FK columns for query hydration are not exported as extra columns.
 - CSV/XLS export flattens outbound (1:1) `include` relations into columns (`rel.field`); inbound (1:n) includes are skipped.
 - Remove PHP resource hooks (`hooks/<entity>/before.insert.php`, etc.); use Redis webhooks for side effects.

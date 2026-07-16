@@ -1045,6 +1045,24 @@ trait DataPlaneTestsTrait
         $this->assertStringContainsString('SKU-001', $body);
     }
 
+    public function testExportCsvSparseFieldset(): void
+    {
+        $resp = $this->dataRequest('GET', $this->dataUrl('products'), [
+            'query' => [
+                'format' => 'csv',
+                'includetablehead' => 'true',
+                'fields' => ['products' => 'sku,name'],
+            ],
+        ]);
+        $this->assertEquals(200, $resp->getStatusCode(), 'csv sparse fields');
+        $lines = preg_split("/\r\n|\n|\r/", trim((string) $resp->getBody()));
+        $header = $lines[0];
+        $this->assertStringContainsString('sku', strtolower($header));
+        $this->assertStringContainsString('name', strtolower($header));
+        $this->assertStringNotContainsString('"id"', $header);
+        $this->assertStringNotContainsString('price', strtolower($header));
+    }
+
     public function testExportCsvWithOutboundInclude(): void
     {
         $resp = $this->dataRequest('GET', $this->dataUrl('orders'), [
@@ -1067,6 +1085,8 @@ trait DataPlaneTestsTrait
         $this->assertStringContainsString('customer_id.name', $header);
         $this->assertStringContainsString('customer_id.email', $header);
         $this->assertStringNotContainsString('customer_id.orders', $header);
+        $this->assertStringNotContainsString('customer_id.id', $header);
+        $this->assertStringNotContainsString('customer_id.account_manager_id', $header);
         $this->assertStringContainsString('Alice Example', $body);
         $this->assertStringContainsString('alice@example.com', $body);
     }

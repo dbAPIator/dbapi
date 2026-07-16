@@ -148,12 +148,7 @@ trait DbapiReadTrait
      */
     private function csv_column_specs(string $resourceName, DBAPIRequest $request): array
     {
-        $selectedFields = array_keys($this->apiDm->get_config($resourceName)["fields"]);
-        if (is_array($request->fields) && count($request->fields)) {
-            $selectedFields = $request->fields;
-        } elseif (is_string($request->fields) && $request->fields !== '') {
-            $selectedFields = explode(',', $request->fields);
-        }
+        $selectedFields = $request->exportFields ?? $this->apiDm->get_selectable_fields($resourceName);
 
         $specs = [];
         foreach ($selectedFields as $fldName) {
@@ -174,7 +169,8 @@ trait DbapiReadTrait
     {
         foreach ($includes as $relName => $inclReq) {
             $relPath = array_merge($pathPrefix, [$relName]);
-            foreach ($inclReq->fields as $fld) {
+            $exportFields = $inclReq->exportFields ?? $this->apiDm->get_selectable_fields($inclReq->resourceName);
+            foreach ($exportFields as $fld) {
                 $fieldPath = array_merge($relPath, [$fld]);
                 $specs[] = [
                     "header" => implode(".", $fieldPath),
