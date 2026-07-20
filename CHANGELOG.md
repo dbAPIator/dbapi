@@ -57,6 +57,11 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Implement sub-relation handling in API
 
 
+## [1.4.0] - 2026-07-20
+
+- Upgrade to PHP 8.3 
+
+
 ## [Unreleased]
 
 - Sparse fieldsets on `include`d resources honor `fields[{type}]` (JSON:API) and path keys `fields[{parent}/{rel}]`; outbound FK columns stay selected so relationship linkages and include hydration are not dropped when omitted from `fields`.
