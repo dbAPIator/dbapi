@@ -288,7 +288,7 @@ Data endpoints: `http://localhost:8888/v1/apis/demo/data/{resource}`
 
 ### Local Apache / PHP
 
-**Requirements:** PHP 7.4+, `mysqli`, `json`, `mbstring`, `curl`.
+**Requirements:** PHP 8.3+, `mysqli`, `json`, `mbstring`, `curl`, `yaml`.
 
 1. Point the web root at [`src/`](src/) (e.g. `http://localhost/dbapi/src`).
 2. Ensure [`dbconfigs/`](dbconfigs/) is writable by the web server user.

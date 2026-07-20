@@ -1,6 +1,6 @@
 {
     "require": {
-        "firebase/php-jwt": "~6.10.0",
+        "firebase/php-jwt": "^7.0",
         "ext-json": "*",
         "ext-yaml": "*",
         "predis/predis": "^2.3",
@@ -24,12 +24,7 @@
     },
     "config": {
         "platform": {
-            "php": "7.4.33"
-        },
-        "audit": {
-            "ignore": {
-                "PKSA-y2cr-5h3j-g3ys": "PHP 7.4 only; upgrade to firebase/php-jwt ^7 with PHP 8 (see docs/php8_upgrade.md)"
-            }
+            "php": "8.3.0"
         }
     }
 }

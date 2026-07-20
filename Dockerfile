@@ -9,18 +9,17 @@ RUN apt-get update \
     && apt-get install -y \
         nginx \
         supervisor \
-        php7.4-cli \
-        php7.4-fpm \
-        php7.4-mysql \
-        php7.4-redis \
-        php7.4-json \
-        php7.4-opcache \
-        php7.4-apcu \
-        php7.4-mbstring \
-        php7.4-xml \
-        php7.4-zip \
-        php7.4-yaml \
-        php7.4-curl \
+        php8.3-cli \
+        php8.3-fpm \
+        php8.3-mysql \
+        php8.3-redis \
+        php8.3-opcache \
+        php8.3-apcu \
+        php8.3-mbstring \
+        php8.3-xml \
+        php8.3-zip \
+        php8.3-yaml \
+        php8.3-curl \
     && php -r "if (!extension_loaded('yaml')) { fwrite(STDERR, 'ext-yaml is required but not loaded\n'); exit(1); }" \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && apt-get clean \
@@ -28,11 +27,11 @@ RUN apt-get update \
 
 COPY configs/nginx.conf /etc/nginx/sites-available/default
 COPY configs/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY configs/php.ini /etc/php/7.4/fpm/php.ini
-COPY configs/php-fpm.conf /etc/php/7.4/fpm/php-fpm.conf
-COPY configs/www.conf /etc/php/7.4/fpm/pool.d/www.conf
+COPY configs/php.ini /etc/php/8.3/fpm/php.ini
+COPY configs/php-fpm.conf /etc/php/8.3/fpm/php-fpm.conf
+COPY configs/www.conf /etc/php/8.3/fpm/pool.d/www.conf
 
-RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.4/fpm/php.ini \
+RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.3/fpm/php.ini \
     && mkdir -p /run/php /app/apis
 
 WORKDIR /app

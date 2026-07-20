@@ -529,7 +529,7 @@ function require_yaml_extension(): void
     }
     throw new RuntimeException(
         'The PHP yaml extension (ext-yaml) is required. Install php-yaml '
-        . '(e.g. apt install php7.4-yaml or php8.2-yaml).'
+        . '(e.g. apt install php8.3-yaml).'
     );
 }
 

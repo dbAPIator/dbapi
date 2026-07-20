@@ -193,9 +193,14 @@ PHP
     public function testApiPublicBaseUrlPrefersBaseUrlEnv(): void
     {
         require_once APPPATH . 'helpers/deployment_helper.php';
+        $original = getenv('BASE_URL');
         putenv('BASE_URL=http://api.example.com');
         $this->assertSame('http://api.example.com', api_public_base_url());
-        putenv('BASE_URL');
+        if ($original !== false) {
+            putenv('BASE_URL=' . $original);
+        } else {
+            putenv('BASE_URL');
+        }
     }
 
     public function testGenerateSwaggerProducesValidSpec(): void

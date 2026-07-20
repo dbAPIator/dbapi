@@ -10,8 +10,8 @@ This is intentionally **not** a CI4 migration or a custom micro-framework rewrit
 
 | Component | Current | Notes |
 |-----------|---------|-------|
-| PHP | **7.4** | `Dockerfile`, `configs/php*.conf`, `src/composer.json` platform |
-| CodeIgniter | **3.1.0** | `src/system/` (`CI_VERSION` in `src/system/core/CodeIgniter.php`) |
+| PHP | **8.3** (target) | `Dockerfile`, `configs/php*.conf`, `src/composer.json` platform |
+| CodeIgniter | **3.1.13** | `src/system/` (`CI_VERSION` in `src/system/core/CodeIgniter.php`) |
 | CI 3.1.13 source | Present at repo root | `CodeIgniter-3.1.13/system/` — use to replace `src/system/` |
 | Application code | ~12k lines (excl. vendored OAuth2) | Controllers, traits, libraries, `third_party/dbAPI/` |
 | CI usage | Thin glue | Routing, config loader, dynamic `load->database()` |
@@ -101,6 +101,11 @@ Work in order. Each phase should leave the app bootable before moving on.
 
 4. **Smoke test on PHP 7.4 first** (if still available locally) — routing and mgmt API should work before touching PHP version.
 
+5. **Restore dbAPI database patch** — stock CI 3.1.13 omits `result_array_num()` (used by `third_party/dbAPI/API/Records.php`). Copy from `src/system.ci310.bak/` or re-apply:
+   - `src/system/database/DB_result.php` — property + `result_array_num()` + stub `_fetch_array_num()`
+   - `src/system/database/drivers/mysqli/mysqli_result.php` — `_fetch_array_num()` via `MYSQLI_NUM`
+   - `src/system/database/DB_driver.php` — query-cache path copies `result_array_num`
+
 > Do **not** copy `CodeIgniter-3.1.13/application/` over `src/application/`. dbAPI’s application tree is heavily customized; only `system/` changes.
 
 ---
@@ -128,7 +133,7 @@ src/system/database/DB_driver.php
 src/system/database/DB_query_builder.php
 ```
 
-**Alternative:** track patches in a small script under `scripts/patch-ci3-php82.sh` so upgrades are reproducible, or adopt a maintained CI3 fork via Composer (evaluate carefully — adds vendor coupling).
+**Alternative:** run `scripts/patch-ci3-php82.sh` after each `src/system/` replace (adds `AllowDynamicProperties`; does not include `result_array_num` — apply that separately per Phase 1 step 5).
 
 **Community references:**
 
@@ -357,6 +362,7 @@ rg '7\.4|php7' --glob '!vendor/**' --glob '!CodeIgniter-3.1.13/**'
 
 | Date | Decision |
 |------|----------|
+| 2026-07-20 | Phase 1 complete: CI 3.1.13 + `result_array_num` patch + smoke tests green on PHP 7.4. Phases 2–4 in progress (AllowDynamicProperties, Docker PHP 8.3, Composer platform). |
 | 2026-06-12 | Upgrade PHP only; keep CI3. Target PHP 8.2/8.3. No CI4 / micro-framework in this effort. |
 | | CI 3.1.13 source already at `CodeIgniter-3.1.13/`. |
 

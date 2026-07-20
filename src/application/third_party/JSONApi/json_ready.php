@@ -8,7 +8,7 @@
 
 namespace JSONApi;
 
-
+#[\AllowDynamicProperties]
 abstract class json_ready
 {
     /**
