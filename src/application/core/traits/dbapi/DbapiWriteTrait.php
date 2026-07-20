@@ -195,11 +195,11 @@ trait DbapiWriteTrait
             if(!$this->apiDm->resource_exists($resourceName))
                 throw new Exception("Resource '$resourceName' not found",404);
 
-            if(@$updateData->type && $resourceName!==$updateData->type) {
+            if (($updateData->type ?? null) && $resourceName !== $updateData->type) {
                 throw new Exception("Object type mismatch; '$updateData->type' instead of '$resourceName' ", 400);
             }
 
-            if("".$recId!=="".@$updateData->id)
+            if ("".$recId !== "" . ($updateData->id ?? ''))
                 throw new Exception("Record ID mismatch $recId vs $updateData->id",400);
 
             $resKeyFld = $this->apiDm->get_primary_key($resourceName);

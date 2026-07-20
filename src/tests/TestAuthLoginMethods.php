@@ -8,7 +8,7 @@ use GuzzleHttp\Client;
 class TestAuthLoginMethods extends IntegrationTestCase
 {
     private Client $client;
-    private string $apiName;
+    private ?string $apiName = null;
     private ?string $apiConfigKey = null;
     private array $connection;
 
@@ -26,7 +26,7 @@ class TestAuthLoginMethods extends IntegrationTestCase
 
     protected function tearDown(): void
     {
-        if ($this->apiName !== '') {
+        if ($this->apiName !== null && $this->apiName !== '') {
             $this->deleteApi($this->client, $this->apiName, $this->apiConfigKey);
         }
         parent::tearDown();

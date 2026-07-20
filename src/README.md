@@ -2,6 +2,8 @@
 
 This directory is the **document root** for dbAPI (CodeIgniter 3). Project-wide documentation lives in the **[repository README](../README.md)**.
 
+**Requires PHP 8.3+** (`mysqli`, `json`, `mbstring`, `curl`, `yaml`).
+
 ## Local URLs
 
 | Install | Base URL |
@@ -21,11 +23,17 @@ API definitions are stored under **[`../dbconfigs/`](../dbconfigs/)** (not insid
 
 ## Tests
 
-From this directory:
+Requires **PHP 8.3+** (PHPUnit 12). From this directory:
 
 ```bash
 composer install
 ./vendor/bin/phpunit
+```
+
+Integration tests need a web server at `BASE_URL` from `tests/test.env` — see `tests/test.env.example`. On Docker only:
+
+```bash
+bash ../scripts/run-phpunit-docker.sh
 ```
 
 See [../docs/management_api_test_plan.md](../docs/management_api_test_plan.md) and [../docs/data_plane_test_plan.md](../docs/data_plane_test_plan.md).

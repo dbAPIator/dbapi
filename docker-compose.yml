@@ -1,3 +1,8 @@
+# dbAPI — Docker Compose (local dev)
+#
+# Requires PHP 8.3 (see Dockerfile). App: http://localhost:8888
+# Run PHPUnit on PHP 8.3: bash scripts/run-phpunit-docker.sh
+
 services:
   dbapi:
     build:

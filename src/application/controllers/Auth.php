@@ -39,7 +39,8 @@ class Auth extends CI_Controller {
             HttpResp::not_found("API not found");
         }
 
-        $auth = @include $cfgDir."/authentication.php";
+        $authFile = $cfgDir . '/authentication.php';
+        $auth = is_file($authFile) ? include $authFile : false;
         if(!$auth) {
             HttpResp::bad_request(["error"=>"No authentication mechanism configured"]);
         }
@@ -56,7 +57,11 @@ class Auth extends CI_Controller {
         $auth = $this->load_auth_config($configName);
 
         $cfgDir = $this->configDir."/$configName";
-        $conn = @include $cfgDir."/connection.php";
+        $connFile = $cfgDir . '/connection.php';
+        $conn = is_file($connFile) ? include $connFile : false;
+        if (!is_array($conn)) {
+            HttpResp::service_unavailable(["errors" => [["message" => "Could not connect to database"]]]);
+        }
         $conn["db_debug"] = FALSE;
         try {
             $this->load->database($conn);
@@ -94,7 +99,7 @@ class Auth extends CI_Controller {
             $jwt = JWT::encode([
                 "unm"=>$payload["unm"],
                 "mfatoken" =>$session_token
-            ], $auth["key"], @$auth["alg"] ? $auth["alg"] : 'HS256');
+            ], $auth["key"], $auth['alg'] ?? 'HS256');
             HttpResp::json_out(200,["jwt"=>$jwt],["Authorization"=>"Bearer $jwt","Content-type"=>"application/json"]);
             die();
         }
@@ -348,7 +353,7 @@ class Auth extends CI_Controller {
         $result = $res->row_array();
         $result['login_method'] = $loginMethod;
 
-        if(@$result["mfa_enabled"])
+        if (!empty($result['mfa_enabled']))
             $this->mfa_session_create($auth,$result);
         else
             $this->generate_token($result,$auth);

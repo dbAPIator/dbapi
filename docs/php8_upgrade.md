@@ -237,10 +237,10 @@ Most dbAPI logic is PHP 7.4-clean. Focus review on:
 
 ### Phase 6 — Configuration & docs
 
-- [ ] `README.md` — change **PHP 7.4+** to **PHP 8.2+** (or 8.3+)
+- [x] `README.md` — **PHP 8.3+**
 - [ ] `src/README.md` — same if mentioned
 - [ ] `docker-compose.yml` — comment or env docs if PHP version matters to operators
-- [ ] CI patches documented in this file or `scripts/patch-ci3-php82.sh` committed to repo
+- [x] CI patches documented in this file and `scripts/patch-ci3-php82.sh`
 
 ---
 
@@ -251,6 +251,10 @@ Run on **PHP 8.3** with CI 3.1.13 patched, against real HTTP (Apache or Docker).
 ### Automated
 
 ```bash
+# PHP 8.3 via Docker (recommended locally)
+bash scripts/run-phpunit-docker.sh
+
+# Or inside a PHP 8.3 environment with HTTP server at tests/test.env BASE_URL
 cd src
 composer install
 ./vendor/bin/phpunit
@@ -362,7 +366,7 @@ rg '7\.4|php7' --glob '!vendor/**' --glob '!CodeIgniter-3.1.13/**'
 
 | Date | Decision |
 |------|----------|
-| 2026-07-20 | Phase 1 complete: CI 3.1.13 + `result_array_num` patch + smoke tests green on PHP 7.4. Phases 2–4 in progress (AllowDynamicProperties, Docker PHP 8.3, Composer platform). |
+| 2026-07-20 | Phases 2–5: AllowDynamicProperties, Docker PHP 8.3, Composer 8.3 + jwt ^7, app `@` cleanup, JSONApi patch. Full PHPUnit green on PHP 8.3 via `scripts/run-phpunit-docker.sh`. |
 | 2026-06-12 | Upgrade PHP only; keep CI3. Target PHP 8.2/8.3. No CI4 / micro-framework in this effort. |
 | | CI 3.1.13 source already at `CodeIgniter-3.1.13/`. |
 

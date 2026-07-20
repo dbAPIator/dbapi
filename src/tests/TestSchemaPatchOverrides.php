@@ -2,9 +2,15 @@
 
 use PHPUnit\Framework\TestCase;
 
-define('BASEPATH', dirname(__DIR__) . '/system/');
-define('APPPATH', dirname(__DIR__) . '/application/');
-define('ENVIRONMENT', 'testing');
+if (!defined('BASEPATH')) {
+    define('BASEPATH', dirname(__DIR__) . '/system/');
+}
+if (!defined('APPPATH')) {
+    define('APPPATH', dirname(__DIR__) . '/application/');
+}
+if (!defined('ENVIRONMENT')) {
+    define('ENVIRONMENT', 'testing');
+}
 
 require_once APPPATH . 'helpers/config_util_helper.php';
 

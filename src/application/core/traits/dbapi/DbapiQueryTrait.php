@@ -108,7 +108,7 @@ trait DbapiQueryTrait
             $request->update = explode(",",$request->update);
         }
 
-        $request->insertignore = @$inputs["insertignore"] === "true";
+        $request->insertignore = ($inputs['insertignore'] ?? null) === 'true';
 
         if($request->update) {
             $request->onduplicate = "update";
