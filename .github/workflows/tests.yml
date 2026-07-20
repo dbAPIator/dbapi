@@ -85,7 +85,7 @@ jobs:
           CI_ENV: development
         run: |
           mkdir -p "$CONFIGS_DIR"
-          php -S 127.0.0.1:8080 -t public public/ci-router.php >> /tmp/dbapi-php.log 2>&1 &
+          php -d memory_limit=512M -S 127.0.0.1:8080 -t public public/ci-router.php >> /tmp/dbapi-php.log 2>&1 &
           echo $! > /tmp/dbapi-php.pid
           for _ in $(seq 1 30); do
             if curl -sf -H "X-Management-Key: myverysecuresecret" http://127.0.0.1:8080/mgmt/v1/apis >/dev/null; then

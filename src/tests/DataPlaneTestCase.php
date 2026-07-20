@@ -67,11 +67,37 @@ abstract class DataPlaneTestCase extends IntegrationTestCase
         foreach ($steps as [$method, $uri, $opts]) {
             $opts['headers'] = self::managementHeaders(self::$apiConfigKey);
             $opts['http_errors'] = false;
-            $resp = self::$client->request($method, $uri, $opts);
+            try {
+                $resp = self::managementRequest($method, $uri, $opts);
+            } catch (\GuzzleHttp\Exception\TransferException $e) {
+                self::fail(
+                    "Provision step {$method} {$uri} failed: {$e->getMessage()}. "
+                    . 'The dbAPI server may have stopped (check /tmp/dbapi-php.log in CI).'
+                );
+            }
             if ($resp->getStatusCode() >= 400) {
                 self::fail("Provision step {$method} {$uri} failed: " . $resp->getBody());
             }
         }
+    }
+
+    /**
+     * @throws \GuzzleHttp\Exception\TransferException
+     */
+    protected static function managementRequest(string $method, string $uri, array $options)
+    {
+        $last = null;
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                return self::$client->request($method, $uri, $options);
+            } catch (\GuzzleHttp\Exception\TransferException $e) {
+                $last = $e;
+                if ($attempt < 2) {
+                    usleep(250000);
+                }
+            }
+        }
+        throw $last;
     }
 
     protected function dataUrl(

@@ -14,11 +14,11 @@
         </testsuite>
         <testsuite name="integration">
             <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestDataPlaneAPI.php</file>
+            <file>tests/TestSingleModeDataPlaneAPI.php</file>
             <file>tests/TestAuthLoginMethods.php</file>
             <file>tests/TestAccessControlManagement.php</file>
             <file>tests/TestAccessControlDataPlane.php</file>
-            <file>tests/TestDataPlaneAPI.php</file>
-            <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>
         <testsuite name="dbapi">
             <file>tests/TestFilterParser.php</file>
@@ -30,11 +30,11 @@
             <file>tests/TestAccessControl.php</file>
             <file>tests/TestSelectOffset.php</file>
             <file>tests/TestManagementAPI.php</file>
+            <file>tests/TestDataPlaneAPI.php</file>
+            <file>tests/TestSingleModeDataPlaneAPI.php</file>
             <file>tests/TestAuthLoginMethods.php</file>
             <file>tests/TestAccessControlManagement.php</file>
             <file>tests/TestAccessControlDataPlane.php</file>
-            <file>tests/TestDataPlaneAPI.php</file>
-            <file>tests/TestSingleModeDataPlaneAPI.php</file>
         </testsuite>
     </testsuites>
 </phpunit>
