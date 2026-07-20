@@ -62,6 +62,11 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Upgrade to PHP 8.3 
 
 
+## [1.4.1] - 2026-07-20
+
+- Update testing configurations and enhance error handling in DataPlane tests
+
+
 ## [Unreleased]
 
 - Sparse fieldsets on `include`d resources honor `fields[{type}]` (JSON:API) and path keys `fields[{parent}/{rel}]`; outbound FK columns stay selected so relationship linkages and include hydration are not dropped when omitted from `fields`.
