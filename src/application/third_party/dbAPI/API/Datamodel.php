@@ -600,7 +600,7 @@ class Datamodel {
      * TODO: review this method
      * @throws \Exception
      */
-    function validate_object_attributes($resName, $attributes, $operation="ins") {
+    function validate_object_attributes($resName, $attributes, $operation="ins", $bypassFieldRestrictions=false) {
 
         if(!$this->resource_exists($resName))
             throw new \Exception("table '$resName' not found",400);
@@ -620,7 +620,7 @@ class Datamodel {
                 throw new \Exception("Attribute '$fldName' not allowed to be inserted",400);
 
             // field not allowed to update
-            if(in_array($fldName,$attributesNames) && !$this->field_is_updateable($resName,$fldName) && $operation=="upd")
+            if(in_array($fldName,$attributesNames) && !$this->field_is_updateable($resName,$fldName) && $operation=="upd" && !$bypassFieldRestrictions)
                 throw new \Exception("Attribute '$fldName' not allowed to be updated",400);
 
         }

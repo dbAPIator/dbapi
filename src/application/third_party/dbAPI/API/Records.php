@@ -73,6 +73,11 @@ class Records {
         $this->jwtPayload = $payload;
     }
 
+    private function fieldRestrictionsBypassed(): bool
+    {
+        return AccessControl::shouldBypassMandatoryFilter($this->authConfig, $this->jwtPayload);
+    }
+
     static function init($dbDriver,$dataModel,$apiConfigDir) {
         return new Records($dbDriver,$dataModel,$apiConfigDir);
     }
@@ -687,7 +692,12 @@ class Records {
 
 //        print_r([$table,$attributes,$where]);
 //        $config = $this->dm->get_config($table);
-        $attributes = $this->dm->validate_object_attributes($table, $attributes, "upd");
+        $attributes = $this->dm->validate_object_attributes(
+            $table,
+            $attributes,
+            "upd",
+            $this->fieldRestrictionsBypassed()
+        );
         foreach ($attributes as $key => $val) {
             if (!$this->dm->is_required($table, $key) && $val === '') {
                 $attributes[$key] = null;
@@ -846,7 +856,12 @@ class Records {
 
 
         if(isset($resourceData->attributes) && count(get_object_vars($resourceData->attributes))) {
-            $resourceData->attributes = $this->dm->validate_object_attributes($table, $resourceData->attributes, "upd");
+            $resourceData->attributes = $this->dm->validate_object_attributes(
+                $table,
+                $resourceData->attributes,
+                "upd",
+                $this->fieldRestrictionsBypassed()
+            );
             return $this->update_attributes_by_id($table,$id,$resourceData->attributes);
         }
 
