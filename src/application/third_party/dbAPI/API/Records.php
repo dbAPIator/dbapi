@@ -209,12 +209,28 @@ class Records {
         if($totalRecs==0)
             return $recordSet;
 
+        $orderBy = count($request->sort) ? implode(",",$request->sort) : 1;
+        $paginationJoin = "";
+        $sqlLimit = " LIMIT {$request->offset},{$request->limit}";
+        if ($joinFanOut) {
+            $pagedIdsSql = "SELECT DISTINCT `$request->resourceName`.`$priKey` AS `_dbapi_page_id`"
+                ." FROM `$request->resourceName` "
+                .implode(" ",$join)
+                ." WHERE $whereStr"
+                ." ORDER BY $orderBy"
+                ." LIMIT {$request->offset},{$request->limit}";
+            $paginationJoin = " INNER JOIN ($pagedIdsSql) AS `_dbapi_page`"
+                ." ON `_dbapi_page`.`_dbapi_page_id`=`$request->resourceName`.`$priKey`";
+            $sqlLimit = "";
+        }
+
         // compile SELECT
         $mainSql = "SELECT ".join(",",$select)." FROM `$request->resourceName` "
             .implode(" ",$join)
+            .$paginationJoin
             ." WHERE $whereStr"
-            ." ORDER BY ".(count($request->sort) ? implode(",",$request->sort) : 1 )
-            ." LIMIT {$request->offset},{$request->limit}";
+            ." ORDER BY $orderBy"
+            .$sqlLimit;
 //        echo $mainSql."\n";
 
         // run query
