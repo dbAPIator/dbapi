@@ -67,9 +67,16 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Update testing configurations and enhance error handling in DataPlane tests
 
 
-## [Unreleased]
+## [1.4.2] - 2026-08-31
 
+- In single-mode Docker, overlay `DB_*` and `CONFIG_API_SECRET` at request time so regenerated `connection.php` / `admin_config.php` keep working.
+- Keep PHP `display_errors` off in FPM (`php_admin_flag`) and in CodeIgniter development mode.
+- CSV import across API endpoints.
+- Pagination enhancements.
 - Sparse fieldsets on `include`d resources honor `fields[{type}]` (JSON:API) and path keys `fields[{parent}/{rel}]`; outbound FK columns stay selected so relationship linkages and include hydration are not dropped when omitted from `fields`.
 - CSV/XLS export uses explicit sparse fieldsets (`exportFields`) so auto-added PK/FK columns for query hydration are not exported as extra columns.
 - CSV/XLS export flattens outbound (1:1) `include` relations into columns (`rel.field`); inbound (1:n) includes are skipped.
 - Remove PHP resource hooks (`hooks/<entity>/before.insert.php`, etc.); use Redis webhooks for side effects.
+
+
+## [Unreleased]
