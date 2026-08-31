@@ -411,6 +411,18 @@ Values: `error` (default), `ignore`, `update`.
 GET .../data/customers?format=csv
 ```
 
+### CSV import
+
+```http
+POST .../data/products?onduplicate=ignore
+Content-Type: text/csv
+
+sku,name,price,is_active
+SKU-1,Widget,9.99,1
+```
+
+Header columns must be insertable attributes. Same bulk limit and all-or-nothing transaction as JSON create. Multipart `file`/`csv` upload is also accepted.
+
 ---
 
 ## 9. Stored procedures

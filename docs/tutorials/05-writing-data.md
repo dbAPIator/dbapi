@@ -192,6 +192,36 @@ curl -sS -G 'http://localhost:8888/v1/data/orders' \
 
 ---
 
+## CSV import
+
+Create records with the same collection POST, using **`Content-Type: text/csv`** (or `multipart/form-data` with a `file` / `csv` upload). The first row is the header; column names must be **insertable attribute** names for that resource. Nested/relationship columns (e.g. `customer_id.name`) are rejected.
+
+```bash
+curl -sS -X POST 'http://localhost:8888/v1/data/products?onduplicate=ignore' \
+  -H 'Content-Type: text/csv' \
+  --data-binary $'sku,name,price,is_active\nSKU-CSV-1,Widget,9.99,1\nSKU-CSV-2,Gadget,14.50,1\n' | jq .
+```
+
+Behaviour matches JSON bulk create:
+
+- All-or-nothing transaction (one failed row rolls back the request)
+- Same **`BULK_INSERT_LIMIT`** (default 100)
+- **`onduplicate`** / **`update`** query parameters still apply
+- Response is JSON:API (created resources or an error document) — not CSV
+
+Empty cells omit the attribute (database default / NULL). Empty data rows are skipped. Unknown or non-insertable header names return **400** before any insert.
+
+Multipart example:
+
+```bash
+curl -sS -X POST 'http://localhost:8888/v1/data/products' \
+  -F 'file=@products.csv;type=text/csv' | jq .
+```
+
+Symmetry: **`GET ?format=csv`** exports attribute (and optional outbound include) columns; **`POST Content-Type: text/csv`** imports attribute columns only.
+
+---
+
 ## Create via relationship URL
 
 You can POST to a nested relationship endpoint:
@@ -220,6 +250,7 @@ curl -sS -X POST http://localhost:8888/v1/data/customers/1/notes \
 - Bulk insert, update, and filter-based delete have per-request limits.
 - `onduplicate` enables idempotent imports and upsert flows.
 - `format=csv` exports filtered, field-selected data; outbound `include` relations become extra columns.
+- `POST` with `Content-Type: text/csv` imports attribute columns (same limits and transaction as JSON bulk).
 
 ---
 
@@ -228,6 +259,7 @@ curl -sS -X POST http://localhost:8888/v1/data/customers/1/notes \
 1. Create an order with one line item for product 1 (qty 3).
 2. Bulk-update two notes to `priority=0`.
 3. Export active products to CSV.
+4. Import two products from a CSV body with `onduplicate=ignore`.
 
 ---
 

@@ -220,7 +220,28 @@ function create_request_body_create($resourceName){
                         "jsonapi"=>['$ref'=>"#/components/schemas/jsonapi"]
                     ]
                 ]
-            ]
+            ],
+            "text/csv"=>[
+                "schema"=>[
+                    "type"=>"string",
+                    "format"=>"binary",
+                    "description"=>"CSV with header row of insertable attribute names. Same bulk insert limits and onduplicate behaviour as JSON create.",
+                ],
+                "example"=>"sku,name,price,is_active\nSKU-CSV-1,Widget,9.99,1\n",
+            ],
+            "multipart/form-data"=>[
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "file"=>[
+                            "type"=>"string",
+                            "format"=>"binary",
+                            "description"=>"CSV file (field name may also be csv)",
+                        ],
+                    ],
+                    "required"=>["file"],
+                ],
+            ],
         ]
     ];
 }

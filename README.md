@@ -133,6 +133,7 @@ POST /v1/apis/{apiId}/data/customers
 - **Filter on relationships** — e.g. customers that have orders matching a condition.
 - **Views** — read-only resources; list and filter work; responses omit `id` when there is no primary key.
 - **Export** — optional CSV or XLS on reads for spreadsheets and reporting.
+- **CSV import** — `POST` collection with `Content-Type: text/csv` (or multipart file) maps header columns to insertable attributes; same bulk limits and transactions as JSON create.
 
 ### Write with control
 

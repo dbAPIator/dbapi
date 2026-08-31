@@ -825,6 +825,121 @@ trait DataPlaneTestsTrait
         }
     }
 
+    public function testCsvImportCreatesRecords(): void
+    {
+        $skuBase = 'CSVIMP-' . bin2hex(random_bytes(3));
+        $csv = "sku,name,price,is_active\n"
+            . "{$skuBase}-1,Csv One,1.50,1\n"
+            . "{$skuBase}-2,Csv Two,2.50,1\n";
+        $create = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv,
+        ]);
+        $body = $this->assertHttpStatus($create, 201, 'csv import');
+        $this->assertIsArray($body['data']);
+        $this->assertCount(2, $body['data']);
+        foreach ($body['data'] as $row) {
+            $this->dataRequest('DELETE', $this->dataUrl('products', $row['id']));
+        }
+    }
+
+    public function testCsvImportUnknownColumnReturns400(): void
+    {
+        $csv = "sku,name,not_a_real_column\nSKU-X,Name,1\n";
+        $resp = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv,
+        ]);
+        $this->assertEquals(400, $resp->getStatusCode(), 'unknown csv column');
+    }
+
+    public function testCsvImportDottedColumnReturns400(): void
+    {
+        $csv = "sku,name,customer_id.name\nSKU-X,Name,Acme\n";
+        $resp = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv,
+        ]);
+        $this->assertEquals(400, $resp->getStatusCode(), 'dotted csv column');
+    }
+
+    public function testCsvImportExceedsBulkLimitReturns400(): void
+    {
+        $skuBase = 'CSVLIM-' . bin2hex(random_bytes(3));
+        $lines = ['sku,name,price,is_active'];
+        for ($i = 1; $i <= 101; $i++) {
+            $lines[] = "{$skuBase}-{$i},Item {$i},1.00,1";
+        }
+        $resp = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => implode("\n", $lines) . "\n",
+        ]);
+        $this->assertEquals(400, $resp->getStatusCode(), 'csv bulk limit');
+    }
+
+    public function testCsvImportOnDuplicateIgnore(): void
+    {
+        $sku = 'CSVDUP-' . bin2hex(random_bytes(3));
+        $csv = "sku,name,price,is_active\n{$sku},First,1.00,1\n";
+        $first = $this->dataRequest('POST', $this->dataUrl('products') . '?onduplicate=ignore', [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv,
+        ]);
+        $body = $this->assertHttpStatus($first, 201, 'csv first insert');
+        $id = $body['data'][0]['id'] ?? $body['data']['id'] ?? null;
+        $this->assertNotNull($id);
+
+        $csv2 = "sku,name,price,is_active\n{$sku},Second,9.00,1\n";
+        $second = $this->dataRequest('POST', $this->dataUrl('products') . '?onduplicate=ignore', [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv2,
+        ]);
+        $this->assertContains($second->getStatusCode(), [200, 201], 'csv onduplicate ignore');
+
+        $get = $this->dataRequest('GET', $this->dataUrl('products', $id));
+        $got = $this->assertHttpStatus($get, 200, 'verify name unchanged');
+        $this->assertEquals('First', $got['data']['attributes']['name']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('products', $id));
+    }
+
+    public function testCsvImportDuplicateRollsBackTransaction(): void
+    {
+        $skuExisting = 'CSVEX-' . bin2hex(random_bytes(3));
+        $skuNew = 'CSVNEW-' . bin2hex(random_bytes(3));
+        $setup = $this->assertHttpStatus($this->dataRequest('POST', $this->dataUrl('products'), [
+            'json' => [
+                'data' => [
+                    'type' => 'products',
+                    'attributes' => [
+                        'sku' => $skuExisting,
+                        'name' => 'Existing',
+                        'price' => 1.00,
+                        'is_active' => 1,
+                    ],
+                ],
+            ],
+        ]), 201);
+        $existingId = $setup['data']['id'];
+
+        $csv = "sku,name,price,is_active\n"
+            . "{$skuNew},Should Roll Back,2.00,1\n"
+            . "{$skuExisting},Dup,3.00,1\n";
+        $resp = $this->dataRequest('POST', $this->dataUrl('products'), [
+            'headers' => ['Content-Type' => 'text/csv'],
+            'body' => $csv,
+        ]);
+        $this->assertEquals(409, $resp->getStatusCode(), 'csv duplicate conflict');
+
+        $check = $this->dataRequest('GET', $this->dataUrl('products'), [
+            'query' => ['filter' => 'sku=' . $skuNew],
+        ]);
+        $body = $this->assertHttpStatus($check, 200, 'new sku rolled back');
+        $this->assertCount(0, $body['data']);
+
+        $this->dataRequest('DELETE', $this->dataUrl('products', $existingId));
+    }
+
     public function testBulkUpdateByIdArray(): void
     {
         $email1 = $this->uniqueEmail('bulk1');

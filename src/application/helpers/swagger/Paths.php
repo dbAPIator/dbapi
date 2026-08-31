@@ -362,6 +362,8 @@ function create_records($tags,$resourceName, $resourceSpecifications,$datamodel,
     $data = [
         "summary" => "Create records of type $resourceName",
         "description" => "This method allows both single record creation as well as batch record creation.\n"
+            ."Accepts JSON:API (`application/json`) or CSV (`text/csv`, or `multipart/form-data` with a `file`/`csv` upload). "
+            ."CSV header columns must be insertable attribute names; nested/relationship columns are not supported.\n"
             ."The create operation is enclosed in a transaction. If one of the inserts fail the entire block will fail.\n"
             ."For handling errors causes by duplicate inserts use the **onduplicate** parameter",
         "operationId" => $resourceName."_create_multiple_records",

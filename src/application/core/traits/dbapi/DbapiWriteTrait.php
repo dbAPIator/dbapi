@@ -273,16 +273,26 @@ trait DbapiWriteTrait
         $this->_init($configName);
 
         // print_r($input);
-        // get input data
+        // get input data (JSON:API, or CSV / multipart CSV → same shape)
         try {
             // if (is_object($input)) {
             //     $input = json_decode(json_encode($input), true);
             // }
-            $input = $this->get_input_data($input);
+            $this->load->helper('csv_import');
+            if (is_null($input) && dbapi_is_csv_content_type($_SERVER['CONTENT_TYPE'] ?? null)) {
+                $csvText = dbapi_read_csv_request_body($_SERVER['CONTENT_TYPE'] ?? null);
+                $input = dbapi_parse_csv_import($csvText, $resourceName, $this->apiDm);
+            } else {
+                $input = $this->get_input_data($input);
+            }
         }
         catch (Exception $e) {
+            $code = (int) $e->getCode();
+            if ($code < 400 || $code > 599) {
+                $code = 400;
+            }
             HttpResp::json_out(
-                $e->getCode(),
+                $code,
                 JSONApi\Document::error_doc($this->JsonApiDocOptions, JSONApi\Error::from_exception($e) )->json_data()
             );
         }
