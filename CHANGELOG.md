@@ -79,4 +79,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Remove PHP resource hooks (`hooks/<entity>/before.insert.php`, etc.); use Redis webhooks for side effects.
 
 
+## [1.4.3] - 2026-09-01
+
+- Fix PHP-FPM OPcache for PHP 8.3: load settings from conf.d (opcache.enable is startup-only; fast_shutdown was removed) and drop public/.user.ini that disabled it.
+
+
 ## [Unreleased]
