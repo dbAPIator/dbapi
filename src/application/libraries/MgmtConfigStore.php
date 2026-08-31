@@ -1,6 +1,10 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+if (!function_exists('include_connection_config')) {
+    require_once APPPATH . 'helpers/deployment_helper.php';
+}
+
 /**
  * Persistence helpers for Management API (configs_dir/{apiId}/).
  */
@@ -124,7 +128,7 @@ class MgmtConfigStore
     {
         $meta = $this->loadMeta($apiId);
         $dir = $this->getApiDir($apiId);
-        $conn = @include "{$dir}/connection.php";
+        $conn = include_connection_config("{$dir}/connection.php");
         $configured = is_array($conn) && !empty($conn['database'] ?? null);
 
         if (!function_exists('api_environment')) {
@@ -193,10 +197,7 @@ class MgmtConfigStore
     public function connectionFromDisk(string $apiId, bool $maskPassword = true): ?array
     {
         $path = "{$this->getApiDir($apiId)}/connection.php";
-        if (!is_file($path)) {
-            return null;
-        }
-        $conn = @include $path;
+        $conn = include_connection_config($path);
         if (!is_array($conn) || empty($conn)) {
             return null;
         }
@@ -229,7 +230,13 @@ class MgmtConfigStore
             return [];
         }
         $data = @include $path;
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) {
+            return [];
+        }
+        if (basename($path) === 'admin_config.php') {
+            return apply_single_mode_admin_config($data);
+        }
+        return $data;
     }
 
     public function savePhp(string $path, $data): void

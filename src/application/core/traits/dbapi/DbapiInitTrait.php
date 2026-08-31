@@ -214,7 +214,7 @@ trait DbapiInitTrait
         }
 
         // load connection
-        $dbConf = @include($this->apiConfigDir."/connection.php");
+        $dbConf = include_connection_config($this->apiConfigDir."/connection.php");
         if(!isset($dbConf)) {
             HttpResp::server_error("Invalid database config");
         }

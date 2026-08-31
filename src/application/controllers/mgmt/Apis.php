@@ -208,7 +208,7 @@ class Apis extends MY_MgmtController
 
     private function runConnectionTest(string $apiId): void
     {
-        $conn = @include "{$this->store->getApiDir($apiId)}/connection.php";
+        $conn = include_connection_config("{$this->store->getApiDir($apiId)}/connection.php");
         $db = @$this->load->database($conn, true);
         $err = $db->error();
         if ($err['code'] !== 0) {

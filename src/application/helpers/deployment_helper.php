@@ -223,3 +223,56 @@ function single_mode_connection_from_env(): ?array
         'database' => $database,
     ];
 }
+
+/**
+ * Overlay Docker DB_* onto a mysqli connection array (single mode only).
+ * connection.php stays a generated `return array (...)` — regen-safe.
+ */
+function apply_single_mode_connection_env(array $conn): array
+{
+    if (!is_single_deployment_mode()) {
+        return $conn;
+    }
+    $env = single_mode_connection_from_env();
+    if ($env === null) {
+        return $conn;
+    }
+    $port = (int) ($env['port'] ?? 3306);
+    $host = (string) $env['host'];
+    $conn['dbdriver'] = $conn['dbdriver'] ?? 'mysqli';
+    $conn['hostname'] = strpos($host, ':') !== false ? $host : "{$host}:{$port}";
+    $conn['username'] = $env['username'];
+    $conn['password'] = $env['password'];
+    $conn['database'] = $env['database'];
+    return $conn;
+}
+
+/** @return array<string,mixed>|null */
+function include_connection_config(string $path): ?array
+{
+    $conn = [];
+    if (is_file($path)) {
+        $loaded = @include $path;
+        if (is_array($loaded)) {
+            $conn = $loaded;
+        }
+    }
+    $conn = apply_single_mode_connection_env($conn);
+    return $conn === [] ? null : $conn;
+}
+
+/**
+ * Overlay CONFIG_API_SECRET onto per-API admin_config secret (single mode).
+ * admin_config.php stays a generated `return array (...)` — regen-safe.
+ */
+function apply_single_mode_admin_config(array $admin): array
+{
+    if (!is_single_deployment_mode()) {
+        return $admin;
+    }
+    $secret = getenv('CONFIG_API_SECRET');
+    if ($secret !== false && $secret !== '') {
+        $admin['secret'] = $secret;
+    }
+    return $admin;
+}

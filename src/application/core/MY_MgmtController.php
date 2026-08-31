@@ -242,7 +242,7 @@ class MY_MgmtController extends CI_Controller
             $old = [];
         }
 
-        $conn = @include "{$dir}/connection.php";
+        $conn = include_connection_config("{$dir}/connection.php");
         if (!is_array($conn) || empty($conn)) {
             throw new RuntimeException('Connection not configured');
         }
@@ -296,7 +296,7 @@ class MY_MgmtController extends CI_Controller
     protected function generateStructure(string $apiId, $structure = null): array
     {
         $dir = $this->store->getApiDir($apiId);
-        $conn = @include "{$dir}/connection.php";
+        $conn = include_connection_config("{$dir}/connection.php");
         if (!is_array($conn) || empty($conn)) {
             throw new RuntimeException('Connection not configured');
         }

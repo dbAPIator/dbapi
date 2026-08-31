@@ -23,7 +23,7 @@ class MgmtLifecycle
         $dir = $this->store->getApiDir($apiId);
         $meta = $this->store->loadMeta($apiId);
 
-        $conn = @include "{$dir}/connection.php";
+        $conn = include_connection_config("{$dir}/connection.php");
         $connOk = is_array($conn) && !empty($conn['database']) && !empty($conn['hostname']);
         $checks[] = $this->check('connection.configured', $connOk ? 'ok' : 'fail',
             $connOk ? 'Connection configured' : 'Connection not configured');

@@ -143,7 +143,7 @@ class SingleModeProvisioner
 
     private function runConnectionTest(string $apiId): void
     {
-        $conn = @include "{$this->store->getApiDir($apiId)}/connection.php";
+        $conn = include_connection_config("{$this->store->getApiDir($apiId)}/connection.php");
         $db = @$this->ci->load->database($conn, true);
         $err = $db->error();
         if ($err['code'] !== 0) {
@@ -155,7 +155,7 @@ class SingleModeProvisioner
     private function generateStructure(string $apiId): array
     {
         $dir = $this->store->getApiDir($apiId);
-        $conn = @include "{$dir}/connection.php";
+        $conn = include_connection_config("{$dir}/connection.php");
         if (!is_array($conn) || empty($conn)) {
             throw new RuntimeException('Connection not configured');
         }

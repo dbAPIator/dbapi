@@ -21,6 +21,10 @@ class TestDeploymentHelper extends TestCase
         putenv('DEPLOYMENT_MODE');
         putenv('DB_HOST');
         putenv('DB_NAME');
+        putenv('DB_USER');
+        putenv('DB_PASSWORD');
+        putenv('DB_PORT');
+        putenv('CONFIG_API_SECRET');
     }
 
     public function testDefaultDeploymentModeIsMulti(): void
@@ -66,6 +70,54 @@ class TestDeploymentHelper extends TestCase
         putenv('DB_HOST');
         putenv('DB_NAME');
         $this->assertNull(single_mode_connection_from_env());
+    }
+
+    public function testApplySingleModeConnectionEnvOverlaysDbVars(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        putenv('DB_HOST=mysql');
+        putenv('DB_NAME=appdb');
+        putenv('DB_USER=app');
+        putenv('DB_PASSWORD=s3cret');
+        putenv('DB_PORT=3306');
+
+        $out = apply_single_mode_connection_env([
+            'dbdriver' => 'mysqli',
+            'hostname' => 'localhost:3306',
+            'username' => 'placeholder',
+            'password' => 'placeholder',
+            'database' => 'placeholder',
+        ]);
+        $this->assertSame('mysql:3306', $out['hostname']);
+        $this->assertSame('app', $out['username']);
+        $this->assertSame('s3cret', $out['password']);
+        $this->assertSame('appdb', $out['database']);
+    }
+
+    public function testApplySingleModeConnectionEnvIgnoredInMultiMode(): void
+    {
+        putenv('DEPLOYMENT_MODE=multi');
+        putenv('DB_HOST=mysql');
+        putenv('DB_NAME=appdb');
+        $disk = [
+            'dbdriver' => 'mysqli',
+            'hostname' => 'localhost:3306',
+            'username' => 'on-disk',
+            'password' => 'on-disk',
+            'database' => 'on-disk',
+        ];
+        $this->assertSame($disk, apply_single_mode_connection_env($disk));
+    }
+
+    public function testApplySingleModeAdminConfigOverlaysSecret(): void
+    {
+        putenv('DEPLOYMENT_MODE=single');
+        putenv('CONFIG_API_SECRET=from-env');
+        $admin = apply_single_mode_admin_config([
+            'acls' => [['ip' => '0.0.0.0/0', 'allow' => true]],
+            'secret' => 'on-disk',
+        ]);
+        $this->assertSame('from-env', $admin['secret']);
     }
 
     public function testMgmtApiPathSingleModeOmitsDefaultApiId(): void

@@ -70,6 +70,8 @@ On container start the entrypoint:
 3. Pre-fills `connection.php` from `DB_*` env when `DB_HOST` and `DB_NAME` are set (even if the DB is not yet reachable)
 4. When the database is reachable, runs connection test, schema build, and activation automatically
 
+In **single** mode, `DB_*` and `CONFIG_API_SECRET` are also applied at request time. Regenerating `connection.php` / `admin_config.php` (plain `return array (...)`) does not drop Docker credentials.
+
 No manual Management API call is required. Use `GET /mgmt/v1` to inspect status. OpenAPI spec: `/management-openapi-single.yaml` (also served at `/management-openapi.yaml` in single mode).
 
 Optional metadata env vars: `API_TITLE`, `API_DESCRIPTION`, `API_VERSION`, `API_TERMS_OF_SERVICE`, `API_LICENSE_NAME`, `API_LICENSE_URL`, `API_CONTACT_NAME`, `API_CONTACT_EMAIL`, `API_CONTACT_URL`, `API_CONTACT_PHONE`.

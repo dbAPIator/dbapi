@@ -20,6 +20,14 @@ if [[ -n "${PHP_MEMORY_LIMIT:-}" ]]; then
   done
 fi
 
+# Never echo PHP errors into HTTP responses (CodeIgniter development mode calls ini_set).
+for f in /etc/php/*/fpm/pool.d/www.conf; do
+  [[ -f "$f" ]] || continue
+  if ! grep -q 'php_admin_flag\[display_errors\]' "$f"; then
+    printf '\nphp_admin_flag[display_errors] = Off\n' >> "$f"
+  fi
+done
+
 wait_for_mysql() {
   local host="${DB_HOST:-mysql}"
   local port="${DB_PORT:-3306}"

@@ -26,7 +26,7 @@ class Connection extends MY_MgmtController
     public function test($apiId)
     {
         $this->requireApiAccess($apiId);
-        $conn = @include "{$this->store->getApiDir($apiId)}/connection.php";
+        $conn = include_connection_config("{$this->store->getApiDir($apiId)}/connection.php");
         if (!is_array($conn) || empty($conn)) {
             $this->mgmtError(404, $this->errorsCatalog['config']['api_not_found']);
         }

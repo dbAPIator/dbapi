@@ -58,7 +58,7 @@ class Auth extends CI_Controller {
 
         $cfgDir = $this->configDir."/$configName";
         $connFile = $cfgDir . '/connection.php';
-        $conn = is_file($connFile) ? include $connFile : false;
+        $conn = include_connection_config($connFile);
         if (!is_array($conn)) {
             HttpResp::service_unavailable(["errors" => [["message" => "Could not connect to database"]]]);
         }
