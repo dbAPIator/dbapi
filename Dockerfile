@@ -30,6 +30,7 @@ COPY configs/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY configs/php.ini /etc/php/8.3/fpm/php.ini
 COPY configs/php-fpm.conf /etc/php/8.3/fpm/php-fpm.conf
 COPY configs/www.conf /etc/php/8.3/fpm/pool.d/www.conf
+COPY configs/opcache.ini /etc/php/8.3/fpm/conf.d/99-opcache.ini
 
 RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.3/fpm/php.ini \
     && mkdir -p /run/php /app/apis

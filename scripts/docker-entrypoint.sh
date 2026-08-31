@@ -26,6 +26,9 @@ for f in /etc/php/*/fpm/pool.d/www.conf; do
   if ! grep -q 'php_admin_flag\[display_errors\]' "$f"; then
     printf '\nphp_admin_flag[display_errors] = Off\n' >> "$f"
   fi
+  # PHP 8: opcache.enable is startup-only (cannot be enabled via php_admin_value);
+  # opcache.fast_shutdown was removed in 7.2. Other opcache.* belong in conf.d.
+  sed -i '/php_admin_value\[opcache\./d' "$f"
 done
 
 wait_for_mysql() {
