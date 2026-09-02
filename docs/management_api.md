@@ -27,6 +27,8 @@ All examples below use `http://localhost/dbapi/src`.
 
 **Discover service:** `GET {base}/` returns JSON with management and data path hints.
 
+**Health:** `GET {base}/health` — unauthenticated liveness probe (`{"status":"ok","service":"dbAPI"}`). Does not check database connectivity.
+
 **OpenAPI & Swagger:**
 
 - Mode-specific source files (served dynamically with the correct `servers[0].url`):

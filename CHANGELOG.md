@@ -84,4 +84,9 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Fix PHP-FPM OPcache for PHP 8.3: load settings from conf.d (opcache.enable is startup-only; fast_shutdown was removed) and drop public/.user.ini that disabled it.
 
 
+## [1.4.4] - 2026-09-02
+
+- Add unauthenticated `GET /health` liveness probe; Docker `HEALTHCHECK` uses it.
+
+
 ## [Unreleased]

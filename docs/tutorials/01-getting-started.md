@@ -28,13 +28,14 @@ From the repository root:
 docker compose up -d
 ```
 
-Wait until the dbAPI container is healthy, then open the service root:
+Wait until the dbAPI container is healthy, then confirm the liveness probe and open the service root:
 
 ```bash
+curl -sS http://localhost:8888/health
 curl -sS http://localhost:8888/
 ```
 
-You should see JSON with path hints for management, data, auth, and swagger. The local stack runs in **single deployment mode**: one fixed API (`default`) auto-provisioned from environment variables.
+`/health` returns `{"status":"ok","service":"dbAPI"}`. The root URL returns JSON with path hints for management, data, auth, and swagger. The local stack runs in **single deployment mode**: one fixed API (`default`) auto-provisioned from environment variables.
 
 ---
 

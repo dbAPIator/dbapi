@@ -5,6 +5,8 @@ $route['default_controller'] = 'errors/home';
 $route['404_override'] = 'errors/error_404';
 $route['translate_uri_dashes'] = false;
 
+$route['^health$']['get'] = 'errors/health';
+
 // Management API (sole control plane)
 include 'routing/routes_mgmt.php';
 

@@ -14,6 +14,7 @@
             <file>tests/TestCsvImportHelper.php</file>
         </testsuite>
         <testsuite name="integration">
+            <file>tests/TestHealth.php</file>
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>
@@ -31,6 +32,7 @@
             <file>tests/TestAccessControl.php</file>
             <file>tests/TestSelectOffset.php</file>
             <file>tests/TestCsvImportHelper.php</file>
+            <file>tests/TestHealth.php</file>
             <file>tests/TestManagementAPI.php</file>
             <file>tests/TestDataPlaneAPI.php</file>
             <file>tests/TestSingleModeDataPlaneAPI.php</file>

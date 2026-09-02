@@ -273,7 +273,13 @@ Existing config on the volume is preserved. Run Management API validation or sch
 
 ## Health check
 
-The image defines a Docker `HEALTHCHECK` that requests `http://127.0.0.1/` inside the container. Orchestrators (Docker Compose, Kubernetes) can use it to wait for readiness.
+`GET /health` is an unauthenticated liveness probe. It returns HTTP 200 and JSON `{"status":"ok","service":"dbAPI"}` when PHP-FPM and nginx can serve requests. It does not test database connectivity (use `POST .../connection:test` on the Management API for that).
+
+The image `HEALTHCHECK` requests `http://127.0.0.1/health` inside the container. Orchestrators (Docker Compose, Kubernetes) can use the same path.
+
+```bash
+curl -fsS http://localhost:8888/health
+```
 
 Note: in **single mode**, the first start may take longer while waiting for MySQL and running auto-provision.
 

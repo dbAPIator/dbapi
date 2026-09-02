@@ -19,6 +19,7 @@ class Errors extends CI_Controller {
             HttpResp::json_out(200, [
                 'service' => 'dbAPI',
                 'deploymentMode' => 'single',
+                'health' => '/health',
                 'management' => '/mgmt/v1',
                 'managementOpenApi' => '/management-openapi.yaml',
                 'managementOpenApiMulti' => '/management-openapi-multi.yaml',
@@ -33,6 +34,7 @@ class Errors extends CI_Controller {
         HttpResp::json_out(200, [
             'service' => 'dbAPI',
             'deploymentMode' => 'multi',
+            'health' => '/health',
             'management' => '/mgmt/v1/apis',
             'managementOpenApi' => '/management-openapi.yaml',
             'managementOpenApiMulti' => '/management-openapi-multi.yaml',
@@ -42,6 +44,17 @@ class Errors extends CI_Controller {
                 'adminApi' => 'Removed. Use /mgmt/v1/apis instead of /admin/apis.',
             ],
         ]);
+    }
+
+    /**
+     * Process liveness probe. No auth. Does not check database connectivity.
+     */
+    public function health()
+    {
+        HttpResp::json_out(200, [
+            'status' => 'ok',
+            'service' => 'dbAPI',
+        ], ['Cache-Control' => 'no-store']);
     }
 
     /**

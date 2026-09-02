@@ -57,6 +57,8 @@ DBAPI_CONFIG_KEY=                               # X-Api-Config-Key per API
 
 **Service discovery:** `GET {base}/` returns JSON with path hints.
 
+**Health:** `GET {base}/health` — unauthenticated liveness (`{"status":"ok"}`). Does not check the database.
+
 **OpenAPI:** spec is generated on `schema:rebuild`; read it before inventing resource or field names.
 
 ---
