@@ -40,6 +40,9 @@ class DBWalk
         $sql = "SELECT TABLE_NAME FROM information_schema.TABLES
                 WHERE TABLE_SCHEMA = {$schema} AND TABLE_TYPE = 'BASE TABLE'";
         foreach ($db->query($sql)->result() as $rec) {
+            if ($rec->TABLE_NAME === 'dbapi_refresh_tokens') {
+                continue;
+            }
             $permissions[$rec->TABLE_NAME] = self::defaultTablePermissions(true);
             $structure[$rec->TABLE_NAME] = self::emptyEntity('table');
         }

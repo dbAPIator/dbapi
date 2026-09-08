@@ -114,6 +114,8 @@ Token response:
 }
 ```
 
+When `refresh_validity` is configured (> 0), the same response also includes `refresh_token` and `refresh_expires_in`.
+
 ---
 
 ## Step 4 — Authenticated requests
@@ -123,7 +125,28 @@ curl -sS "$BASE/v1/data/customers?page[limit]=1" \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-Refresh the token before `expires_in` seconds elapse. Store tokens securely (memory or httpOnly cookies on your backend — not `localStorage` if XSS is a concern).
+Use the access token until `expires_in` elapses. If you enabled refresh tokens, rotate before that:
+
+```bash
+curl -sS -X POST "$BASE/v1/auth/refresh" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "refresh_token=$REFRESH" | jq .
+```
+
+A successful refresh invalidates the previous refresh token. Store tokens securely (memory or httpOnly cookies on your backend — not `localStorage` if XSS is a concern).
+
+Optional `refresh_validity` on the auth policy (seconds). Per-method override; `0` disables refresh for that method:
+
+```json
+"dbAuth": {
+  "validity": 900,
+  "refresh_validity": 2592000,
+  "loginMethods": {
+    "password": { "sql": "..." },
+    "pin": { "sql": "...", "validity": 900, "refresh_validity": 0 }
+  }
+}
+```
 
 ---
 
@@ -187,6 +210,7 @@ async function apiGet(resource, token, query = {}) {
 - POST credentials to `.../auth/login/{method}` as form-urlencoded.
 - Attach `Authorization: Bearer <token>` to data plane requests.
 - Validate a token with `GET .../auth/session` (same Bearer header; **204** if valid, **401** with empty body if not).
+- Optional refresh: set `refresh_validity`, then `POST .../auth/refresh` with `refresh_token` (rotation; reuse of the old token returns **401**).
 - Configure auth via Management API `PUT .../policies/auth`.
 
 Path rules, scoped tables, and `mandatoryFilter` build on JWT claims — see [Tutorial 8](08-security-policies.md).

@@ -503,7 +503,7 @@ Define named methods under `dbAuth.loginMethods`. Each method has a `sql` (or `l
 }
 ```
 
-On disk (`authentication.php`): `mode`, `default_access_rule`, optional `filterBypassRoles`, `validity`, `loginMethods` (or legacy `loginQuery`), `jwt_key` (masked on GET).
+On disk (`authentication.php`): `mode`, `default_access_rule`, optional `filterBypassRoles`, `validity`, optional `refresh_validity`, `loginMethods` (or legacy `loginQuery`), `jwt_key` (masked on GET). Optional per-method `refresh_validity` (use `0` to disable refresh for that method).
 
 ---
 
@@ -546,10 +546,17 @@ After activate, clients use:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/v1/apis/{apiId}/auth/login` (or `/v1/auth/login` in single-mode) | List configured methods: `{ "loginMethods": [{ "name", "fields", "expiresIn" }] }` |
+| GET | `/v1/apis/{apiId}/auth/login` (or `/v1/auth/login` in single-mode) | List configured methods: `{ "loginMethods": [{ "name", "fields", "expiresIn", "refreshExpiresIn"? }] }` |
 | POST | `/v1/apis/{apiId}/auth/login/{loginMethod}` | Authenticate; body: `application/x-www-form-urlencoded` with the method's fields |
+| POST | `/v1/apis/{apiId}/auth/refresh` | Rotate refresh token; body: `refresh_token=...` (`application/x-www-form-urlencoded`) |
+| POST | `/v1/apis/{apiId}/auth/logout` | Revoke a refresh token; body: `refresh_token=...`; always **204** |
+| GET | `/v1/apis/{apiId}/auth/session` | Validate Bearer access JWT; **204** if valid, **401** empty body if not |
 
 `POST .../auth/login` without `{loginMethod}` returns **404**. Unknown method → **404**; bad/missing fields → **400**; failed auth → **404**.
+
+When `refresh_validity` is set (> 0) on the auth policy (or a login method), login also returns `refresh_token` and `refresh_expires_in`. `POST .../auth/refresh` consumes that token (rotation: the old token is invalid after a successful refresh) and returns a new pair. Missing `refresh_token` → **400**; invalid/expired/reused → **401** empty body.
+
+Refresh tokens are opaque, stored hashed in table `dbapi_refresh_tokens` (created on first issue; skipped during schema introspect so it is not a data-plane resource).
 
 ---
 

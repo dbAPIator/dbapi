@@ -51,6 +51,7 @@ class TestAuthLoginMethods extends IntegrationTestCase
                 'mode' => 'dbAuth',
                 'dbAuth' => [
                     'validity' => 3600,
+                    'refresh_validity' => 2592000,
                     'loginMethods' => [
                         'password' => [
                             'sql' => "SELECT username AS unm, role FROM app_users WHERE username='[[login]]' AND password='[[password]]'",
@@ -58,6 +59,7 @@ class TestAuthLoginMethods extends IntegrationTestCase
                         'pin' => [
                             'sql' => "SELECT username AS unm, role FROM app_users WHERE pin='[[pin]]'",
                             'validity' => 900,
+                            'refresh_validity' => 0,
                         ],
                     ],
                 ],
@@ -95,6 +97,8 @@ class TestAuthLoginMethods extends IntegrationTestCase
         $this->assertSame(200, $result['status']);
         $this->assertArrayHasKey('access_token', $result['body']);
         $this->assertSame(3600, $result['body']['expires_in']);
+        $this->assertArrayHasKey('refresh_token', $result['body']);
+        $this->assertSame(2592000, $result['body']['refresh_expires_in']);
     }
 
     public function testPinLoginViaPath(): void
@@ -105,6 +109,7 @@ class TestAuthLoginMethods extends IntegrationTestCase
         $this->assertSame(200, $result['status']);
         $this->assertArrayHasKey('access_token', $result['body']);
         $this->assertSame(900, $result['body']['expires_in']);
+        $this->assertArrayNotHasKey('refresh_token', $result['body']);
     }
 
     public function testGetLoginMethodsListsConfiguredMethods(): void
@@ -126,10 +131,12 @@ class TestAuthLoginMethods extends IntegrationTestCase
         $this->assertArrayHasKey('password', $byName);
         $this->assertSame(['login', 'password'], $byName['password']['fields']);
         $this->assertSame(3600, $byName['password']['expiresIn']);
+        $this->assertSame(2592000, $byName['password']['refreshExpiresIn']);
 
         $this->assertArrayHasKey('pin', $byName);
         $this->assertSame(['pin'], $byName['pin']['fields']);
         $this->assertSame(900, $byName['pin']['expiresIn']);
+        $this->assertArrayNotHasKey('refreshExpiresIn', $byName['pin']);
     }
 
     public function testBareLoginUrlReturns404OnPost(): void
@@ -151,5 +158,67 @@ class TestAuthLoginMethods extends IntegrationTestCase
     {
         $result = $this->loginForm('pin', ['pin' => '0000']);
         $this->assertSame(404, $result['status']);
+    }
+
+    public function testRefreshRotatesTokenAndRejectsTheOldOne(): void
+    {
+        $login = $this->loginForm('password', [
+            'login' => 'testuser',
+            'password' => 'testpass',
+        ]);
+        $this->assertSame(200, $login['status']);
+        $oldRefresh = $login['body']['refresh_token'];
+
+        $first = $this->client->post("apis/{$this->apiName}/auth/refresh", [
+            'form_params' => ['refresh_token' => $oldRefresh],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(200, $first->getStatusCode());
+        $body = json_decode((string) $first->getBody(), true);
+        $this->assertArrayHasKey('access_token', $body);
+        $this->assertArrayHasKey('refresh_token', $body);
+        $this->assertNotSame($oldRefresh, $body['refresh_token']);
+
+        $reuse = $this->client->post("apis/{$this->apiName}/auth/refresh", [
+            'form_params' => ['refresh_token' => $oldRefresh],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(401, $reuse->getStatusCode());
+
+        $second = $this->client->post("apis/{$this->apiName}/auth/refresh", [
+            'form_params' => ['refresh_token' => $body['refresh_token']],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(200, $second->getStatusCode());
+    }
+
+    public function testRefreshMissingTokenReturns400(): void
+    {
+        $response = $this->client->post("apis/{$this->apiName}/auth/refresh", [
+            'form_params' => [],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(400, $response->getStatusCode());
+    }
+
+    public function testLogoutRevokesRefreshToken(): void
+    {
+        $login = $this->loginForm('password', [
+            'login' => 'testuser',
+            'password' => 'testpass',
+        ]);
+        $refresh = $login['body']['refresh_token'];
+
+        $logout = $this->client->post("apis/{$this->apiName}/auth/logout", [
+            'form_params' => ['refresh_token' => $refresh],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(204, $logout->getStatusCode());
+
+        $reuse = $this->client->post("apis/{$this->apiName}/auth/refresh", [
+            'form_params' => ['refresh_token' => $refresh],
+            'http_errors' => false,
+        ]);
+        $this->assertSame(401, $reuse->getStatusCode());
     }
 }

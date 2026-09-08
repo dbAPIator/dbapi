@@ -138,6 +138,23 @@ pin=1234
 }
 ```
 
+When `refresh_validity` is set on the policy (seconds, optional per-method override; `0` disables that method), login also returns `refresh_token` and `refresh_expires_in`. Discovery then includes `refreshExpiresIn` on methods that issue refresh tokens.
+
+**Refresh (rotate):**
+
+```http
+POST {base}/v1/apis/{apiId}/auth/refresh
+Content-Type: application/x-www-form-urlencoded
+
+refresh_token=...
+```
+
+Success: same token JSON as login (new pair). The previous refresh token is invalid. Missing field → **400**; invalid/expired/reused → **401** empty body.
+
+**Logout (revoke refresh):** `POST .../auth/logout` with `refresh_token=...` → **204**.
+
+Refresh tokens are opaque (not JWTs) and stored hashed in `dbapi_refresh_tokens`. Do not send the refresh token as `Authorization: Bearer`.
+
 ### Authenticated requests
 
 ```http

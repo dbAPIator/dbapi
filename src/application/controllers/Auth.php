@@ -18,6 +18,8 @@ dbAPI\Autoloader::register();
  * @property CI_Input input
  */
 class Auth extends CI_Controller {
+    private const REFRESH_TABLE = 'dbapi_refresh_tokens';
+
     private $configDir;
 
     function __construct()
@@ -194,18 +196,82 @@ class Auth extends CI_Controller {
     }
 
     /**
-     * @param $result
-     * @param $auth
+     * @param array $payload
+     * @param array $auth
      */
-    private function generate_token($payload,$auth) {
-        $validity = $auth["validity"];
-        $payload["exp"] = time()+$validity;
-        $jwt = JWT::encode($payload, $auth["jwt_key"],  'HS256');
-        HttpResp::json_out(200,[
-            "access_token"=>$jwt,
-            "expires_in"=>$validity,
-            "token_type"=>"Bearer"
-        ]);
+    private function generate_token($payload, $auth) {
+        $validity = (int) ($auth["validity"] ?? 3600);
+        $claims = $payload;
+        unset($claims["exp"], $claims["iat"]);
+
+        $access = $claims;
+        $access["exp"] = time() + $validity;
+        $jwt = JWT::encode($access, $auth["jwt_key"], "HS256");
+        $body = [
+            "access_token" => $jwt,
+            "expires_in" => $validity,
+            "token_type" => "Bearer",
+        ];
+
+        $refreshValidity = (int) ($auth["refresh_validity"] ?? 0);
+        if ($refreshValidity > 0) {
+            $this->ensure_refresh_table();
+            $refreshToken = bin2hex(random_bytes(32));
+            $this->db->insert(self::REFRESH_TABLE, [
+                "token_hash" => hash("sha256", $refreshToken),
+                "payload" => json_encode($claims, JSON_UNESCAPED_UNICODE),
+                "expires_at" => time() + $refreshValidity,
+            ]);
+            $body["refresh_token"] = $refreshToken;
+            $body["refresh_expires_in"] = $refreshValidity;
+        }
+
+        HttpResp::json_out(200, $body);
+    }
+
+    private function ensure_refresh_table(): void
+    {
+        $this->db->query(
+            "CREATE TABLE IF NOT EXISTS `" . self::REFRESH_TABLE . "` (
+                `token_hash` CHAR(64) NOT NULL,
+                `payload` LONGTEXT NOT NULL,
+                `expires_at` INT UNSIGNED NOT NULL,
+                PRIMARY KEY (`token_hash`),
+                KEY `expires_at` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+
+    private function refresh_table_ready(): bool
+    {
+        $q = $this->db->query('SHOW TABLES LIKE ' . $this->db->escape(self::REFRESH_TABLE));
+        return $q && $q->num_rows() > 0;
+    }
+
+    /**
+     * @return string
+     */
+    private function posted_refresh_token(): string
+    {
+        return trim((string) ($this->input->post("refresh_token") ?? ""));
+    }
+
+    /**
+     * Apply per-method access/refresh TTLs onto the auth config used for token issue.
+     *
+     * @param array $auth
+     * @param array $methodConfig
+     * @return array
+     */
+    private function apply_method_token_ttl(array $auth, array $methodConfig): array
+    {
+        if (isset($methodConfig["validity"])) {
+            $auth["validity"] = (int) $methodConfig["validity"];
+        }
+        if (array_key_exists("refresh_validity", $methodConfig)) {
+            $auth["refresh_validity"] = (int) $methodConfig["refresh_validity"];
+        }
+        return $auth;
     }
 
     /**
@@ -267,12 +333,7 @@ class Auth extends CI_Controller {
         /** @var CI_DB_result $res */
         $res = $this->db->query($sql);
 
-        $effectiveAuth = $auth;
-        if (isset($methodConfig['validity'])) {
-            $effectiveAuth['validity'] = (int) $methodConfig['validity'];
-        }
-
-        return [$res, $effectiveAuth];
+        return [$res, $this->apply_method_token_ttl($auth, $methodConfig)];
     }
 
     /**
@@ -294,6 +355,11 @@ class Auth extends CI_Controller {
         $validity = $methodConfig['validity'] ?? ($auth['validity'] ?? null);
         if ($validity !== null) {
             $descriptor['expiresIn'] = (int) $validity;
+        }
+
+        $refreshValidity = $methodConfig['refresh_validity'] ?? ($auth['refresh_validity'] ?? 0);
+        if ((int) $refreshValidity > 0) {
+            $descriptor['refreshExpiresIn'] = (int) $refreshValidity;
         }
 
         return $descriptor;
@@ -380,6 +446,77 @@ class Auth extends CI_Controller {
 
         if (!$jwt['valid']) {
             HttpResp::quick(401);
+        }
+
+        HttpResp::no_content(204);
+    }
+
+    /**
+     * Rotate a refresh token: consume the presented token, issue a new pair.
+     * Success: 200 with the same body as login. Failure: 401, no body.
+     *
+     * @param $configName
+     */
+    function refresh($configName) {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
+            HttpResp::quick(405);
+        }
+
+        $auth = $this->db_connect($configName);
+        if (($auth['mode'] ?? null) === 'none') {
+            HttpResp::quick(401);
+        }
+
+        $token = $this->posted_refresh_token();
+        if ($token === '') {
+            HttpResp::bad_request(['error' => 'Missing refresh_token']);
+        }
+
+        if (!$this->refresh_table_ready()) {
+            HttpResp::quick(401);
+        }
+
+        $hash = hash('sha256', $token);
+        $row = $this->db->get_where(self::REFRESH_TABLE, ['token_hash' => $hash])->row_array();
+        if (!$row || (int) $row['expires_at'] < time()) {
+            if ($row) {
+                $this->db->delete(self::REFRESH_TABLE, ['token_hash' => $hash]);
+            }
+            HttpResp::quick(401);
+        }
+
+        $this->db->delete(self::REFRESH_TABLE, ['token_hash' => $hash]);
+        if ($this->db->affected_rows() !== 1) {
+            HttpResp::quick(401);
+        }
+
+        $claims = json_decode((string) $row['payload'], true);
+        if (!is_array($claims)) {
+            HttpResp::quick(401);
+        }
+
+        $loginMethod = $claims['login_method'] ?? null;
+        if (is_string($loginMethod) && !empty($auth['loginMethods'][$loginMethod]) && is_array($auth['loginMethods'][$loginMethod])) {
+            $auth = $this->apply_method_token_ttl($auth, $auth['loginMethods'][$loginMethod]);
+        }
+
+        $this->generate_token($claims, $auth);
+    }
+
+    /**
+     * Revoke a refresh token if presented. Always 204.
+     *
+     * @param $configName
+     */
+    function logout($configName) {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
+            HttpResp::quick(405);
+        }
+
+        $this->db_connect($configName);
+        $token = $this->posted_refresh_token();
+        if ($token !== '' && $this->refresh_table_ready()) {
+            $this->db->delete(self::REFRESH_TABLE, ['token_hash' => hash('sha256', $token)]);
         }
 
         HttpResp::no_content(204);

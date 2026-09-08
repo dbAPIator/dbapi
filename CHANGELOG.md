@@ -89,4 +89,11 @@ All notable changes to dbAPI are documented here. Version numbers follow [Semant
 - Add unauthenticated `GET /health` liveness probe; Docker `HEALTHCHECK` uses it.
 
 
+## [1.5.0] - 2026-09-08
+
+- dbAuth refresh tokens: optional `refresh_validity` issues an opaque rotating `refresh_token` (hashed in `dbapi_refresh_tokens`, skipped on introspect). `POST .../auth/refresh` rotates; reuse of the old token returns 401. `POST .../auth/logout` revokes.
+
+
 ## [Unreleased]
+
+

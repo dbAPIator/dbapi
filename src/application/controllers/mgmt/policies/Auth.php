@@ -50,6 +50,11 @@ class Auth extends MY_MgmtController
                     ?? $policy['default_access_rule']
                     ?? AccessControl::ACCESS_PRIVATE,
             ];
+            if (isset($dbAuth['refresh_validity'])) {
+                $disk['refresh_validity'] = (int) $dbAuth['refresh_validity'];
+            } elseif (isset($policy['refresh_validity'])) {
+                $disk['refresh_validity'] = (int) $policy['refresh_validity'];
+            }
             if (!empty($dbAuth['filterBypassRoles']) && is_array($dbAuth['filterBypassRoles'])) {
                 $disk['filterBypassRoles'] = array_values($dbAuth['filterBypassRoles']);
             } elseif (!empty($policy['filterBypassRoles']) && is_array($policy['filterBypassRoles'])) {
@@ -90,6 +95,9 @@ class Auth extends MY_MgmtController
             ];
             if (isset($method['validity'])) {
                 $entry['validity'] = (int) $method['validity'];
+            }
+            if (isset($method['refresh_validity'])) {
+                $entry['refresh_validity'] = (int) $method['refresh_validity'];
             }
             if (!empty($method['fields']) && is_array($method['fields'])) {
                 $entry['fields'] = array_values($method['fields']);
